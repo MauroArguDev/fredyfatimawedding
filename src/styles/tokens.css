@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bg-base: #f7dbb4;
+  --color-envelope-text: #465641;
+  --color-surface-dark: #48553f;
+  --color-surface-sage: #97a98f;
+  --color-surface-muted: #ebc9a0;
+  --color-accent-coral: #e9a98c;
+  --color-accent-terracotta: #e0855f;
+  --color-text-heading: #4a5a46;
+  --color-text-body: #7c8a78;
+  --color-text-on-dark: #f6d5a9;
+  --color-text-on-sage: #454f42;
+  --color-text-hero: #ffffff;
+
+  --spacing-invitation: 432px;
+}
