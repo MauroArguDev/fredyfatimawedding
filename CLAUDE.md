@@ -491,7 +491,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 #### WED-12 — Despliegue en Vercel con fallback SPA
 **Setup · 3 · WED-11**
 
-- [ ] Proyecto creado como `fredyfatimawedding`; push a `main` despliega a producción.
+- [ ] Proyecto creado como `fredyfatimawedding`; push a `master` despliega a producción.
 - [ ] `vercel.json` con rewrite SPA que **excluye `/api`**: recargar `/i/abc123` sirve `index.html`, no un 404.
 - [ ] `api/health.ts` responde 200 en el deploy.
 - [ ] Cada PR genera preview funcional.
@@ -501,7 +501,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 **Setup · 2 · WED-12, WED-15**
 
 - [ ] GitHub Action ejecuta `lint`, `typecheck`, `test` con umbral de cobertura, y `build` en cada PR.
-- [ ] `main` protegida: sin push directo, requiere CI en verde.
+- [ ] `master` protegida: sin push directo, requiere CI en verde.
 
 #### WED-14 — Bloqueo de indexación
 **Setup · 1 · WED-12**
