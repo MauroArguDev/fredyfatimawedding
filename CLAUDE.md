@@ -87,7 +87,7 @@ Solo la consola puede modificar una confirmación existente.
 | Auth | Firebase Auth, email + contraseña, 1 usuario |
 | Hosting | Vercel (Hobby) |
 | Notificación | Enlace `wa.me` generado en servidor |
-| Testing | Vitest + Testing Library; Playwright para el flujo de RSVP |
+| Testing | Vitest + Testing Library. Sin e2e automatizado (ADR-011) |
 
 ### ADR-001 — El navegador nunca habla directo con Firestore
 
@@ -181,6 +181,19 @@ Sin esas tres condiciones, JSDoc se convierte en una puerta trasera para comenta
 **Consecuencia.** La estructura ya es la que necesita la animación de apertura de WED-60: dos hojas que rotan hacia afuera desde el centro, con el sello partiéndose en la unión. No hay que rehacer la geometría, solo animarla.
 
 **Lo que sigue faltando.** El archivo **no contiene especificación de animación**. Duración, easing y orden de la secuencia no están definidos en Figma y son una decisión nuestra o del diseñador. WED-02 no puede cerrarse en ese punto.
+
+### ADR-011 — Un solo ambiente: todo corre en producción
+
+**Decisión.** No existe un segundo proyecto Firebase de pruebas ni ningún otro ambiente aislado. Hay un único proyecto Firebase (producción) y las variables de entorno de Vercel para Preview y Production apuntan a ese mismo proyecto.
+
+**Razón.** Excepción explícita por tiempo y presupuesto para un proyecto de este tamaño (2 personas, sin equipo de QA dedicado). Mantener un segundo proyecto Firebase con su propio ciclo de datos no se justifica frente al beneficio.
+
+**Consecuencia sobre WED-94.** El ticket original de e2e con Playwright pedía correr "en CI contra un proyecto Firebase de prueba, no producción". Sin ese proyecto, esa condición no se puede cumplir de forma segura: un e2e automatizado contra producción podría quemar la confirmación real de un invitado (ADR-006) o alterar datos reales del CRUD. **WED-94 queda eliminado del backlog.** La única red de seguridad para el flujo de RSVP son los tests unitarios de `POST /api/rsvp` (WED-41, cobertura ≥90 %) y el ensayo manual de WED-102.
+
+**Consecuencia sobre los Preview deploys de Vercel.** Cada preview de un PR habla con la base de datos real. Al probar un PR manualmente en su preview:
+- No usar tokens de invitados reales para probar el RSVP: se quema su única confirmación (R2/ADR-006) sin forma de deshacerlo salvo por la consola.
+- Cualquier prueba de CRUD del admin (editar, eliminar, rotar token) contra un invitado real es irreversible en los mismos términos que en producción, porque *es* producción.
+- Para probar sin ese riesgo, crear un invitado de prueba explícito en Firestore (marcado en `notes`, ej. `"TEST - borrar antes del lanzamiento"`) y borrarlo después. WED-101 y WED-102 ya piden verificar que no queden datos de prueba antes del envío real.
 
 ### Colección `guests/{guestId}`
 
@@ -370,7 +383,7 @@ Los tamaños del archivo están a escala 1080. Para llevarlos al contenedor de 4
 El diseño se está rehaciendo, así que el backlog se ejecuta en dos vías paralelas con una única dependencia entre ellas.
 
 **Vía A — no depende del diseño. Empieza ya.**
-E1 Fundamentos · E2 Firebase y datos · E4 API · E8 Consola · WED-03 · WED-94 · WED-101
+E1 Fundamentos · E2 Firebase y datos · E4 API · E8 Consola · WED-03 · WED-04 · WED-101
 
 Es el 45 % del esfuerzo total y contiene toda la lógica de negocio, las invariantes de seguridad y los tests. Nada de esto cambia cuando llegue el Figma nuevo.
 
@@ -937,17 +950,10 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] Probado con fuente del sistema al 200%: nada se corta.
 - [ ] Bugs registrados con severidad.
 
-#### WED-94 — Test end-to-end del RSVP
-**QA · 3 · WED-71 · vía B**
+#### ~~WED-94 — Test end-to-end del RSVP~~
+**Eliminado — ver ADR-011.**
 
-> El e2e completo espera la UI. La cobertura de la lógica ya vive en WED-41, que la vía A deja terminada: si el RSVP se rompe, el test que falla es el de la API, no este.
-
-- [ ] Playwright cubre: abrir `/i/:token` → abrir sobre → seleccionar cantidad → confirmar en el modal → enviar → verificar persistencia en Firestore.
-- [ ] **Cubre el reintento**: un segundo envío con el mismo token devuelve 409 `ALREADY_CONFIRMED` y la interfaz muestra el mensaje de R2.
-- [ ] Cubre recargar tras confirmar: se ve el estado de "ya confirmado", no el formulario.
-- [ ] Cubre token inválido (404) y RSVP cerrado (409 `RSVP_CLOSED`).
-- [ ] Cubre cancelar en el modal: no se envía nada.
-- [ ] Corre en CI contra un proyecto Firebase de prueba, no producción.
+> Requería un proyecto Firebase de prueba para no arriesgar datos reales de invitados. Sin ambiente de pruebas (ADR-011), automatizarlo contra producción es más riesgo que beneficio. La red de seguridad del flujo de RSVP queda en los tests unitarios de WED-41 y el ensayo manual de WED-102.
 
 ---
 
@@ -1028,12 +1034,12 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 | E6 Animaciones y audio | B | 4 | 14 |
 | E7 RSVP | B | 2 | 8 |
 | E8 Consola | A | 6 | 21 |
-| E9 Calidad | mixta | 5 | 14 |
+| E9 Calidad | mixta | 4 | 11 |
 | E10 Lanzamiento | mixta | 4 | 7 |
 | E11 Post | A | 2 | 3 |
-| **Total** | | **55** | **156** |
+| **Total** | | **54** | **153** |
 
-**Reparto entre vías:** 70 puntos en la vía A (45 %), 78 en la vía B, 8 mixtos.
+**Reparto entre vías:** 70 puntos en la vía A (46 %), 75 en la vía B, 8 mixtos. WED-94 (3 puntos, vía B) se eliminó por ADR-011.
 
 ### Calendario con lanzamiento el 10 de octubre
 
@@ -1067,6 +1073,7 @@ En orden: WED-63 (animaciones de detalle), WED-61 (música), WED-110. El sitio f
 |---|---|---|---|
 | Los invitados no entienden que hay que tocar el sobre | Media | **Crítico** | Affordance en WED-52 y observación en WED-102. Si falla, nadie llega a la invitación |
 | Confirmaciones erróneas por mis-tap, irreversibles para el invitado | **Alta** | Medio | Modal en WED-70; enlace `wa.me` en el mensaje de R2; ambas vías de corrección en WED-82 |
+| Sin ambiente de pruebas (ADR-011), un Preview de Vercel o una prueba manual quema la confirmación de un invitado real o altera sus datos | Media | Alto | Nunca probar con tokens reales; usar invitados de prueba marcados en `notes` y borrarlos antes de WED-101/WED-103; WED-94 (e2e automatizado) queda eliminado por esta misma razón |
 | ~~Las fuentes no son licenciables para web~~ | — | — | **CERRADO en WED-02.** Great Vibes e Inter son Google Fonts bajo SIL OFL |
 | Los ornamentos importados de Illustrator inflan el peso de la página | Media | Medio | ADR-008 los manda a WebP en vez de SVG; presupuesto verificado en WED-33 y WED-91 |
 | La animación de apertura no está especificada en ninguna parte | **Alta** | Medio | El Figma v1 no la contenía (ADR-009). Pedirla explícitamente para el v2 |
