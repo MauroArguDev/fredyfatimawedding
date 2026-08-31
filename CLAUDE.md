@@ -566,7 +566,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 
 - [x] CLI que lee CSV con `firstName,lastName,titleLabel,guestLimit,phone` y crea documentos con `token` (`scripts/importGuests.ts`, `npm run import:guests -- <path-to-csv>`).
 - [x] Una fila inválida aborta la importación completa **sin escribir nada**, reportando fila y error. Verificado tanto en tests (`scripts/lib/guestImport.test.ts`) como en una corrida real contra un CSV inválido: exit code 1, `Row 3: Number must be greater than or equal to 1`, sin tocar Firestore.
-- [x] Ejecutarlo dos veces no duplica (detección por `phone`). La partición pura (`partitionNewGuests`) está cubierta por tests; **falta el ensayo en vivo de correrlo dos veces contra Firestore real** con un invitado de prueba marcado en `notes`, siguiendo la guía de ADR-011.
+- [x] Ejecutarlo dos veces no duplica (detección por `phone`). Verificado en vivo contra Firestore real (ADR-011): un invitado de prueba (`titleLabel: "TEST - borrar antes del lanzamiento"`, el CSV de importación no tiene columna `notes`) se creó en la primera corrida con token y defaults correctos; la segunda corrida reportó `Imported 0, skipped 1` y el documento (mismo `id`, mismo `token`) no cambió. Dato de prueba eliminado inmediatamente después.
 - [x] Acentos y `ñ` almacenados correctamente — cubierto en `scripts/lib/csv.test.ts` y `scripts/lib/guestImport.test.ts` (`Íñigo`, `Peña`).
 
 ---
