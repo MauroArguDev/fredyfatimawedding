@@ -539,12 +539,12 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 #### WED-21 — Esquemas Zod y capa de datos
 **Feature · 3 · WED-20, WED-15**
 
-- [ ] `src/schemas/guest.ts` con el esquema completo de §3 y tipos inferidos.
-- [ ] Esquemas separados: `createGuestSchema`, `updateGuestSchema`, `rsvpRequestSchema`.
-- [ ] `api/_lib/firestore.ts` centraliza `firebase-admin` y reutiliza la instancia entre invocaciones.
-- [ ] Sin `any` en la capa de datos.
-- [ ] Tests: `guestLimit = 0` falla, `count > guestLimit` falla, `phone` malformado falla, `lastName` y `titleLabel` ausentes pasan.
-- [ ] Cobertura ≥ 90 % en este módulo.
+- [x] `src/schemas/guest.ts` con el esquema completo de §3 y tipos inferidos.
+- [x] Esquemas separados: `createGuestSchema`, `updateGuestSchema`, `rsvpRequestSchema`.
+- [x] `api/_lib/firestore.ts` centraliza `firebase-admin` y reutiliza la instancia entre invocaciones.
+- [x] Sin `any` en la capa de datos.
+- [x] Tests: `guestLimit = 0` falla (`rejectsGuestLimitBelowOneBecauseAnInvitationWithoutSeatsIsMeaningless`), `count > guestLimit` falla (`rejectsACountAboveTheLimitEvenWhenTheClientAllowedIt`), `phone` malformado falla (`rejectsPhoneNumbersThatAreNotE164BecauseTheWaMeLinkWouldBreak`), `lastName` y `titleLabel` ausentes pasan (`acceptsAGuestWithoutLastNameOrTitleLabelBecauseBothAreOptional`).
+- [x] Cobertura ≥ 90 % en este módulo — 100 % líneas/ramas/funciones (`npm run test:coverage`).
 
 #### WED-22 — Script de importación
 **Chore · 2 · WED-21**
