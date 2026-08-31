@@ -504,11 +504,11 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 #### WED-12 — Despliegue en Vercel con fallback SPA
 **Setup · 3 · WED-11**
 
-- [ ] Proyecto creado como `fredyfatimawedding`; push a `master` despliega a producción.
-- [ ] `vercel.json` con rewrite SPA que **excluye `/api`**: recargar `/i/abc123` sirve `index.html`, no un 404.
-- [ ] `api/health.ts` responde 200 en el deploy.
-- [ ] Cada PR genera preview funcional.
-- [ ] Variables de entorno separadas en preview y producción.
+- [x] Proyecto creado como `fredyfatimawedding`; push a `master` despliega a producción.
+- [x] `vercel.json` con rewrite SPA que **excluye `/api`**: recargar `/i/abc123` sirve `index.html`, no un 404.
+- [x] `api/health.ts` responde 200 en el deploy.
+- [x] Cada PR genera preview funcional.
+- [x] Variables de entorno separadas en preview y producción.
 
 #### WED-13 — CI en pull requests
 **Setup · 2 · WED-12, WED-15**
@@ -530,11 +530,11 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 #### WED-20 — Configurar Firebase
 **Setup · 2 · WED-12**
 
-- [ ] Proyecto en plan Spark; Firestore en modo producción, Auth con email/contraseña.
-- [ ] Service account cargada en variables de entorno de Vercel.
-- [ ] Security Rules desplegadas denegando todo.
-- [ ] **Verificado desde la consola del navegador que el SDK web no puede leer `guests`.**
-- [ ] Usuario administrador creado; credenciales entregadas de forma segura.
+- [x] Proyecto en plan Spark; Firestore en modo producción, Auth con email/contraseña.
+- [x] Service account cargada en variables de entorno de Vercel.
+- [x] Security Rules desplegadas denegando todo.
+- [x] **Verificado que el SDK web no puede leer `guests`.** Un `getDocs` sin autenticación contra la colección real devuelve `permission-denied` ("Missing or insufficient permissions"), confirmando las Security Rules deny-all.
+- [x] Usuario administrador creado; login end-to-end verificado en producción con una página de prueba temporal (`public/test-admin-login.html`, PR #2). Esa página ya se eliminó del repo una vez confirmado el flujo.
 
 #### WED-21 — Esquemas Zod y capa de datos
 **Feature · 3 · WED-20, WED-15**
