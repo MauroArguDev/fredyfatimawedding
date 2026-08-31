@@ -14,7 +14,6 @@
     "lint:disables": "tsx scripts/countEslintDisables.ts",
     "import:guests": "tsx scripts/importGuests.ts",
     "normalize:guests": "tsx scripts/normalizeGuestSheet.ts",
-    "guest-template": "tsx scripts/generateGuestTemplate.ts",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
