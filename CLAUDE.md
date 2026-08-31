@@ -569,6 +569,19 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [x] Ejecutarlo dos veces no duplica (detección por `phone`). Verificado en vivo contra Firestore real (ADR-011): un invitado de prueba (`titleLabel: "TEST - borrar antes del lanzamiento"`, el CSV de importación no tiene columna `notes`) se creó en la primera corrida con token y defaults correctos; la segunda corrida reportó `Imported 0, skipped 1` y el documento (mismo `id`, mismo `token`) no cambió. Dato de prueba eliminado inmediatamente después.
 - [x] Acentos y `ñ` almacenados correctamente — cubierto en `scripts/lib/csv.test.ts` y `scripts/lib/guestImport.test.ts` (`Íñigo`, `Peña`).
 
+#### WED-23 — Plantilla Excel y normalizador para que los novios armen la lista
+
+**Chore · 2 · WED-22**
+
+WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLimit,phone`, encabezados en inglés, teléfono en E.164). Ese formato no es razonable para pedírselo directo a los novios: fallan el encabezado, el formato de teléfono, y sobre todo el encoding (Excel de Windows exporta CSV en ANSI por defecto, no UTF-8, y corrompe acentos y `ñ` silenciosamente). Este ticket resuelve eso con dos herramientas nuevas que evitan que los novios exporten nada — solo llenan el `.xlsx` y lo devuelven tal cual.
+
+- [x] `npm run guest-template [output-path]` genera el `.xlsx` para compartir: hoja "Invitados" con encabezados en español (`Nombre, Apellido, Trato para el sobre, Cupo de invitados, Teléfono`) y una fila de ejemplo, más una hoja "Instrucciones".
+- [x] `npm run normalize:guests -- <xlsx-o-csv> [output-path]` lee el `.xlsx` devuelto (o un CSV), normaliza el teléfono (acepta `7000-0000`, `7000 0000`, `+503 7000 0000`, `00503...`; asume `+503` para números locales de 8 dígitos) y valida cada fila contra el mismo `createGuestSchema` de WED-21 antes de escribir nada — mismo criterio de "todo o nada" que WED-22.
+- [x] El CSV que produce es exactamente el que espera `npm run import:guests`; el mensaje final imprime el comando siguiente.
+- [x] Acentos y `ñ` preservados de punta a punta porque nunca se pasa por una exportación CSV manual (`.xlsx` → lectura directa con `exceljs`).
+- [x] Probado en vivo generando la plantilla real, llenándola con la fila de ejemplo, normalizándola y confirmando el CSV de salida; y con una segunda hoja de prueba con una fila inválida (`guestLimit: 0`) confirmando que aborta sin escribir el archivo de salida.
+- [x] Lógica pura (`normalizePhone`, `normalizeHumanGuestSheet`, `stringifyCsv`) cubierta con tests unitarios; el wrapper que lee el `.xlsx` no tiene tests, mismo criterio que `api/_lib/firestore.ts`.
+
 ---
 
 ### EPIC E3 — Design System · _vía B_

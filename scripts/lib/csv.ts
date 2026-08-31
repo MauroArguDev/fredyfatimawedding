@@ -65,3 +65,15 @@ export function parseCsv(content: string): string[][] {
 
   return state.rows.filter((row) => row.some((value) => value.trim().length > 0));
 }
+
+function needsQuoting(value: string): boolean {
+  return value.includes(',') || value.includes('"') || value.includes('\n');
+}
+
+function stringifyField(value: string): string {
+  return needsQuoting(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+export function stringifyCsv(rows: string[][]): string {
+  return rows.map((row) => row.map(stringifyField).join(',')).join('\n');
+}
