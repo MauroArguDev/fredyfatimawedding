@@ -1,10 +1,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join } from 'node:path';
 import ExcelJS from 'exceljs';
+import { requireArg, reportRowErrorsAndExit } from './lib/cli';
 import { parseCsv, stringifyCsv } from './lib/csv';
 import { mapCsvToGuestInputs, REQUIRED_CSV_HEADER } from './lib/guestImport';
 import { normalizeHumanGuestSheet } from './lib/humanGuestSheet';
-import type { GuestImportRowError } from './lib/guestImport';
 import type {
   CellErrorValue,
   CellFormulaValue,
@@ -20,14 +20,13 @@ type CellObjectValue =
   | CellFormulaValue
   | CellSharedFormulaValue;
 
+const GUEST_SHEET_NAME = 'Invitados';
+
 function readArgs(): { inputPath: string; outputPath: string } {
-  const inputPath = process.argv[2];
-
-  if (inputPath === undefined) {
-    console.error('Usage: npm run normalize:guests -- <path-to-xlsx-or-csv> [output-path]');
-    process.exit(1);
-  }
-
+  const inputPath = requireArg(
+    2,
+    'Usage: npm run normalize:guests -- <path-to-xlsx-or-csv> [output-path]',
+  );
   const defaultOutput = join(
     dirname(inputPath),
     `${basename(inputPath, extname(inputPath))}.import-ready.csv`,
@@ -76,8 +75,6 @@ function cellToString(value: ExcelJS.CellValue): string {
     : scalarToString(value);
 }
 
-const GUEST_SHEET_NAME = 'Invitados';
-
 async function readXlsxRows(path: string): Promise<string[][]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(path);
@@ -103,28 +100,23 @@ async function readRows(path: string): Promise<string[][]> {
   return readXlsxRows(path);
 }
 
-function reportErrors(title: string, errors: GuestImportRowError[]): never {
-  console.error(title);
-  for (const error of errors) {
-    console.error(`  Row ${String(error.row)}: ${error.message}`);
-  }
-  process.exit(1);
-}
-
 async function main(): Promise<void> {
   const { inputPath, outputPath } = readArgs();
   const rows = await readRows(inputPath);
   const normalized = normalizeHumanGuestSheet(rows);
 
   if (normalized.errors.length > 0) {
-    reportErrors('Could not read the sheet, nothing was written:', normalized.errors);
+    reportRowErrorsAndExit('Could not read the sheet, nothing was written:', normalized.errors);
   }
 
   const machineRows = [[...REQUIRED_CSV_HEADER], ...normalized.rows];
   const validation = mapCsvToGuestInputs(machineRows);
 
   if (validation.errors.length > 0) {
-    reportErrors('Fix these rows before importing, nothing was written:', validation.errors);
+    reportRowErrorsAndExit(
+      'Fix these rows before importing, nothing was written:',
+      validation.errors,
+    );
   }
 
   writeFileSync(outputPath, stringifyCsv(machineRows), 'utf8');
@@ -132,4 +124,7 @@ async function main(): Promise<void> {
   console.warn(`Next: npm run import:guests -- "${outputPath}"`);
 }
 
-await main();
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});

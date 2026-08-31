@@ -3,19 +3,9 @@ import { nanoid } from 'nanoid';
 import { firestore, GUESTS_COLLECTION } from '../api/_lib/firestore';
 import { TOKEN_LENGTH } from '../src/schemas/guest';
 import type { CreateGuestInput } from '../src/schemas/guest';
+import { requireArg, reportRowErrorsAndExit } from './lib/cli';
 import { parseCsv } from './lib/csv';
 import { mapCsvToGuestInputs, partitionNewGuests } from './lib/guestImport';
-
-function readCsvPath(): string {
-  const path = process.argv[2];
-
-  if (path === undefined) {
-    console.error('Usage: npm run import:guests -- <path-to-csv>');
-    process.exit(1);
-  }
-
-  return path;
-}
 
 async function fetchExistingPhones(): Promise<Set<string>> {
   const snapshot = await firestore().collection(GUESTS_COLLECTION).select('phone').get();
@@ -57,20 +47,19 @@ async function writeGuests(guests: CreateGuestInput[], existingPhones: Set<strin
 }
 
 async function main(): Promise<void> {
-  const path = readCsvPath();
+  const path = requireArg(2, 'Usage: npm run import:guests -- <path-to-csv>');
   const content = readFileSync(path, 'utf8');
   const { guests, errors } = mapCsvToGuestInputs(parseCsv(content));
 
   if (errors.length > 0) {
-    console.error('Import aborted, nothing was written. Errors:');
-    for (const error of errors) {
-      console.error(`  Row ${String(error.row)}: ${error.message}`);
-    }
-    process.exit(1);
+    reportRowErrorsAndExit('Import aborted, nothing was written. Errors:', errors);
   }
 
   const existingPhones = await fetchExistingPhones();
   await writeGuests(guests, existingPhones);
 }
 
-await main();
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});

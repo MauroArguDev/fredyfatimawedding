@@ -1,5 +1,7 @@
 import { createGuestSchema } from '../../src/schemas/guest';
 import type { CreateGuestInput } from '../../src/schemas/guest';
+import { validateExactHeader } from './rowValidation';
+import type { RowError } from './rowValidation';
 
 export const REQUIRED_CSV_HEADER = [
   'firstName',
@@ -9,21 +11,9 @@ export const REQUIRED_CSV_HEADER = [
   'phone',
 ] as const;
 
-export interface GuestImportRowError {
-  row: number;
-  message: string;
-}
-
 export interface GuestImportResult {
   guests: CreateGuestInput[];
-  errors: GuestImportRowError[];
-}
-
-function validateHeader(header: string[] | undefined): string | null {
-  const expected = REQUIRED_CSV_HEADER.join(',');
-  const actual = (header ?? []).join(',');
-
-  return actual === expected ? null : `Expected header "${expected}", got "${actual}"`;
+  errors: RowError[];
 }
 
 function buildRawGuest(header: string[], row: string[]): Record<string, unknown> {
@@ -50,14 +40,14 @@ export function mapCsvToGuestInputs(rows: string[][]): GuestImportResult {
   }
 
   const [header, ...dataRows] = rows;
-  const headerError = validateHeader(header);
+  const headerError = validateExactHeader(header, REQUIRED_CSV_HEADER);
 
   if (headerError !== null || header === undefined) {
     return { guests: [], errors: [{ row: 1, message: headerError ?? 'Missing header row' }] };
   }
 
   const guests: CreateGuestInput[] = [];
-  const errors: GuestImportRowError[] = [];
+  const errors: RowError[] = [];
 
   dataRows.forEach((row, index) => {
     const result = createGuestSchema.safeParse(buildRawGuest(header, row));

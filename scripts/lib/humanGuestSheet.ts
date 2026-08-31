@@ -1,3 +1,6 @@
+import { validateExactHeader } from './rowValidation';
+import type { RowError } from './rowValidation';
+
 export const HUMAN_SHEET_HEADER = [
   'Nombre',
   'Apellido',
@@ -10,14 +13,9 @@ const EL_SALVADOR_COUNTRY_CODE = '+503';
 const LOCAL_PHONE_DIGIT_COUNT = 8;
 const INTERNATIONAL_TRUNK_PREFIX = '00';
 
-export interface NormalizeRowError {
-  row: number;
-  message: string;
-}
-
 export interface NormalizeResult {
   rows: string[][];
-  errors: NormalizeRowError[];
+  errors: RowError[];
 }
 
 export function normalizePhone(rawValue: string): string {
@@ -38,13 +36,6 @@ export function normalizePhone(rawValue: string): string {
   return digitsAndPlus;
 }
 
-function validateHeader(header: string[] | undefined): string | null {
-  const expected = HUMAN_SHEET_HEADER.join(',');
-  const actual = (header ?? []).join(',');
-
-  return actual === expected ? null : `Expected header "${expected}", got "${actual}"`;
-}
-
 function normalizeRow(row: string[]): string[] {
   const [firstName, lastName, titleLabel, guestLimit, phone] = row;
 
@@ -63,7 +54,7 @@ export function normalizeHumanGuestSheet(rows: string[][]): NormalizeResult {
   }
 
   const [header, ...dataRows] = rows;
-  const headerError = validateHeader(header);
+  const headerError = validateExactHeader(header, HUMAN_SHEET_HEADER);
 
   if (headerError !== null) {
     return { rows: [], errors: [{ row: 1, message: headerError }] };

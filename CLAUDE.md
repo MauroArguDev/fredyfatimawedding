@@ -30,6 +30,7 @@ El diseño se está rehaciendo. El backlog está partido en dos vías (§6): la 
 - **Nunca importar `firebase/firestore` fuera de `api/`** (ADR-001). El navegador no habla con la base de datos.
 - **Nunca poner un secreto en una variable `VITE_`.** Se compilan en el bundle y son públicas.
 - **Toda validación de negocio vive en el servidor.** El cliente valida para dar buena experiencia, no para proteger.
+- **Antes de cada commit, analizar y limpiar el código que se va a commitear.** Que pase lint/typecheck/test no es suficiente. Revisar explícitamente: duplicación evitable (DRY), funciones o archivos de un solo uso que no aportan nada recurrente (como un generador que corre una vez y se descarta), nombres, complejidad y superficie de seguridad (validación de entradas, manejo de errores explícito, sin secretos en logs). Esta limpieza es parte del trabajo, no un paso opcional al final.
 
 ### Si algo falta o no encaja
 
@@ -581,6 +582,8 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 - [x] Acentos y `ñ` preservados de punta a punta porque nunca se pasa por una exportación CSV manual (`.xlsx` → lectura directa con `exceljs`).
 - [x] Probado en vivo: una hoja de ejemplo válida normalizó y produjo el CSV correcto; una segunda hoja con una fila inválida (`guestLimit: 0`) abortó sin escribir el archivo de salida.
 - [x] Lógica pura (`normalizePhone`, `normalizeHumanGuestSheet`, `stringifyCsv`) cubierta con tests unitarios; el wrapper que lee el `.xlsx` no tiene tests, mismo criterio que `api/_lib/firestore.ts`.
+
+**Limpieza previa al cierre.** `guestImport.ts` y `humanGuestSheet.ts` tenían un `validateHeader` casi idéntico duplicado, y dos interfaces de error estructuralmente iguales (`GuestImportRowError` / `NormalizeRowError`). `importGuests.ts` y `normalizeGuestSheet.ts` repetían el mismo patrón de "leer argv o mostrar uso" y "imprimir fila+error y salir". Se extrajeron a `scripts/lib/rowValidation.ts` (`RowError`, `validateExactHeader`, con tests propios) y `scripts/lib/cli.ts` (`requireArg`, `reportRowErrorsAndExit`). Ambos CLI ahora envuelven `main()` en `.catch` para no filtrar un stack trace crudo de Node cuando el archivo de entrada no existe — verificado en vivo (`ENOENT` legible, exit 1). Se generó y borró el archivo de un solo uso mencionado arriba (`generateGuestTemplate.ts`); no quedan otros scripts equivalentes en el repo.
 
 **Nota.** Hubo un `scripts/generateGuestTemplate.ts` que generaba el `.xlsx` inicial por código; se eliminó porque es de un solo uso — el archivo ya generado y compartido con los novios es el entregable real, y regenerarlo por código no aporta sobre editar ese mismo archivo a mano (sigue en el historial de git, commit `d75ab94`, si hiciera falta recuperarlo).
 
