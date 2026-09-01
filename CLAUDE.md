@@ -736,12 +736,12 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 > Solo el enrutamiento y el contenedor. No necesita diseño: se puede hacer en la vía A y sirve de esqueleto para que `/admin` y `/i/:token` existan desde la semana 1.
 
-- [ ] `<html lang="es">`, viewport meta correcto, fuentes globales.
-- [ ] Contenedor de la invitación: `width: 100%; max-width: 432px`, centrado, con `--bg-base` extendiéndose a los lados.
-- [ ] **Sin scroll horizontal en 320 px** (verificado en emulador y en un dispositivo real de 360 px).
-- [ ] Rutas: `/i/:token`, `/admin/*` (lazy), `/styleguide` (dev), `*` (404 con estilo).
-- [ ] `/` sin token muestra una página informativa, no la invitación ni un error crudo.
-- [ ] **El chunk de `/admin` no se descarga en la ruta de invitación** (verificado en Network).
+- [x] `<html lang="es">`, viewport meta correcto (ya estaban en `index.html` desde WED-10). Fuentes globales: `--font-sans` (stack de sistema) aplicado a `body` en `tokens.css`; las fuentes reales (Great Vibes/Inter) son WED-31, todavía vía B.
+- [x] Contenedor de la invitación: `PublicPageContainer` (`src/components/ui/`) con `w-full max-w-invitation mx-auto`; `body` lleva `background-color: var(--color-bg-base)` para que el color se extienda a los lados en pantallas anchas, no solo el contenedor de 432 px.
+- [~] **Sin scroll horizontal en 320 px.** El CSS es fluido a propósito (`max-w-invitation` es un tope, no un ancho fijo; ningún `width` en px duro). **No verificado en emulador ni en un dispositivo real de 360 px** — no hay navegador ni dispositivo disponible en este entorno. Pendiente de verificación manual.
+- [x] Rutas: `/i/:token`, `/admin/*` (lazy vía `React.lazy`), `/styleguide`, `*` (404 con estilo) — todas en `src/App.tsx`.
+- [x] `/` sin token muestra `HomePage`, una página informativa distinta de la invitación y del 404.
+- [x] **El chunk de `/admin` no se descarga en la ruta de invitación.** Verificado con `npm run build`: `AdminApp` sale en su propio chunk (`AdminApp-*.js`, 0.2 kB) y el chunk principal solo lo referencia como import dinámico, nunca de forma eager (confirmado con `grep` sobre el bundle de salida). No se verificó en la pestaña Network de un navegador real (no disponible en este entorno), pero el chunk separado en el build es la misma garantía.
 
 #### WED-51 — Carga de datos del invitado
 
@@ -749,11 +749,13 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 > Es lógica de datos, no presentación. Los estados de carga y error se maquetan sin estilo y se visten en la vía B.
 
-- [ ] Hook `useInvitation(token)` con TanStack Query consulta `/api/invitation/:token` al montar.
-- [ ] Estado de carga acorde al diseño, no pantalla en blanco.
-- [ ] Token inválido → 404 con estilo del sitio, sin filtrar información.
-- [ ] Error de red → mensaje claro con botón de reintentar.
-- [ ] `titleLabel` (con fallback a `firstName lastName`), `guestLimit` y `confirmed` disponibles vía contexto.
+- [x] Hook `useInvitation(token)` (`src/hooks/useInvitation.ts`) con TanStack Query consulta `/api/invitation/:token` al montar (`enabled: token.length > 0`). Reutiliza `publicInvitationSchema` de `src/schemas/guest.ts` (WED-21) para parsear la respuesta, así que el cliente valida el mismo shape que el servidor devuelve.
+- [x] Estado de carga: `InvitationStatusScreen` sin diseño final (WED-30/31 siguen sin arrancar) pero no es pantalla en blanco.
+- [x] Token inválido → **misma `NotFoundPage` genérica que la ruta `*`**, sin filtrar el `code` crudo de la API (ADR-002: token inexistente = 404 indistinguible de uno inválido).
+- [x] Error de red → `InvitationStatusScreen` con botón "Reintentar" que llama `query.refetch()`; un solo reintento automático antes de mostrarlo (`InvitationNotFoundError` nunca reintenta, para no golpear la API con un token que ya sabemos que no existe).
+- [x] `titleLabel`, `guestLimit` y `confirmed` disponibles vía contexto (`InvitationProvider`/`useInvitationContext` en `src/hooks/`), no como props. **Nota sobre el fallback:** el AC dice "`titleLabel` con fallback a `firstName lastName`", pero el contrato público de §4 (`GET /api/invitation/[token]`) **nunca devuelve `lastName`** — solo `firstName`. El fallback implementado es `titleLabel ?? firstName`, que es todo lo que el cliente puede ver; no se infló el contrato para conseguir el `lastName` que el AC menciona.
+
+**Implementación (WED-50/51, 2026-09-01).** `src/App.tsx` monta `QueryClientProvider` + `BrowserRouter`; `/admin/*` usa `lazy()` + `Suspense`. `src/hooks/invitationContext.ts` separa el objeto `Context` y el mapeo `PublicInvitation → InvitationContextValue` de `src/hooks/InvitationProvider.tsx` (el componente) y `src/hooks/useInvitationContext.ts` (el hook) en tres archivos, no uno: `eslint-plugin-react-refresh` (`only-export-components`, con `--max-warnings 0`) marca error si un mismo archivo exporta un componente y algo más, así que mezclarlos habría roto `npm run lint`. Todos los componentes de esta sesión están como `const X = (): ReactNode => {...}` en vez de `function X() {...}`: la regla `@typescript-eslint/naming-convention` del repo solo permite PascalCase para variables `const` de tipo función, no para declaraciones `function` (que caen en el selector `default`, camelCase). Todo el copy en español (`homeCopy`, `notFoundCopy`, `invitationStatusCopy`, `adminShellCopy`) vive en `src/content/appShell.ts`, nuevo. `PublicPageContainer` (`src/components/ui/`) es el primer componente real bajo `ui/`, extraído para no repetir el wrapper de 432 px entre `HomePage`, `NotFoundPage` y los estados de `InvitationPage`. 177 tests en el repo (antes 157), 99.46% de cobertura global. `npm run verify` y `npm run build` en verde; el chunk de `/admin` sale separado (`AdminApp-*.js`, 0.2 kB) en el build de producción.
 
 #### WED-52 — Pantalla del sobre
 
