@@ -664,6 +664,8 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 **Implementación.** `api/invitation/[token].ts` delega en dos helpers de `api/_lib/` reutilizables por WED-41: `guests.ts` (`findGuestByToken`, que también convierte los `Timestamp` de Firestore a `Date` contra `guestSchema`) y `rsvpDeadline.ts` (`isRsvpOpen`, comparación de `Date` contra `RSVP_DEADLINE`, válida porque El Salvador no tiene horario de verano). Un token malformado o ausente en la query nunca llega a consultar Firestore: se resuelve a `TOKEN_NOT_FOUND` directamente. 100% de cobertura en los tres archivos nuevos (verificado con `npm run verify`, incluye el chequeo de `tsc -b --noEmit` post-fix del bug de WED-15).
 
+**Verificado en vivo contra Firestore real (ADR-011).** Se llamó al handler directamente (sin `vercel dev`, que requiere link/login interactivo no disponible en este entorno) contra un invitado de prueba (`titleLabel`/`notes`: `"TEST - borrar antes del lanzamiento"`), vía un script temporal fuera del repo. Confirmado: 200 con el shape público exacto (sin `phone`/`notes`/`token`), `firstOpenedAt` se escribe una sola vez (releído de Firestore tras dos llamadas, un único `Timestamp`), 404 `TOKEN_NOT_FOUND` para token inexistente. Invitado de prueba borrado inmediatamente después; no quedó rastro en git ni en Firestore.
+
 #### WED-41 — `POST /api/rsvp`
 
 **Feature · 5 · WED-40**
