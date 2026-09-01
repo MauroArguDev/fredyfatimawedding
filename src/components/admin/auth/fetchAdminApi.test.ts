@@ -54,4 +54,11 @@ describe('fetchAdminApi', () => {
 
     expect(signOutMock).not.toHaveBeenCalled();
   });
+
+  it('neverUsesTheBrowserHttpCacheSoALocalDevServerCanNeverAnswerWithA304', async () => {
+    await fetchAdminApi('/api/admin/guests');
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(init.cache).toBe('no-store');
+  });
 });
