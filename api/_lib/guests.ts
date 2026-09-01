@@ -49,3 +49,31 @@ export async function findGuestByToken(token: string): Promise<GuestRecord | nul
 
   return doc === undefined ? null : { ref: doc.ref, data: parseGuestSnapshot(doc) };
 }
+
+export type ConfirmGuestOutcome = 'confirmed' | 'already-confirmed';
+
+/**
+ * Confirms a guest's RSVP inside a Firestore transaction that rereads
+ * `confirmed`, so two concurrent submissions for the same token produce
+ * exactly one confirmation (R2, ADR-006). Returns 'already-confirmed'
+ * without writing when the guest had already confirmed by the time the
+ * transaction runs.
+ */
+export async function confirmGuest(ref: DocumentReference, count: number, now: Date): Promise<ConfirmGuestOutcome> {
+  return firestore().runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+
+    if (snapshot.get('confirmed') === true) {
+      return 'already-confirmed';
+    }
+
+    transaction.update(ref, {
+      confirmed: true,
+      confirmedCount: count,
+      confirmedAt: now,
+      updatedAt: now,
+    });
+
+    return 'confirmed';
+  });
+}

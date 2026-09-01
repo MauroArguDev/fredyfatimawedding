@@ -668,20 +668,24 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-41 — `POST /api/rsvp`
 
-**Feature · 5 · WED-40**
+**Feature · 5 · WED-40 — cerrado**
 
-- [ ] Valida con el esquema Zod compartido; inválido → 400 `INVALID_PAYLOAD`.
-- [ ] **`count > guestLimit` → 400 `COUNT_OUT_OF_RANGE`, probado con curl directo al endpoint.**
-- [ ] `count < 1` → 400.
-- [ ] **`confirmed === true` → 409 `ALREADY_CONFIRMED` sin escribir en la base** (R2, ADR-006).
-- [ ] Pasada la fecha límite → 409 `RSVP_CLOSED` **sin escribir en la base**.
-- [ ] Los dos 409 se distinguen por `code`.
-- [ ] La escritura ocurre dentro de una **transacción** que relee `confirmed`: dos envíos simultáneos del mismo token producen exactamente una confirmación. Test: `rejectsConcurrentConfirmationsSoOnlyOneSucceeds`.
-- [ ] Escribe `confirmed`, `confirmedCount`, `confirmedAt`, `updatedAt` en una sola operación.
-- [ ] Devuelve `waLink` ya construido y URL-encoded por el servidor.
-- [ ] Rate limit: >5 envíos por IP por minuto → 429 `RATE_LIMITED`.
-- [ ] Honeypot o tiempo mínimo de llenado; un POST plano con curl es rechazado.
-- [ ] Cobertura ≥ 90 %; los nombres de los tests documentan cada regla (ADR-007).
+- [x] Valida con el esquema Zod compartido; inválido → 400 `INVALID_PAYLOAD`.
+- [x] **`count > guestLimit` → 400 `COUNT_OUT_OF_RANGE`, probado con curl directo al endpoint.** Verificado en vivo (ver nota abajo).
+- [x] `count < 1` → 400 (lo rechaza `rsvpRequestSchema` a nivel de esquema, mismo código `INVALID_PAYLOAD`).
+- [x] **`confirmed === true` → 409 `ALREADY_CONFIRMED` sin escribir en la base** (R2, ADR-006).
+- [x] Pasada la fecha límite → 409 `RSVP_CLOSED` **sin escribir en la base**.
+- [x] Los dos 409 se distinguen por `code`.
+- [x] La escritura ocurre dentro de una **transacción** que relee `confirmed`: dos envíos simultáneos del mismo token producen exactamente una confirmación. Test: `rejectsConcurrentConfirmationsSoOnlyOneSucceeds` (en `api/_lib/guests.test.ts`, junto a la implementación de la transacción).
+- [x] Escribe `confirmed`, `confirmedCount`, `confirmedAt`, `updatedAt` en una sola operación.
+- [x] Devuelve `waLink` ya construido y URL-encoded por el servidor.
+- [x] Rate limit: >5 envíos por IP por minuto → 429 `RATE_LIMITED`.
+- [x] Honeypot o tiempo mínimo de llenado; un POST plano con curl es rechazado. **Decisión de implementación (acordada antes de escribir código):** en vez de agregar un campo nuevo al body (lo que habría cambiado el contrato de §4), se reutiliza `firstOpenedAt` de WED-40. `POST /api/rsvp` responde `429 RATE_LIMITED` si `firstOpenedAt` es `null` (nunca pasó por el `GET`, típico de un bot que ataca el endpoint directo) o si pasaron menos de 3 s desde esa apertura. El body de la request sigue siendo exactamente `{ token, count }`, sin cambios a §4.
+- [x] Cobertura ≥ 90 %; los nombres de los tests documentan cada regla (ADR-007).
+
+**Implementación.** `api/rsvp.ts` orquesta: rate limit por IP (`api/_lib/rateLimit.ts`, ventana deslizante en memoria, mismo patrón de instancia reutilizada entre invocaciones que `firestore()`) → validación de esquema → `findGuestByToken` → `isRsvpOpen` → chequeo anti-bot vía `firstOpenedAt` → `fitsWithinGuestLimit` → `confirmGuest` (transacción en `api/_lib/guests.ts`) → `waLink`. El mensaje de WhatsApp vive en `src/content/whatsapp.ts` (único lugar permitido para el literal en español, per §10); `api/_lib/whatsapp.ts` solo arma la URL `wa.me` con `encodeURIComponent`. Se extrajo `readRequiredEnv` (antes duplicado en `firestore.ts`) a `api/_lib/env.ts` para no triplicarlo con `BRIDE_WHATSAPP`.
+
+**Verificado en vivo contra Firestore real (ADR-011).** Con dos invitados de prueba marcados y borrados después: `count > guestLimit` → 400 `COUNT_OUT_OF_RANGE`; confirmación válida tras esperar el tiempo mínimo → 200 con `waLink` correcto (`https://wa.me/...?text=Hola%2C%20soy%20Test...`); segundo intento sobre el mismo token → 409 `ALREADY_CONFIRMED`; un POST directo a un token que nunca pasó por `GET /api/invitation/[token]` → 429 `RATE_LIMITED`.
 
 #### WED-42 — Middleware de auth admin
 

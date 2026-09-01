@@ -1,8 +1,8 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { describe, expect, it, vi } from 'vitest';
 import { firestore } from './firestore';
-import { findGuestByToken } from './guests';
-import type { Firestore } from 'firebase-admin/firestore';
+import { confirmGuest, findGuestByToken } from './guests';
+import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
 
 vi.mock('./firestore', () => ({
   firestore: vi.fn(),
@@ -81,5 +81,48 @@ describe('findGuestByToken', () => {
     mockFirestoreQuery([{ ref: { id: 'abc' }, data: () => ({ ...validGuestData, createdAt: 'not-a-timestamp' }) }]);
 
     await expect(findGuestByToken(validGuestData.token)).rejects.toThrow('Expected a Firestore Timestamp field');
+  });
+});
+
+function mockFirestoreTransaction(confirmed: boolean): { update: ReturnType<typeof vi.fn> } {
+  const update = vi.fn();
+  const transactionGet = vi.fn().mockResolvedValue({
+    get: (field: string) => (field === 'confirmed' ? confirmed : undefined),
+  });
+  const runTransaction = vi.fn(
+    async (callback: (transaction: { get: typeof transactionGet; update: typeof update }) => Promise<unknown>) =>
+      callback({ get: transactionGet, update }),
+  );
+
+  vi.mocked(firestore).mockReturnValue({ runTransaction } as unknown as Firestore);
+
+  return { update };
+}
+
+describe('confirmGuest', () => {
+  const ref = { id: 'abc' } as unknown as DocumentReference;
+  const now = new Date('2026-09-01T00:00:00Z');
+
+  it('writesConfirmedCountAndConfirmedAtWhenTheGuestHadNotConfirmedYet', async () => {
+    const { update } = mockFirestoreTransaction(false);
+
+    const outcome = await confirmGuest(ref, 3, now);
+
+    expect(outcome).toBe('confirmed');
+    expect(update).toHaveBeenCalledWith(ref, {
+      confirmed: true,
+      confirmedCount: 3,
+      confirmedAt: now,
+      updatedAt: now,
+    });
+  });
+
+  it('rejectsConcurrentConfirmationsSoOnlyOneSucceeds', async () => {
+    const { update } = mockFirestoreTransaction(true);
+
+    const outcome = await confirmGuest(ref, 3, now);
+
+    expect(outcome).toBe('already-confirmed');
+    expect(update).not.toHaveBeenCalled();
   });
 });
