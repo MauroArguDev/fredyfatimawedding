@@ -706,17 +706,21 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-43 — CRUD de invitados
 
-**Feature · 5 · WED-42**
+**Feature · 5 · WED-42 — cerrado**
 
-- [ ] `GET` devuelve lista + estadísticas: `total`, `confirmed`, `pending`, `openedNotConfirmed`, `totalConfirmedPeople`.
-- [ ] `POST` genera `token` en servidor, aplica defaults, devuelve el documento.
-- [ ] `PATCH` edita `firstName`, `lastName`, `titleLabel`, `guestLimit`, `phone`, `notes`, `confirmed`, `confirmedCount`; rechaza cambios a `token` y `createdAt`.
-- [ ] **`PATCH` es la única vía para modificar una confirmación** (ADR-006), y soporta **ambas** operaciones: corregir `confirmedCount` dejando `confirmed` en `true`, o devolver `confirmed` a `false` para que el invitado reenvíe por su cuenta.
-- [ ] Reducir `guestLimit` por debajo de `confirmedCount` → 400 con mensaje explicativo.
-- [ ] `DELETE` elimina y devuelve 204.
-- [ ] `rotate-token` genera token nuevo; el enlace anterior pasa a devolver 404.
-- [ ] `export` devuelve CSV con encabezados en español y `Content-Disposition: attachment`.
-- [ ] Tests de cada endpoint incluyendo casos de error.
+- [x] `GET /api/admin/guests` devuelve `{ guests, stats }`; `stats` trae `total`, `confirmed`, `pending`, `openedNotConfirmed`, `totalConfirmedPeople`.
+- [x] `POST /api/admin/guests` genera `token` en servidor, aplica defaults, devuelve el documento creado (201).
+- [x] `PATCH /api/admin/guests/[id]` edita `firstName`, `lastName`, `titleLabel`, `guestLimit`, `phone`, `notes`, `confirmed`, `confirmedCount`; `token` y `createdAt` no forman parte de `updateGuestSchema`, así que cualquier intento de tocarlos se descarta silenciosamente por Zod (modo `strip`) — el cambio nunca se aplica, que es lo que pide el criterio.
+- [x] **`PATCH` es la única vía para modificar una confirmación** (ADR-006), y soporta **ambas** operaciones: corregir `confirmedCount` dejando `confirmed` en `true`, o devolver `confirmed` a `false` para que el invitado reenvíe por su cuenta. Ambas pasan por el mismo `updateGuest`.
+- [x] Reducir `guestLimit` por debajo de `confirmedCount` → 400 `GUEST_LIMIT_BELOW_CONFIRMED_COUNT` con `message` explicativo. La comparación usa el **resultado neto** del patch (si el mismo request baja `guestLimit` y `confirmedCount` de forma consistente, se acepta).
+- [x] `DELETE /api/admin/guests/[id]` elimina y devuelve 204.
+- [x] `POST /api/admin/guests/[id]/rotate-token` genera token nuevo vía `nanoid`; el token anterior deja de existir en el documento, así que el enlace viejo pasa a devolver 404 en `GET /api/invitation/[token]` (ADR-002: un token que no existe en Firestore es indistinguible de uno inválido).
+- [x] `GET /api/admin/export` devuelve CSV con encabezados en español (`src/content/guestExport.ts`, único lugar permitido para ese literal), BOM UTF-8 delante para que Excel abra los acentos bien, y `Content-Disposition: attachment; filename="invitados.csv"`.
+- [x] Tests de cada endpoint incluyendo casos de error. 157 tests en el repo, 100% de cobertura en los 4 archivos de rutas nuevos y en `api/_lib/guests.ts` (salvo una rama defensiva genuinamente inalcanzable, mismo criterio que en WED-40/41).
+
+**Implementación.** Todos los handlers están envueltos en `withAdminAuth` (WED-42), verificado tanto por el test estructural de WED-42 (`everyHandlerUnderApiAdminIsWrappedInWithAdminAuth`, que ya detecta estos 4 archivos reales) como en vivo. `api/_lib/guests.ts` ganó `getGuestById`, `listGuests`, `createGuest`, `updateGuest` (devuelve un resultado tipado `{ok, ...}` en vez de lanzar, igual que `confirmGuest`) y `rotateGuestToken`. `computeGuestStats` y `guestLimitCoversConfirmedCount` viven en `src/schemas/guest.ts` junto a `fitsWithinGuestLimit`, pensadas para reutilizarse también desde el cliente en WED-82 (actualización optimista). Se extrajo `api/_lib/httpParams.ts` (`extractRouteParam`) y se refactorizó `api/invitation/[token].ts` para usarlo también, evitando una tercera copia del mismo patrón de WED-40. El export CSV reutiliza `stringifyCsv` de `scripts/lib/csv.ts` (WED-22/23) en vez de reimplementar el escapado.
+
+**Verificado en vivo (ADR-011).** Sin `Authorization`, las 3 rutas probadas responden 401 real (no simulado). Con un token basura, `POST /api/admin/guests` también 401. Contra Firestore real (bypaseando la capa HTTP, que ya está probada arriba): crear invitado de prueba → aparece en `listGuests` → `updateGuest` rechaza `guestLimit: 0` con `confirmedCount: 1` → `updateGuest` aplica un cambio de `notes` real → `rotateGuestToken` cambia el token → `deleteGuestById` lo borra → ya no aparece en la lista. Invitado de prueba marcado y eliminado, sin rastro.
 
 ---
 

@@ -1,7 +1,18 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { describe, expect, it, vi } from 'vitest';
+import { TOKEN_LENGTH } from '../../src/schemas/guest';
 import { firestore } from './firestore';
-import { confirmGuest, findGuestByToken } from './guests';
+import {
+  confirmGuest,
+  createGuest,
+  deleteGuestById,
+  findGuestByToken,
+  getGuestById,
+  listGuests,
+  rotateGuestToken,
+  updateGuest,
+} from './guests';
+import type { CreateGuestInput } from '../../src/schemas/guest';
 import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
 
 vi.mock('./firestore', () => ({
@@ -66,7 +77,13 @@ describe('findGuestByToken', () => {
     mockFirestoreQuery([
       {
         ref: { id: 'abc' },
-        data: () => ({ ...validGuestData, confirmed: true, confirmedCount: 2, confirmedAt: CREATED_AT, firstOpenedAt: CREATED_AT }),
+        data: () => ({
+          ...validGuestData,
+          confirmed: true,
+          confirmedCount: 2,
+          confirmedAt: CREATED_AT,
+          firstOpenedAt: CREATED_AT,
+        }),
       },
     ]);
 
@@ -78,9 +95,13 @@ describe('findGuestByToken', () => {
   });
 
   it('throwsWhenCreatedAtIsNotAFirestoreTimestampBecauseTheDataIsCorrupt', async () => {
-    mockFirestoreQuery([{ ref: { id: 'abc' }, data: () => ({ ...validGuestData, createdAt: 'not-a-timestamp' }) }]);
+    mockFirestoreQuery([
+      { ref: { id: 'abc' }, data: () => ({ ...validGuestData, createdAt: 'not-a-timestamp' }) },
+    ]);
 
-    await expect(findGuestByToken(validGuestData.token)).rejects.toThrow('Expected a Firestore Timestamp field');
+    await expect(findGuestByToken(validGuestData.token)).rejects.toThrow(
+      'Expected a Firestore Timestamp field',
+    );
   });
 });
 
@@ -90,8 +111,12 @@ function mockFirestoreTransaction(confirmed: boolean): { update: ReturnType<type
     get: (field: string) => (field === 'confirmed' ? confirmed : undefined),
   });
   const runTransaction = vi.fn(
-    async (callback: (transaction: { get: typeof transactionGet; update: typeof update }) => Promise<unknown>) =>
-      callback({ get: transactionGet, update }),
+    async (
+      callback: (transaction: {
+        get: typeof transactionGet;
+        update: typeof update;
+      }) => Promise<unknown>,
+    ) => callback({ get: transactionGet, update }),
   );
 
   vi.mocked(firestore).mockReturnValue({ runTransaction } as unknown as Firestore);
@@ -124,5 +149,216 @@ describe('confirmGuest', () => {
 
     expect(outcome).toBe('already-confirmed');
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+interface FakeDocRef {
+  id: string;
+  get: () => Promise<{
+    id: string;
+    exists: boolean;
+    ref: FakeDocRef;
+    data: () => Record<string, unknown> | undefined;
+  }>;
+  set: (value: Record<string, unknown>) => Promise<void>;
+  update: (patch: Record<string, unknown>) => Promise<void>;
+  delete: () => Promise<void>;
+}
+
+function convertDatesToTimestamps(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(record).map(([key, value]) => [
+      key,
+      value instanceof Date ? Timestamp.fromDate(value) : value,
+    ]),
+  );
+}
+
+function buildFakeGuestsCollection(initialDocs: Record<string, Record<string, unknown>> = {}): {
+  collection: unknown;
+  store: Map<string, Record<string, unknown>>;
+} {
+  const store = new Map(Object.entries(initialDocs));
+  let nextGeneratedId = 0;
+
+  function docRefFor(id: string): FakeDocRef {
+    return {
+      id,
+      get: () =>
+        Promise.resolve({
+          id,
+          exists: store.has(id),
+          ref: docRefFor(id),
+          data: () => store.get(id),
+        }),
+      set: (value) => {
+        store.set(id, convertDatesToTimestamps(value));
+        return Promise.resolve();
+      },
+      update: (patch) => {
+        store.set(id, { ...store.get(id), ...convertDatesToTimestamps(patch) });
+        return Promise.resolve();
+      },
+      delete: () => {
+        store.delete(id);
+        return Promise.resolve();
+      },
+    };
+  }
+
+  const collection = {
+    doc: (id?: string) => docRefFor(id ?? `generated-${String(nextGeneratedId++)}`),
+    get: () =>
+      Promise.resolve({
+        docs: [...store.keys()].map((id) => ({
+          id,
+          ref: docRefFor(id),
+          data: () => store.get(id),
+        })),
+      }),
+  };
+
+  return { collection, store };
+}
+
+function useFakeGuestsCollection(initialDocs: Record<string, Record<string, unknown>> = {}) {
+  const fake = buildFakeGuestsCollection(initialDocs);
+
+  vi.mocked(firestore).mockReturnValue({
+    collection: () => fake.collection,
+  } as unknown as Firestore);
+
+  return fake;
+}
+
+const storedGuest = { ...validGuestData };
+
+describe('getGuestById', () => {
+  it('returnsTheGuestWhenTheDocumentExists', async () => {
+    useFakeGuestsCollection({ abc: storedGuest });
+
+    const result = await getGuestById('abc');
+
+    expect(result?.data.firstName).toBe('Orlando');
+  });
+
+  it('returnsNullWhenTheDocumentDoesNotExist', async () => {
+    useFakeGuestsCollection({});
+
+    await expect(getGuestById('missing')).resolves.toBeNull();
+  });
+});
+
+describe('listGuests', () => {
+  it('returnsEveryGuestWithItsDocumentId', async () => {
+    useFakeGuestsCollection({ abc: storedGuest, def: { ...storedGuest, firstName: 'Fátima' } });
+
+    const result = await listGuests();
+
+    expect(result).toHaveLength(2);
+    expect(result.map((item) => item.id).sort()).toEqual(['abc', 'def']);
+  });
+
+  it('returnsAnEmptyListWhenThereAreNoGuests', async () => {
+    useFakeGuestsCollection({});
+
+    await expect(listGuests()).resolves.toEqual([]);
+  });
+});
+
+describe('createGuest', () => {
+  const input: CreateGuestInput = {
+    firstName: 'Orlando',
+    lastName: null,
+    titleLabel: null,
+    guestLimit: 2,
+    phone: '+50370000000',
+    notes: null,
+  };
+
+  it('generatesATokenAndAppliesDefaultsBeforeWriting', async () => {
+    const fake = useFakeGuestsCollection();
+
+    const created = await createGuest(input);
+
+    expect(created.data.token).toHaveLength(TOKEN_LENGTH);
+    expect(created.data.confirmed).toBe(false);
+    expect(created.data.confirmedCount).toBe(0);
+    expect(fake.store.get(created.id)).toMatchObject({ firstName: 'Orlando', confirmed: false });
+  });
+});
+
+describe('updateGuest', () => {
+  it('returnsNotFoundWhenTheGuestDoesNotExist', async () => {
+    useFakeGuestsCollection({});
+
+    const outcome = await updateGuest('missing', {});
+
+    expect(outcome).toEqual({ ok: false, code: 'NOT_FOUND' });
+  });
+
+  it('rejectsLoweringGuestLimitBelowTheExistingConfirmedCount', async () => {
+    useFakeGuestsCollection({ abc: { ...storedGuest, confirmed: true, confirmedCount: 3 } });
+
+    const outcome = await updateGuest('abc', { guestLimit: 2 });
+
+    expect(outcome).toEqual({ ok: false, code: 'GUEST_LIMIT_BELOW_CONFIRMED_COUNT' });
+  });
+
+  it('rejectsARequestThatLowersBothFieldsInconsistently', async () => {
+    useFakeGuestsCollection({ abc: { ...storedGuest, confirmed: true, confirmedCount: 3 } });
+
+    const outcome = await updateGuest('abc', { guestLimit: 2, confirmedCount: 3 });
+
+    expect(outcome).toEqual({ ok: false, code: 'GUEST_LIMIT_BELOW_CONFIRMED_COUNT' });
+  });
+
+  it('allowsLoweringGuestLimitWhenConfirmedCountIsLoweredInTheSameRequest', async () => {
+    useFakeGuestsCollection({ abc: { ...storedGuest, confirmed: true, confirmedCount: 3 } });
+
+    const outcome = await updateGuest('abc', { guestLimit: 2, confirmedCount: 2 });
+
+    expect(outcome.ok).toBe(true);
+  });
+
+  it('appliesThePatchAndUpdatesUpdatedAt', async () => {
+    const fake = useFakeGuestsCollection({ abc: storedGuest });
+
+    const outcome = await updateGuest('abc', { notes: 'called them to confirm' });
+
+    expect(outcome.ok).toBe(true);
+    expect(fake.store.get('abc')).toMatchObject({ notes: 'called them to confirm' });
+  });
+});
+
+describe('deleteGuestById', () => {
+  it('deletesAnExistingGuestAndReturnsTrue', async () => {
+    const fake = useFakeGuestsCollection({ abc: storedGuest });
+
+    await expect(deleteGuestById('abc')).resolves.toBe(true);
+    expect(fake.store.has('abc')).toBe(false);
+  });
+
+  it('returnsFalseWhenTheGuestDoesNotExist', async () => {
+    useFakeGuestsCollection({});
+
+    await expect(deleteGuestById('missing')).resolves.toBe(false);
+  });
+});
+
+describe('rotateGuestToken', () => {
+  it('replacesTheTokenWithANewOneOfTheSameLength', async () => {
+    useFakeGuestsCollection({ abc: storedGuest });
+
+    const result = await rotateGuestToken('abc');
+
+    expect(result?.data.token).toHaveLength(TOKEN_LENGTH);
+    expect(result?.data.token).not.toBe(storedGuest.token);
+  });
+
+  it('returnsNullWhenTheGuestDoesNotExist', async () => {
+    useFakeGuestsCollection({});
+
+    await expect(rotateGuestToken('missing')).resolves.toBeNull();
   });
 });

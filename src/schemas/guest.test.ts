@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_GUEST_LIMIT,
+  computeGuestStats,
   createGuestSchema,
   fitsWithinGuestLimit,
+  guestLimitCoversConfirmedCount,
   resolveDisplayName,
   rsvpRequestSchema,
   updateGuestSchema,
@@ -63,7 +65,11 @@ describe('createGuestSchema', () => {
   });
 
   it('preservesAccentsAndTildesInNames', () => {
-    const result = createGuestSchema.safeParse({ ...validGuest, firstName: 'Íñigo', lastName: 'Peña' });
+    const result = createGuestSchema.safeParse({
+      ...validGuest,
+      firstName: 'Íñigo',
+      lastName: 'Peña',
+    });
 
     expect(result.success && result.data.firstName).toBe('Íñigo');
     expect(result.success && result.data.lastName).toBe('Peña');
@@ -120,21 +126,83 @@ describe('fitsWithinGuestLimit', () => {
 describe('resolveDisplayName', () => {
   it('prefersTitleLabelBecauseItIsWhatTheEnvelopeShows', () => {
     expect(
-      resolveDisplayName({ titleLabel: 'Tío Orlando y Familia.', firstName: 'Orlando', lastName: 'Martínez' }),
+      resolveDisplayName({
+        titleLabel: 'Tío Orlando y Familia.',
+        firstName: 'Orlando',
+        lastName: 'Martínez',
+      }),
     ).toBe('Tío Orlando y Familia.');
   });
 
   it('fallsBackToFullNameWhenTitleLabelIsNull', () => {
-    expect(resolveDisplayName({ titleLabel: null, firstName: 'Orlando', lastName: 'Martínez' })).toBe(
-      'Orlando Martínez',
-    );
+    expect(
+      resolveDisplayName({ titleLabel: null, firstName: 'Orlando', lastName: 'Martínez' }),
+    ).toBe('Orlando Martínez');
   });
 
   it('fallsBackToFirstNameAloneWhenThereIsNoLastName', () => {
-    expect(resolveDisplayName({ titleLabel: null, firstName: 'Orlando', lastName: null })).toBe('Orlando');
+    expect(resolveDisplayName({ titleLabel: null, firstName: 'Orlando', lastName: null })).toBe(
+      'Orlando',
+    );
   });
 
   it('treatsAnEmptyTitleLabelAsAbsent', () => {
-    expect(resolveDisplayName({ titleLabel: '', firstName: 'Orlando', lastName: null })).toBe('Orlando');
+    expect(resolveDisplayName({ titleLabel: '', firstName: 'Orlando', lastName: null })).toBe(
+      'Orlando',
+    );
+  });
+});
+
+describe('guestLimitCoversConfirmedCount', () => {
+  it('acceptsALimitEqualToTheConfirmedCount', () => {
+    expect(guestLimitCoversConfirmedCount(3, 3)).toBe(true);
+  });
+
+  it('rejectsALimitBelowTheConfirmedCount', () => {
+    expect(guestLimitCoversConfirmedCount(2, 3)).toBe(false);
+  });
+
+  it('acceptsALimitAboveTheConfirmedCount', () => {
+    expect(guestLimitCoversConfirmedCount(5, 3)).toBe(true);
+  });
+});
+
+describe('computeGuestStats', () => {
+  const confirmedGuest = { confirmed: true, confirmedCount: 3, firstOpenedAt: new Date() };
+  const openedNotConfirmedGuest = {
+    confirmed: false,
+    confirmedCount: 0,
+    firstOpenedAt: new Date(),
+  };
+  const neverOpenedGuest = { confirmed: false, confirmedCount: 0, firstOpenedAt: null };
+
+  it('returnsAllZerosForAnEmptyList', () => {
+    expect(computeGuestStats([])).toEqual({
+      total: 0,
+      confirmed: 0,
+      pending: 0,
+      openedNotConfirmed: 0,
+      totalConfirmedPeople: 0,
+    });
+  });
+
+  it('talliesEachCategorySeparately', () => {
+    expect(computeGuestStats([confirmedGuest, openedNotConfirmedGuest, neverOpenedGuest])).toEqual({
+      total: 3,
+      confirmed: 1,
+      pending: 2,
+      openedNotConfirmed: 1,
+      totalConfirmedPeople: 3,
+    });
+  });
+
+  it('doesNotCountAConfirmedGuestAsOpenedNotConfirmed', () => {
+    expect(computeGuestStats([confirmedGuest]).openedNotConfirmed).toBe(0);
+  });
+
+  it('onlySumsConfirmedCountForGuestsWhoActuallyConfirmed', () => {
+    const pendingWithStaleCount = { confirmed: false, confirmedCount: 4, firstOpenedAt: null };
+
+    expect(computeGuestStats([pendingWithStaleCount]).totalConfirmedPeople).toBe(0);
   });
 });

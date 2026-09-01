@@ -1,19 +1,17 @@
 import { publicInvitationSchema } from '../../src/schemas/guest';
 import { findGuestByToken } from '../_lib/guests';
+import { extractRouteParam } from '../_lib/httpParams';
 import { isRsvpOpen } from '../_lib/rsvpDeadline';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const HTTP_OK = 200;
 const HTTP_NOT_FOUND = 404;
 
-function extractToken(query: VercelRequest['query']): string | null {
-  const value = query.token;
-
-  return typeof value === 'string' && value.length > 0 ? value : null;
-}
-
-export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
-  const token = extractToken(request.query);
+export default async function handler(
+  request: VercelRequest,
+  response: VercelResponse,
+): Promise<void> {
+  const token = extractRouteParam(request.query, 'token');
   const guest = token === null ? null : await findGuestByToken(token);
 
   if (guest === null) {
