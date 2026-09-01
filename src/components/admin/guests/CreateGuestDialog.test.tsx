@@ -6,11 +6,15 @@ import { CreateGuestDialog } from '@/components/admin/guests/CreateGuestDialog';
 import { fetchAdminApi } from '@/components/admin/auth/fetchAdminApi';
 import {
   adminGuestFormErrorCopy,
+  adminGuestToastCopy,
   createGuestDialogCopy,
   guestFormFieldsCopy,
 } from '@/content/adminGuestForm';
 
+const { toastSuccessMock } = vi.hoisted(() => ({ toastSuccessMock: vi.fn() }));
+
 vi.mock('@/components/admin/auth/fetchAdminApi', () => ({ fetchAdminApi: vi.fn() }));
+vi.mock('sonner', () => ({ toast: { success: toastSuccessMock } }));
 
 const fetchAdminApiMock = vi.mocked(fetchAdminApi);
 
@@ -75,6 +79,7 @@ describe('CreateGuestDialog', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
+    expect(toastSuccessMock).toHaveBeenCalledWith(adminGuestToastCopy.created);
   });
 
   it('showsAReadableErrorWhenTheServerRejectsThePayload', async () => {

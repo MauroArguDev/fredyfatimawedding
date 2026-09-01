@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Button } from '@/components/admin/primitives/button';
+import { Toaster } from '@/components/admin/primitives/sonner';
 
 interface AdminShellProps {
   title: string;
@@ -23,6 +24,7 @@ export const AdminShell = ({
         </Button>
       </header>
       <main className="flex-1 px-4 py-6 sm:px-6">{children}</main>
+      <Toaster />
     </div>
   );
 };

@@ -9,8 +9,10 @@ import {
   DialogFooter,
 } from '@/components/admin/primitives/dialog';
 import { useUpdateGuestMutation } from '@/components/admin/guests/useUpdateGuestMutation';
-import { resolveMutationErrorMessage } from '@/components/admin/guests/resolveMutationErrorMessage';
+import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
+import { notifyOnSuccess } from '@/components/admin/guests/closeAndNotify';
 import { releaseConfirmationDialogCopy } from '@/content/adminGuestActions';
+import { adminGuestToastCopy } from '@/content/adminGuestForm';
 import { resolveDisplayName, type AdminGuest } from '@/schemas/guest';
 
 interface ReleaseConfirmationDialogProps {
@@ -23,14 +25,17 @@ export const ReleaseConfirmationDialog = ({
   onClose,
 }: ReleaseConfirmationDialogProps): ReactNode => {
   const mutation = useUpdateGuestMutation();
-  const serverErrorMessage = resolveMutationErrorMessage(mutation.error);
+  const serverErrorMessage = resolveAdminApiErrorMessage(mutation.error);
 
   const handleConfirm = (): void => {
     if (guest === null) {
       return;
     }
 
-    mutation.mutate({ id: guest.id, patch: { confirmed: false } }, { onSuccess: onClose });
+    mutation.mutate(
+      { id: guest.id, patch: { confirmed: false } },
+      { onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.released) },
+    );
   };
 
   return (

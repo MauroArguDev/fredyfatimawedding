@@ -4,6 +4,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAdminGuests } from '@/components/admin/guests/useAdminGuests';
 import { fetchAdminApi } from '@/components/admin/auth/fetchAdminApi';
+import { AdminGuestsApiError } from '@/components/admin/guests/adminGuestsApiError';
 
 vi.mock('@/components/admin/auth/fetchAdminApi', () => ({ fetchAdminApi: vi.fn() }));
 
@@ -46,13 +47,17 @@ describe('useAdminGuests', () => {
     expect(fetchAdminApi).toHaveBeenCalledWith('/api/admin/guests');
   });
 
-  it('rejectsOnAnUnexpectedResponseStatus', async () => {
-    fetchAdminApiMock.mockResolvedValue(new Response(null, { status: 500 }));
+  it('rejectsWithACodedAdminGuestsApiErrorOnAServerErrorResponse', async () => {
+    fetchAdminApiMock.mockResolvedValue(
+      new Response(JSON.stringify({ code: 'UNAUTHORIZED' }), { status: 401 }),
+    );
 
     const { result } = renderHook(() => useAdminGuests(), { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
+    expect(result.current.error).toBeInstanceOf(AdminGuestsApiError);
+    expect((result.current.error as AdminGuestsApiError).code).toBe('UNAUTHORIZED');
   });
 });

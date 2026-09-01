@@ -18,8 +18,9 @@ import {
   toCreateGuestInput,
   type EditGuestFormValues,
 } from '@/components/admin/guests/guestFormSchema';
-import { resolveMutationErrorMessage } from '@/components/admin/guests/resolveMutationErrorMessage';
-import { createGuestDialogCopy } from '@/content/adminGuestForm';
+import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
+import { toast } from 'sonner';
+import { createGuestDialogCopy, adminGuestToastCopy } from '@/content/adminGuestForm';
 
 const EMPTY_VALUES: EditGuestFormValues = {
   firstName: '',
@@ -49,11 +50,12 @@ export const CreateGuestDialog = (): ReactNode => {
       onSuccess: () => {
         reset(EMPTY_VALUES);
         setOpen(false);
+        toast.success(adminGuestToastCopy.created);
       },
     });
   });
 
-  const serverErrorMessage = resolveMutationErrorMessage(mutation.error);
+  const serverErrorMessage = resolveAdminApiErrorMessage(mutation.error);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

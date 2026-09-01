@@ -1,11 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fetchAdminApi } from '@/components/admin/auth/fetchAdminApi';
+import { adminGuestToastCopy } from '@/content/adminGuestForm';
 
-const { fakeAuth, signOutMock, getIdTokenMock } = vi.hoisted(() => {
+const { fakeAuth, signOutMock, getIdTokenMock, toastErrorMock } = vi.hoisted(() => {
   return {
     fakeAuth: { currentUser: null as { getIdToken: () => Promise<string> } | null },
     signOutMock: vi.fn(),
     getIdTokenMock: vi.fn(),
+    toastErrorMock: vi.fn(),
   };
 });
 
@@ -13,11 +15,13 @@ vi.mock('@/components/admin/auth/firebaseClient', () => ({ auth: fakeAuth }));
 vi.mock('firebase/auth', () => ({
   signOut: (...args: unknown[]): unknown => signOutMock(...args),
 }));
+vi.mock('sonner', () => ({ toast: { error: toastErrorMock } }));
 
 describe('fetchAdminApi', () => {
   beforeEach(() => {
     signOutMock.mockReset();
     getIdTokenMock.mockReset();
+    toastErrorMock.mockReset();
     fakeAuth.currentUser = null;
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })));
   });
@@ -49,9 +53,24 @@ describe('fetchAdminApi', () => {
     expect(signOutMock).toHaveBeenCalledTimes(1);
   });
 
+  it('showsASessionExpiredToastOnA401SoTheUserUnderstandsWhyTheyWereSignedOut', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+
+    await fetchAdminApi('/api/admin/guests');
+
+    expect(toastErrorMock).toHaveBeenCalledWith(adminGuestToastCopy.sessionExpired);
+  });
+
   it('doesNotSignOutOnASuccessfulResponse', async () => {
     await fetchAdminApi('/api/admin/guests');
 
     expect(signOutMock).not.toHaveBeenCalled();
+  });
+
+  it('requestsWithNoStoreCacheSoStaleListsAreNeverServedFromTheBrowserCache', async () => {
+    await fetchAdminApi('/api/admin/guests');
+
+    const [, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(init.cache).toBe('no-store');
   });
 });

@@ -24,13 +24,28 @@ export const editGuestDialogCopy = {
   cancel: 'Cancelar',
 } as const;
 
+export const adminGuestToastCopy = {
+  created: 'Invitado creado.',
+  updated: 'Invitado actualizado.',
+  deleted: 'Invitado eliminado.',
+  released: 'Confirmación liberada.',
+  sessionExpired: 'Tu sesión expiró. Inicia sesión de nuevo.',
+} as const;
+
 export type AdminGuestErrorCode =
-  'INVALID_PAYLOAD' | 'GUEST_LIMIT_BELOW_CONFIRMED_COUNT' | 'NOT_FOUND' | 'UNKNOWN';
+  | 'INVALID_PAYLOAD'
+  | 'GUEST_LIMIT_BELOW_CONFIRMED_COUNT'
+  | 'NOT_FOUND'
+  | 'UNAUTHORIZED'
+  | 'NETWORK'
+  | 'UNKNOWN';
 
 export const adminGuestFormErrorCopy: Record<AdminGuestErrorCode, string> = {
   INVALID_PAYLOAD: 'Revisa los datos del formulario; algún campo no es válido.',
   GUEST_LIMIT_BELOW_CONFIRMED_COUNT: 'El cupo no puede ser menor a la cantidad ya confirmada.',
   NOT_FOUND: 'Este invitado ya no existe. Actualiza la página.',
+  UNAUTHORIZED: 'Tu sesión expiró. Inicia sesión de nuevo.',
+  NETWORK: 'No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.',
   UNKNOWN: 'Ocurrió un error inesperado. Intenta de nuevo.',
 };
 

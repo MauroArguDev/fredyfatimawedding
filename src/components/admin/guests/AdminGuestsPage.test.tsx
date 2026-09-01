@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminGuestsPage } from '@/components/admin/guests/AdminGuestsPage';
 import { useAdminGuests } from '@/components/admin/guests/useAdminGuests';
+import { AdminGuestsApiError } from '@/components/admin/guests/adminGuestsApiError';
 import { adminGuestsPageCopy } from '@/content/adminGuests';
+import { resolveAdminGuestErrorMessage } from '@/content/adminGuestForm';
 import type { AdminGuest } from '@/schemas/guest';
 
 vi.mock('@/components/admin/guests/useAdminGuests', () => ({ useAdminGuests: vi.fn() }));
@@ -55,14 +57,34 @@ describe('AdminGuestsPage', () => {
     expect(screen.getByText(adminGuestsPageCopy.loading)).toBeInTheDocument();
   });
 
-  it('showsARetryableErrorStateWhenTheQueryFails', async () => {
+  it('showsARetryableErrorStateWithTheServerCodeSpecificMessageWhenTheQueryFails', async () => {
     const refetch = vi.fn();
-    useAdminGuestsMock.mockReturnValue({ isPending: false, isError: true, refetch } as never);
+    useAdminGuestsMock.mockReturnValue({
+      isPending: false,
+      isError: true,
+      error: new AdminGuestsApiError('NOT_FOUND'),
+      refetch,
+    } as never);
 
     renderPage();
+
+    expect(screen.getByText(resolveAdminGuestErrorMessage('NOT_FOUND'))).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: adminGuestsPageCopy.retry }));
 
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('fallsBackToTheGenericErrorMessageWhenTheErrorIsNotAnAdminGuestsApiError', () => {
+    useAdminGuestsMock.mockReturnValue({
+      isPending: false,
+      isError: true,
+      error: new TypeError('Failed to fetch'),
+      refetch: vi.fn(),
+    } as never);
+
+    renderPage();
+
+    expect(screen.getByText(resolveAdminGuestErrorMessage('NETWORK'))).toBeInTheDocument();
   });
 
   it('showsTheEmptyListCopyWhenThereAreNoGuestsAtAll', () => {

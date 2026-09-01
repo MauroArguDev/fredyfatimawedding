@@ -8,10 +8,14 @@ import {
   editGuestDialogCopy,
   guestFormFieldsCopy,
   adminGuestFormErrorCopy,
+  adminGuestToastCopy,
 } from '@/content/adminGuestForm';
 import type { AdminGuest } from '@/schemas/guest';
 
+const { toastSuccessMock } = vi.hoisted(() => ({ toastSuccessMock: vi.fn() }));
+
 vi.mock('@/components/admin/auth/fetchAdminApi', () => ({ fetchAdminApi: vi.fn() }));
+vi.mock('sonner', () => ({ toast: { success: toastSuccessMock } }));
 
 const fetchAdminApiMock = vi.mocked(fetchAdminApi);
 
@@ -88,6 +92,7 @@ describe('EditGuestDialog', () => {
       '/api/admin/guests/id-1',
       expect.objectContaining({ method: 'PATCH' }),
     );
+    expect(toastSuccessMock).toHaveBeenCalledWith(adminGuestToastCopy.updated);
   });
 
   it('showsAReadableErrorWhenTheServerRejectsTheUpdate', async () => {

@@ -5,9 +5,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReleaseConfirmationDialog } from '@/components/admin/guests/ReleaseConfirmationDialog';
 import { fetchAdminApi } from '@/components/admin/auth/fetchAdminApi';
 import { releaseConfirmationDialogCopy } from '@/content/adminGuestActions';
+import { adminGuestToastCopy } from '@/content/adminGuestForm';
 import type { AdminGuest } from '@/schemas/guest';
 
+const { toastSuccessMock } = vi.hoisted(() => ({ toastSuccessMock: vi.fn() }));
+
 vi.mock('@/components/admin/auth/fetchAdminApi', () => ({ fetchAdminApi: vi.fn() }));
+vi.mock('sonner', () => ({ toast: { success: toastSuccessMock } }));
 
 const fetchAdminApiMock = vi.mocked(fetchAdminApi);
 
@@ -67,6 +71,7 @@ describe('ReleaseConfirmationDialog', () => {
     });
     const [, init] = vi.mocked(fetchAdminApi).mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({ confirmed: false });
+    expect(toastSuccessMock).toHaveBeenCalledWith(adminGuestToastCopy.released);
   });
 
   it('showsAReadableErrorWhenTheServerRejectsTheRelease', async () => {

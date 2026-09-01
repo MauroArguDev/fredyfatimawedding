@@ -17,8 +17,9 @@ import {
   toUpdateGuestInput,
   type EditGuestFormValues,
 } from '@/components/admin/guests/guestFormSchema';
-import { resolveMutationErrorMessage } from '@/components/admin/guests/resolveMutationErrorMessage';
-import { editGuestDialogCopy } from '@/content/adminGuestForm';
+import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
+import { notifyOnSuccess } from '@/components/admin/guests/closeAndNotify';
+import { editGuestDialogCopy, adminGuestToastCopy } from '@/content/adminGuestForm';
 import type { AdminGuest } from '@/schemas/guest';
 
 interface EditGuestDialogProps {
@@ -84,7 +85,10 @@ export const EditGuestDialog = ({ guest, onClose }: EditGuestDialogProps): React
       return;
     }
 
-    mutation.mutate({ id: guest.id, patch: toUpdateGuestInput(values) }, { onSuccess: onClose });
+    mutation.mutate(
+      { id: guest.id, patch: toUpdateGuestInput(values) },
+      { onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.updated) },
+    );
   });
 
   return (
@@ -104,7 +108,7 @@ export const EditGuestDialog = ({ guest, onClose }: EditGuestDialogProps): React
           register={register}
           errors={errors}
           isSubmitting={mutation.isPending}
-          serverErrorMessage={resolveMutationErrorMessage(mutation.error)}
+          serverErrorMessage={resolveAdminApiErrorMessage(mutation.error)}
           onSubmit={(event) => {
             void onSubmit(event);
           }}

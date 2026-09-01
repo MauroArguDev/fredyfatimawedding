@@ -5,9 +5,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DeleteGuestDialog } from '@/components/admin/guests/DeleteGuestDialog';
 import { fetchAdminApi } from '@/components/admin/auth/fetchAdminApi';
 import { deleteGuestDialogCopy } from '@/content/adminGuestActions';
+import { adminGuestToastCopy } from '@/content/adminGuestForm';
 import type { AdminGuest } from '@/schemas/guest';
 
+const { toastSuccessMock } = vi.hoisted(() => ({ toastSuccessMock: vi.fn() }));
+
 vi.mock('@/components/admin/auth/fetchAdminApi', () => ({ fetchAdminApi: vi.fn() }));
+vi.mock('sonner', () => ({ toast: { success: toastSuccessMock } }));
 
 const fetchAdminApiMock = vi.mocked(fetchAdminApi);
 
@@ -62,6 +66,7 @@ describe('DeleteGuestDialog', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
     expect(fetchAdminApi).toHaveBeenCalledWith('/api/admin/guests/id-1', { method: 'DELETE' });
+    expect(toastSuccessMock).toHaveBeenCalledWith(adminGuestToastCopy.deleted);
   });
 
   it('showsAReadableErrorWhenTheServerRejectsTheDeletion', async () => {

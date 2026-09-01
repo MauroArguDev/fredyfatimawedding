@@ -9,8 +9,10 @@ import {
   DialogFooter,
 } from '@/components/admin/primitives/dialog';
 import { useDeleteGuestMutation } from '@/components/admin/guests/useDeleteGuestMutation';
-import { resolveMutationErrorMessage } from '@/components/admin/guests/resolveMutationErrorMessage';
+import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
+import { notifyOnSuccess } from '@/components/admin/guests/closeAndNotify';
 import { deleteGuestDialogCopy } from '@/content/adminGuestActions';
+import { adminGuestToastCopy } from '@/content/adminGuestForm';
 import { resolveDisplayName, type AdminGuest } from '@/schemas/guest';
 
 interface DeleteGuestDialogProps {
@@ -20,14 +22,14 @@ interface DeleteGuestDialogProps {
 
 export const DeleteGuestDialog = ({ guest, onClose }: DeleteGuestDialogProps): ReactNode => {
   const mutation = useDeleteGuestMutation();
-  const serverErrorMessage = resolveMutationErrorMessage(mutation.error);
+  const serverErrorMessage = resolveAdminApiErrorMessage(mutation.error);
 
   const handleConfirm = (): void => {
     if (guest === null) {
       return;
     }
 
-    mutation.mutate(guest.id, { onSuccess: onClose });
+    mutation.mutate(guest.id, { onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.deleted) });
   };
 
   return (
