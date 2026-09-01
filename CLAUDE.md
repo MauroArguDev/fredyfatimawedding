@@ -197,8 +197,6 @@ Sin esas tres condiciones, JSDoc se convierte en una puerta trasera para comenta
 - Cualquier prueba de CRUD del admin (editar, eliminar, rotar token) contra un invitado real es irreversible en los mismos términos que en producción, porque _es_ producción.
 - Para probar sin ese riesgo, crear un invitado de prueba explícito en Firestore (marcado en `notes`, ej. `"TEST - borrar antes del lanzamiento"`) y borrarlo después. WED-101 y WED-102 ya piden verificar que no queden datos de prueba antes del envío real.
 
-**Consecuencia sobre el desarrollo local (encontrado en vivo, 2026-09-01, depurando por qué el listado de invitados fallaba en local pero no en Vercel).** `npm run dev` es Vite puro: sirve el front pero **nunca `/api/*`**. Como `api/admin/guests.ts` existe físicamente en el repo, Vite lo devuelve como su propio código fuente sin transpilar (`200 text/javascript`), que parece éxito en la pestaña Network pero rompe apenas el cliente intenta `response.json()` — exactamente el bug reportado. La solución es `npx vercel link` (una vez, login interactivo) + `npx vercel dev` en vez de `npm run dev` para cualquier prueba que toque `/api/*`; el login de admin no lo necesitaba porque Firebase Auth corre 100% en el cliente. **Quirk verificado:** `vercel dev` no aplica las cabeceras custom de `vercel.json` (ej. `Cache-Control: private, no-store` en `/api/*`) igual que producción — no sirve para verificar comportamiento de caché, solo para tener datos reales. Detalle completo en README.md.
-
 ### Colección `guests/{guestId}`
 
 | Campo            | Tipo              | Obligatorio | Default | Notas                                                                                     |
