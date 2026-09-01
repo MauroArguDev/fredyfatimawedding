@@ -1,12 +1,9 @@
+import { readRequiredEnv } from './env';
+
 const RSVP_DEADLINE_ENV_VAR = 'RSVP_DEADLINE';
 
 function readDeadline(): Date {
-  const raw = process.env[RSVP_DEADLINE_ENV_VAR];
-
-  if (raw === undefined || raw.length === 0) {
-    throw new Error(`Missing required environment variable: ${RSVP_DEADLINE_ENV_VAR}`);
-  }
-
+  const raw = readRequiredEnv(RSVP_DEADLINE_ENV_VAR);
   const deadline = new Date(raw);
 
   if (Number.isNaN(deadline.getTime())) {
