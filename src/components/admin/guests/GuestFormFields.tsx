@@ -11,6 +11,39 @@ interface GuestFormFieldsProps {
   showConfirmedCount?: boolean;
 }
 
+interface GuestFieldProps {
+  htmlFor: string;
+  label: string;
+  error: string | undefined;
+  children: ReactNode;
+}
+
+const GuestField = ({ htmlFor, label, error, children }: GuestFieldProps): ReactNode => (
+  <Field data-invalid={error !== undefined}>
+    <FieldLabel htmlFor={htmlFor}>{label}</FieldLabel>
+    {children}
+    {error !== undefined && <FieldError>{error}</FieldError>}
+  </Field>
+);
+
+type TextFieldName = 'firstName' | 'lastName' | 'titleLabel' | 'guestLimit' | 'phone' | 'notes';
+
+interface TextFieldSpec {
+  name: TextFieldName;
+  id: string;
+  label: string;
+  isNumber?: boolean;
+}
+
+const TEXT_FIELDS: TextFieldSpec[] = [
+  { name: 'firstName', id: 'guest-first-name', label: guestFormFieldsCopy.firstName },
+  { name: 'lastName', id: 'guest-last-name', label: guestFormFieldsCopy.lastName },
+  { name: 'titleLabel', id: 'guest-title-label', label: guestFormFieldsCopy.titleLabel },
+  { name: 'guestLimit', id: 'guest-limit', label: guestFormFieldsCopy.guestLimit, isNumber: true },
+  { name: 'phone', id: 'guest-phone', label: guestFormFieldsCopy.phone },
+  { name: 'notes', id: 'guest-notes', label: guestFormFieldsCopy.notes },
+];
+
 export const GuestFormFields = ({
   register,
   errors,
@@ -18,46 +51,28 @@ export const GuestFormFields = ({
 }: GuestFormFieldsProps): ReactNode => {
   return (
     <>
-      <Field data-invalid={errors.firstName !== undefined}>
-        <FieldLabel htmlFor="guest-first-name">{guestFormFieldsCopy.firstName}</FieldLabel>
-        <Input id="guest-first-name" {...register('firstName')} />
-        {errors.firstName !== undefined && <FieldError>{errors.firstName.message}</FieldError>}
-      </Field>
-      <Field data-invalid={errors.lastName !== undefined}>
-        <FieldLabel htmlFor="guest-last-name">{guestFormFieldsCopy.lastName}</FieldLabel>
-        <Input id="guest-last-name" {...register('lastName')} />
-        {errors.lastName !== undefined && <FieldError>{errors.lastName.message}</FieldError>}
-      </Field>
-      <Field data-invalid={errors.titleLabel !== undefined}>
-        <FieldLabel htmlFor="guest-title-label">{guestFormFieldsCopy.titleLabel}</FieldLabel>
-        <Input id="guest-title-label" {...register('titleLabel')} />
-        {errors.titleLabel !== undefined && <FieldError>{errors.titleLabel.message}</FieldError>}
-      </Field>
-      <Field data-invalid={errors.guestLimit !== undefined}>
-        <FieldLabel htmlFor="guest-limit">{guestFormFieldsCopy.guestLimit}</FieldLabel>
-        <Input id="guest-limit" type="number" {...register('guestLimit')} />
-        {errors.guestLimit !== undefined && <FieldError>{errors.guestLimit.message}</FieldError>}
-      </Field>
-      <Field data-invalid={errors.phone !== undefined}>
-        <FieldLabel htmlFor="guest-phone">{guestFormFieldsCopy.phone}</FieldLabel>
-        <Input id="guest-phone" {...register('phone')} />
-        {errors.phone !== undefined && <FieldError>{errors.phone.message}</FieldError>}
-      </Field>
-      <Field data-invalid={errors.notes !== undefined}>
-        <FieldLabel htmlFor="guest-notes">{guestFormFieldsCopy.notes}</FieldLabel>
-        <Input id="guest-notes" {...register('notes')} />
-        {errors.notes !== undefined && <FieldError>{errors.notes.message}</FieldError>}
-      </Field>
-      {showConfirmedCount && (
-        <Field data-invalid={errors.confirmedCount !== undefined}>
-          <FieldLabel htmlFor="guest-confirmed-count">
-            {guestFormFieldsCopy.confirmedCount}
-          </FieldLabel>
-          <Input id="guest-confirmed-count" type="number" {...register('confirmedCount')} />
-          {errors.confirmedCount !== undefined && (
-            <FieldError>{errors.confirmedCount.message}</FieldError>
+      {TEXT_FIELDS.map((field) => (
+        <GuestField
+          key={field.name}
+          htmlFor={field.id}
+          label={field.label}
+          error={errors[field.name]?.message}
+        >
+          {field.isNumber ? (
+            <Input id={field.id} type="number" {...register(field.name)} />
+          ) : (
+            <Input id={field.id} {...register(field.name)} />
           )}
-        </Field>
+        </GuestField>
+      ))}
+      {showConfirmedCount && (
+        <GuestField
+          htmlFor="guest-confirmed-count"
+          label={guestFormFieldsCopy.confirmedCount}
+          error={errors.confirmedCount?.message}
+        >
+          <Input id="guest-confirmed-count" type="number" {...register('confirmedCount')} />
+        </GuestField>
       )}
     </>
   );
