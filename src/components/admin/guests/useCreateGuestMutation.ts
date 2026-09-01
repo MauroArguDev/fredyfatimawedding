@@ -39,6 +39,7 @@ function toOptimisticGuest(input: CreateGuestInput): AdminGuest {
     confirmedCount: 0,
     confirmedAt: null,
     firstOpenedAt: null,
+    invitedAt: null,
     createdAt: now,
     updatedAt: now,
   };

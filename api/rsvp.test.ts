@@ -16,7 +16,10 @@ const TOKEN = 'V1StGXR8_Z5jdHi6B-myT';
 const NOW = new Date('2026-09-10T12:00:00Z');
 const OPENED_WELL_BEFORE_NOW = new Date(NOW.getTime() - 60_000);
 
-function buildRequest(body: unknown, headers: Record<string, string | string[]> = {}): VercelRequest {
+function buildRequest(
+  body: unknown,
+  headers: Record<string, string | string[]> = {},
+): VercelRequest {
   return {
     body,
     headers,
@@ -46,6 +49,7 @@ function buildGuestRecord(overrides: Partial<GuestRecord['data']> = {}): GuestRe
       confirmedCount: 0,
       confirmedAt: null,
       firstOpenedAt: OPENED_WELL_BEFORE_NOW,
+      invitedAt: null,
       createdAt: new Date('2026-01-01T00:00:00Z'),
       updatedAt: new Date('2026-01-01T00:00:00Z'),
       ...overrides,
@@ -83,7 +87,10 @@ describe('POST /api/rsvp', () => {
     mockConfirmableGuest();
     const response = buildResponse();
 
-    await handler(buildRequest({ token: TOKEN, count: 2 }, { 'x-forwarded-for': '198.51.100.4, 10.0.0.1' }), response);
+    await handler(
+      buildRequest({ token: TOKEN, count: 2 }, { 'x-forwarded-for': '198.51.100.4, 10.0.0.1' }),
+      response,
+    );
 
     expect(rsvpRateLimiter.shouldLimit).toHaveBeenCalledWith('198.51.100.4', NOW);
   });
@@ -112,7 +119,11 @@ describe('POST /api/rsvp', () => {
   it('fallsBackToUnknownWhenNeitherForwardedForNorTheSocketAddressAreAvailable', async () => {
     mockConfirmableGuest();
     const response = buildResponse();
-    const request = { body: { token: TOKEN, count: 2 }, headers: {}, socket: {} } as unknown as VercelRequest;
+    const request = {
+      body: { token: TOKEN, count: 2 },
+      headers: {},
+      socket: {},
+    } as unknown as VercelRequest;
 
     await handler(request, response);
 
@@ -213,7 +224,10 @@ describe('POST /api/rsvp', () => {
     await handler(buildRequest({ token: TOKEN, count: 2 }), response);
 
     expect(response.status).toHaveBeenCalledWith(200);
-    expect(response.json).toHaveBeenCalledWith({ ok: true, waLink: 'https://wa.me/50376982534?text=hola' });
+    expect(response.json).toHaveBeenCalledWith({
+      ok: true,
+      waLink: 'https://wa.me/50376982534?text=hola',
+    });
   });
 
   it('buildsTheWhatsappMessageFromTheGuestsNameAndTheConfirmedCount', async () => {

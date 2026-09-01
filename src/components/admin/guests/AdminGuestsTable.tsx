@@ -9,9 +9,11 @@ import {
 } from '@/components/admin/primitives/table';
 import { Badge } from '@/components/admin/primitives/badge';
 import { Button } from '@/components/admin/primitives/button';
+import { GuestInviteActions } from '@/components/admin/guests/GuestInviteActions';
 import { adminGuestsTableCopy } from '@/content/adminGuests';
 import { editGuestDialogCopy } from '@/content/adminGuestForm';
 import { deleteGuestDialogCopy, releaseConfirmationDialogCopy } from '@/content/adminGuestActions';
+import { adminGuestInviteCopy } from '@/content/adminGuestInvite';
 import type { AdminGuest } from '@/schemas/guest';
 import type { GuestSortState } from '@/components/admin/guests/filterAndSortGuests';
 
@@ -79,6 +81,7 @@ const AdminGuestsTableHeaderRow = ({
     />
     <TableHead>{adminGuestsTableCopy.confirmedCount}</TableHead>
     <TableHead>{adminGuestsTableCopy.firstOpenedAt}</TableHead>
+    <TableHead>{adminGuestInviteCopy.invitedColumn}</TableHead>
     <TableHead>
       <span className="sr-only">{adminGuestsTableCopy.actionsColumn}</span>
     </TableHead>
@@ -99,6 +102,7 @@ const AdminGuestRowActions = ({
   onReleaseConfirmation,
 }: AdminGuestRowProps): ReactNode => (
   <div className="flex flex-wrap gap-2">
+    <GuestInviteActions guest={guest} />
     <Button
       type="button"
       variant="outline"
@@ -155,6 +159,13 @@ const AdminGuestRow = ({
     </TableCell>
     <TableCell>{guest.confirmedCount}</TableCell>
     <TableCell>{formatOpenedAt(guest.firstOpenedAt)}</TableCell>
+    <TableCell>
+      <Badge variant={guest.invitedAt !== null ? 'default' : 'outline'}>
+        {guest.invitedAt !== null
+          ? adminGuestInviteCopy.invitedYes
+          : adminGuestInviteCopy.invitedNo}
+      </Badge>
+    </TableCell>
     <TableCell>
       <AdminGuestRowActions
         guest={guest}

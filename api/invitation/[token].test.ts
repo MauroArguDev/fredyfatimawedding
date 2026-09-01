@@ -21,9 +21,10 @@ function buildResponse(): VercelResponse & { json: ReturnType<typeof vi.fn> } {
   return { status, json } as unknown as VercelResponse & { json: ReturnType<typeof vi.fn> };
 }
 
-function buildGuestRecord(
-  overrides: Partial<GuestRecord['data']> = {},
-): { record: GuestRecord; update: ReturnType<typeof vi.fn> } {
+function buildGuestRecord(overrides: Partial<GuestRecord['data']> = {}): {
+  record: GuestRecord;
+  update: ReturnType<typeof vi.fn>;
+} {
   const update = vi.fn().mockResolvedValue(undefined);
 
   return {
@@ -41,6 +42,7 @@ function buildGuestRecord(
         confirmedCount: 0,
         confirmedAt: null,
         firstOpenedAt: null,
+        invitedAt: null,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
         ...overrides,
@@ -119,7 +121,9 @@ describe('GET /api/invitation/[token]', () => {
   });
 
   it('doesNotOverwriteFirstOpenedAtOnASecondVisit', async () => {
-    const { record, update } = buildGuestRecord({ firstOpenedAt: new Date('2026-09-01T00:00:00Z') });
+    const { record, update } = buildGuestRecord({
+      firstOpenedAt: new Date('2026-09-01T00:00:00Z'),
+    });
     vi.mocked(findGuestByToken).mockResolvedValue(record);
     const response = buildResponse();
 
@@ -139,7 +143,9 @@ describe('GET /api/invitation/[token]', () => {
 
     await handler(buildRequest(TOKEN), response);
 
-    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ confirmed: true, confirmedCount: 2 }));
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ confirmed: true, confirmedCount: 2 }),
+    );
   });
 
   it('reflectsThatRsvpIsClosedPastTheDeadline', async () => {

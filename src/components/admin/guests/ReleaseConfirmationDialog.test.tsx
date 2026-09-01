@@ -28,6 +28,7 @@ const fatima: AdminGuest = {
   confirmedCount: 2,
   confirmedAt: new Date('2026-08-01'),
   firstOpenedAt: new Date('2026-08-01'),
+  invitedAt: null,
   createdAt: new Date('2026-08-01'),
   updatedAt: new Date('2026-08-01'),
 };

@@ -211,6 +211,7 @@ Sin esas tres condiciones, JSDoc se convierte en una puerta trasera para comenta
 | `confirmedCount` | number            | sí          | `0`     | Entero, 0 ≤ n ≤ `guestLimit`                                                              |
 | `confirmedAt`    | Timestamp \| null | no          | `null`  |                                                                                           |
 | `firstOpenedAt`  | Timestamp \| null | no          | `null`  | Se llena en el primer `GET` del enlace                                                    |
+| `invitedAt`      | Timestamp \| null | no          | `null`  | Se llena cuando la consola marca el envío por WhatsApp (WED-83)                           |
 | `notes`          | string \| null    | no          | `null`  | Uso interno                                                                               |
 | `createdAt`      | Timestamp         | sí          | —       |                                                                                           |
 | `updatedAt`      | Timestamp         | sí          | —       |                                                                                           |
@@ -1003,13 +1004,15 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 
 #### WED-83 — Envío de invitaciones desde la consola
 
-**Feature · 3 · WED-82 · vía A**
+**Feature · 3 · WED-82 — cerrado en código · vía A**
 
-- [ ] Botón por fila que abre `wa.me/{phone}` con mensaje prellenado que **incluye el enlace único**.
-- [ ] Botón para copiar el enlace, con confirmación visual.
-- [ ] Marca de a quién ya se le envió.
-- [ ] La plantilla del mensaje vive en `src/content/` y es editable.
-- [ ] **Probado en móvil**: abre WhatsApp con el contacto y el texto correctos.
+- [x] Botón por fila que abre `wa.me/{phone}` con mensaje prellenado que **incluye el enlace único**. `GuestInviteActions` construye `/i/{token}` con `window.location.origin` (`buildInvitationUrl`) y arma el `wa.me` con el teléfono E.164 sin el `+` (`buildGuestWhatsAppLink`); el enlace se abre con `window.open` **de forma síncrona en el handler del clic**, antes de disparar la mutación, para no chocar con el bloqueo de popups de iOS Safari (mismo cuidado que ADR-003).
+- [x] Botón para copiar el enlace, con confirmación visual. `navigator.clipboard.writeText` + `toast.success`/`toast.error` (sonner, ya cableado desde la estabilización de endpoints) según el resultado.
+- [x] Marca de a quién ya se le envió. **Campo nuevo en el modelo de datos**, documentado en §3: `invitedAt: Timestamp | null`, mismo patrón que `firstOpenedAt` (se llena una vez, nunca se sobreescribe automáticamente). Se marca al hacer clic en "Enviar invitación" mediante `PATCH /api/admin/guests/[id]` (reutiliza `updateGuestSchema`/`useUpdateGuestMutation` existentes, sin endpoint nuevo). Columna "Invitación" en la tabla con badge Enviada/No enviada.
+- [x] La plantilla del mensaje vive en `src/content/` y es editable. `buildGuestInviteMessage` en `src/content/adminGuestInvite.ts`.
+- [~] **Probado en móvil**: no verificado — no hay dispositivo ni navegador disponible en este entorno. Pendiente de ensayo manual, mismo criterio que el resto de los "probado en un teléfono real" de la vía B.
+
+**Implementación.** `src/content/adminGuestInvite.ts` (copy + `buildGuestInviteMessage`) y `src/components/admin/guests/buildGuestInviteLink.ts` (`buildInvitationUrl`, `buildGuestWhatsAppLink`, funciones puras) alimentan `GuestInviteActions.tsx`, montado por fila en `AdminGuestsTable`. Como el envío real ocurre en WhatsApp (fuera de la app), no hay forma de confirmar que el mensaje se envió de verdad — "marcar como enviado" es una señal de intención del clic, mismo espíritu que ADR-003 ("la consola es la fuente de verdad, el paso de WhatsApp es cortesía"). 304 tests (antes 295), 98.67 % de cobertura global; `npm run verify` y `npm run build` en verde, incluida la verificación con `.env.local` oculto (ver lección de WED-81/estabilización de endpoints).
 
 #### WED-84 — Exportación y utilidades
 
