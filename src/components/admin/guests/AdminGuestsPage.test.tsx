@@ -37,6 +37,7 @@ const orlando: AdminGuest = {
   confirmedCount: 0,
   confirmedAt: null,
   firstOpenedAt: null,
+  invitedAt: null,
   createdAt: new Date('2026-08-01'),
   updatedAt: new Date('2026-08-01'),
 };

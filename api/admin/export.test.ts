@@ -49,6 +49,7 @@ function buildGuestListItem(overrides: Partial<GuestListItem['data']> = {}): Gue
       confirmedCount: 2,
       confirmedAt: new Date('2026-09-01T00:00:00Z'),
       firstOpenedAt: new Date('2026-08-30T00:00:00Z'),
+      invitedAt: null,
       createdAt: new Date('2026-01-01T00:00:00Z'),
       updatedAt: new Date('2026-01-01T00:00:00Z'),
       ...overrides,

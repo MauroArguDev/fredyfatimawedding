@@ -42,6 +42,7 @@ function parseGuestSnapshot(snapshot: DocumentSnapshot): Guest {
     ...raw,
     confirmedAt: toDateOrNull(raw.confirmedAt),
     firstOpenedAt: toDateOrNull(raw.firstOpenedAt),
+    invitedAt: toDateOrNull(raw.invitedAt),
     createdAt: toDate(raw.createdAt),
     updatedAt: toDate(raw.updatedAt),
   });
@@ -117,6 +118,7 @@ export async function createGuest(input: CreateGuestInput): Promise<GuestListIte
     confirmedCount: 0,
     confirmedAt: null,
     firstOpenedAt: null,
+    invitedAt: null,
     createdAt: now,
     updatedAt: now,
   };

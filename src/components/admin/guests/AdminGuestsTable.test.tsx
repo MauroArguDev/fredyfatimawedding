@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminGuestsTable } from '@/components/admin/guests/AdminGuestsTable';
 import { adminGuestsTableCopy } from '@/content/adminGuests';
 import { editGuestDialogCopy } from '@/content/adminGuestForm';
 import { deleteGuestDialogCopy, releaseConfirmationDialogCopy } from '@/content/adminGuestActions';
+import { adminGuestInviteCopy } from '@/content/adminGuestInvite';
 import type { AdminGuest } from '@/schemas/guest';
+
+vi.mock('@/components/admin/auth/fetchAdminApi', () => ({ fetchAdminApi: vi.fn() }));
 
 const orlando: AdminGuest = {
   id: 'id-1',
@@ -20,6 +24,7 @@ const orlando: AdminGuest = {
   confirmedCount: 0,
   confirmedAt: null,
   firstOpenedAt: null,
+  invitedAt: null,
   createdAt: new Date('2026-08-01'),
   updatedAt: new Date('2026-08-01'),
 };
@@ -32,22 +37,27 @@ const fatima: AdminGuest = {
   confirmed: true,
   confirmedCount: 2,
   firstOpenedAt: new Date('2026-08-15T18:30:00-06:00'),
+  invitedAt: new Date('2026-08-16T10:00:00-06:00'),
 };
 
 function renderTable(
   guests: AdminGuest[],
   overrides: Partial<Parameters<typeof AdminGuestsTable>[0]> = {},
 ) {
+  const queryClient = new QueryClient();
+
   return render(
-    <AdminGuestsTable
-      guests={guests}
-      sort={{ key: 'name', direction: 'asc' }}
-      onToggleSort={vi.fn()}
-      onEdit={vi.fn()}
-      onDelete={vi.fn()}
-      onReleaseConfirmation={vi.fn()}
-      {...overrides}
-    />,
+    <QueryClientProvider client={queryClient}>
+      <AdminGuestsTable
+        guests={guests}
+        sort={{ key: 'name', direction: 'asc' }}
+        onToggleSort={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onReleaseConfirmation={vi.fn()}
+        {...overrides}
+      />
+    </QueryClientProvider>,
   );
 }
 
@@ -123,6 +133,24 @@ describe('AdminGuestsTable', () => {
     await userEvent.click(screen.getByRole('button', { name: deleteGuestDialogCopy.trigger }));
 
     expect(onDelete).toHaveBeenCalledWith(orlando);
+  });
+
+  it('showsWhetherEachGuestWasAlreadyInvited', () => {
+    renderTable([orlando, fatima]);
+
+    expect(screen.getByText(adminGuestInviteCopy.invitedNo)).toBeInTheDocument();
+    expect(screen.getByText(adminGuestInviteCopy.invitedYes)).toBeInTheDocument();
+  });
+
+  it('showsSendAndCopyInviteButtonsForEveryGuest', () => {
+    renderTable([orlando]);
+
+    expect(
+      screen.getByRole('button', { name: adminGuestInviteCopy.sendButton }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: adminGuestInviteCopy.copyButton }),
+    ).toBeInTheDocument();
   });
 
   it('callsOnReleaseConfirmationWithTheGuestWhenReleaseIsClicked', async () => {

@@ -218,6 +218,7 @@ describe('adminGuestSchema', () => {
     confirmedCount: 0,
     confirmedAt: null,
     firstOpenedAt: '2026-08-30T12:00:00.000Z',
+    invitedAt: null,
     createdAt: '2026-08-01T00:00:00.000Z',
     updatedAt: '2026-08-01T00:00:00.000Z',
   };

@@ -61,6 +61,7 @@ describe('CreateGuestDialog', () => {
           confirmedCount: 0,
           confirmedAt: null,
           firstOpenedAt: null,
+          invitedAt: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }),

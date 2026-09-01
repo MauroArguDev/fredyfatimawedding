@@ -26,6 +26,7 @@ export const updateGuestSchema = createGuestSchema
   .extend({
     confirmed: z.boolean(),
     confirmedCount: z.number().int().min(0).max(MAX_GUEST_LIMIT),
+    invitedAt: z.coerce.date().nullable(),
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, {
@@ -43,6 +44,7 @@ export const guestSchema = createGuestSchema.extend({
   confirmedCount: z.number().int().min(0),
   confirmedAt: z.date().nullable(),
   firstOpenedAt: z.date().nullable(),
+  invitedAt: z.date().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -51,6 +53,7 @@ export const adminGuestSchema = guestSchema.extend({
   id: z.string(),
   confirmedAt: z.coerce.date().nullable(),
   firstOpenedAt: z.coerce.date().nullable(),
+  invitedAt: z.coerce.date().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });
