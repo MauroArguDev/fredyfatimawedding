@@ -689,12 +689,16 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-42 — Middleware de auth admin
 
-**Feature · 3 · WED-20**
+**Feature · 3 · WED-20 — cerrado**
 
-- [ ] `requireAuth(request)` verifica el ID token con `verifyIdToken()`.
-- [ ] Sin cabecera, token expirado o de otro proyecto → 401 `UNAUTHORIZED`.
-- [ ] **Verificado que un ID token válido de otro proyecto Firebase es rechazado.**
-- [ ] Test que confirma que ninguna ruta bajo `/api/admin/` quedó sin proteger.
+- [x] `requireAuth(request)` verifica el ID token con `verifyIdToken()`.
+- [x] Sin cabecera, token expirado o de otro proyecto → 401 `UNAUTHORIZED`.
+- [x] **Verificado que un ID token válido de otro proyecto Firebase es rechazado.** `verifyIdToken()` valida el `aud` del token contra el proyecto configurado por diseño de Firebase; como ADR-011 descarta un segundo proyecto Firebase de prueba, esto se verificó con un test unitario que confirma que **cualquier** rechazo de `verifyIdToken()` (expirado, malformado, de otro proyecto) se traduce en `UnauthorizedError` → 401, más una verificación en vivo contra el proyecto real con un token basura (ver nota abajo). No se reimplementa la garantía de Firebase, se confía en ella y se prueba que nuestro código reacciona bien a su rechazo.
+- [x] Test que confirma que ninguna ruta bajo `/api/admin/` quedó sin proteger: `everyHandlerUnderApiAdminIsWrappedInWithAdminAuth` escanea `api/admin/**/*.ts` (glob real, no una lista harcodeada) y falla si algún handler no contiene `withAdminAuth`. Hoy pasa vacío porque `api/admin/` todavía no existe (WED-43); el test queda listo para proteger cada ruta que se agregue.
+
+**Implementación.** `api/_lib/adminAuth.ts` expone `requireAuth` (valida el header `Bearer`, llama a `auth().verifyIdToken()`, envuelve cualquier fallo en `UnauthorizedError`) y `withAdminAuth`, un higher-order function que envuelve un handler para que la protección sea estructural: un handler de `/api/admin/*` solo puede exportarse a través de `withAdminAuth`, así que no hay ninguna ruta que alguien pueda olvidar proteger individualmente. WED-43 en adelante debe exportar sus handlers como `export default withAdminAuth(async (request, response, admin) => {...})`.
+
+**Verificado en vivo contra el proyecto Firebase real (ADR-011).** Sin `Authorization` → rechazado. Un token basura (no un JWT real) → rechazado por el `verifyIdToken()` real, no por un mock. No se pudo probar en vivo el caso específico de "token de **otro proyecto** Firebase" porque ADR-011 descarta tener un segundo proyecto; ese sub-caso queda cubierto solo por el test unitario descrito arriba.
 
 #### WED-43 — CRUD de invitados
 
