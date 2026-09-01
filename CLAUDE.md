@@ -652,15 +652,17 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-40 — `GET /api/invitation/[token]`
 
-**Feature · 3 · WED-21**
+**Feature · 3 · WED-21 — cerrado**
 
-- [ ] Devuelve el shape de §4 para un token válido.
-- [ ] **Nunca devuelve `phone`, `notes` ni `token`** (verificado con test).
-- [ ] Escribe `firstOpenedAt` solo si estaba en `null`; una segunda visita no la sobrescribe.
-- [ ] Token inexistente → 404 con cuerpo JSON, sin stack trace.
-- [ ] `rsvpOpen` calculado contra `RSVP_DEADLINE` en `America/El_Salvador`.
-- [ ] `Cache-Control: private, no-store`: la respuesta de un invitado jamás se sirve a otro.
-- [ ] Tests: válido, inexistente, malformado, pasada la fecha límite, segunda apertura, invitado ya confirmado.
+- [x] Devuelve el shape de §4 para un token válido.
+- [x] **Nunca devuelve `phone`, `notes` ni `token`** (verificado con test).
+- [x] Escribe `firstOpenedAt` solo si estaba en `null`; una segunda visita no la sobrescribe.
+- [x] Token inexistente → 404 con cuerpo JSON, sin stack trace.
+- [x] `rsvpOpen` calculado contra `RSVP_DEADLINE` en `America/El_Salvador`.
+- [x] `Cache-Control: private, no-store`: la respuesta de un invitado jamás se sirve a otro. Ya cubierto por el header global de `vercel.json` (WED-12) sobre `/api/(.*)`; no hizo falta código adicional.
+- [x] Tests: válido, inexistente, malformado, pasada la fecha límite, segunda apertura, invitado ya confirmado.
+
+**Implementación.** `api/invitation/[token].ts` delega en dos helpers de `api/_lib/` reutilizables por WED-41: `guests.ts` (`findGuestByToken`, que también convierte los `Timestamp` de Firestore a `Date` contra `guestSchema`) y `rsvpDeadline.ts` (`isRsvpOpen`, comparación de `Date` contra `RSVP_DEADLINE`, válida porque El Salvador no tiene horario de verano). Un token malformado o ausente en la query nunca llega a consultar Firestore: se resuelve a `TOKEN_NOT_FOUND` directamente. 100% de cobertura en los tres archivos nuevos (verificado con `npm run verify`, incluye el chequeo de `tsc -b --noEmit` post-fix del bug de WED-15).
 
 #### WED-41 — `POST /api/rsvp`
 
