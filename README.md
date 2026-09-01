@@ -10,11 +10,22 @@ cp .env.example .env
 npm run dev
 ```
 
+**`npm run dev` does not serve `/api/*`.** It's plain Vite, so it's fine for the invitation and for the admin login screen (Firebase Auth runs entirely client-side, no backend involved). But any request to `/api/*` — the guest list, create/edit/delete, the public invitation endpoint — hits Vite's own static file server instead of a real function. Vite happens to find `api/admin/guests.ts` on disk and serves its **raw, untranspiled source** as `200 text/javascript`, which looks like success in the Network tab but fails as soon as the client tries to parse it as JSON. If you see the admin console stuck on "no pudimos cargar" with a 200 in Network, this is almost always why.
+
+To get a real local backend, use the Vercel CLI instead:
+
+```bash
+npx vercel link   # once per machine; interactive browser login, links to the existing fredyfatimawedding project
+npx vercel dev     # serves the frontend AND api/* together, on localhost:3000 by default
+```
+
+Known quirk: `vercel dev` does **not** apply the custom response headers from `vercel.json` (e.g. the `Cache-Control: private, no-store` rule on `/api/*`) the way production does. Don't use `vercel dev` to verify caching-header behavior — that only reflects reality on a Preview deploy or production.
+
 ## Scripts
 
 | Command                                                           | What it does                                                                                                                                                                                              |
 | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`                                                     | Vite dev server on `localhost:5173`                                                                                                                                                                       |
+| `npm run dev`                                                     | Vite dev server on `localhost:5173`. Frontend only — see the note above for `/api/*`.                                                                                                                     |
 | `npm run build`                                                   | Type-checks and builds to `dist/`                                                                                                                                                                         |
 | `npm run lint`                                                    | ESLint, zero warnings tolerated                                                                                                                                                                           |
 | `npm run lint:disables`                                           | Fails if lint suppressions exceed the budget of 10                                                                                                                                                        |
