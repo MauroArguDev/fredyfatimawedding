@@ -35,8 +35,9 @@ Run `npm run verify` before opening a pull request. It is the same gate the CI u
 api/            Vercel serverless functions. The only place that touches Firestore.
 api/_lib/       Shared server helpers. The only place where JSDoc is allowed.
 src/schemas/    Zod schemas shared between the browser and api/.
-src/components/ui/     Invitation components. Uses the design tokens.
-src/components/admin/  Console components. Uses shadcn/ui. Never imports from ui/.
+src/components/ui/                 Invitation components. Uses the design tokens.
+src/components/admin/              Console components. Uses shadcn/ui. Never imports from ui/.
+src/components/admin/primitives/   Generated shadcn/Radix primitives (`shadcn add`). Vendored, not hand-styled.
 src/content/    Every user-facing Spanish string. Keys in English, values in Spanish.
 scripts/        Maintenance scripts run with tsx.
 types/          Ambient declarations for untyped dependencies.
@@ -52,7 +53,8 @@ These are not style preferences. A pull request that breaks one of them does not
 - **The browser never imports Firestore.** All data access goes through `api/`.
 - **`ui/` and `admin/` never import each other.** They are two products that happen to share a repository.
 - **Complexity 10, functions 50 lines, nesting 3, parameters 4.** More than three parameters go in an object.
-- **Coverage: 90% in `api/` and `src/schemas/`, 60% overall.** Firebase credential bootstrap is excluded because testing it only tests the Firebase SDK.
+- **Coverage: 90% in `api/` and `src/schemas/`, 60% overall.** Firebase credential bootstrap is excluded because testing it only tests the Firebase SDK. `src/components/admin/primitives/` is excluded for the same reason: it's generated shadcn/Radix code, not hand-written app logic.
+- **`src/components/admin/primitives/` is exempt from the naming-convention and one-component-per-file rules.** It's regenerated with `shadcn add --overwrite` and kept close to upstream on purpose, so it isn't rewritten into this repo's arrow-function/PascalCase-only style. Nothing else in the codebase gets this exemption.
 - **At most 10 lint suppressions in the whole repository.** Past that, fix the code or change the rule.
 
 ## Branches and commits

@@ -224,6 +224,14 @@ export default defineConfig(
   },
 
   {
+    files: ['src/components/admin/primitives/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/naming-convention': 'off',
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+
+  {
     files: ['**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'no-magic-numbers': 'off',

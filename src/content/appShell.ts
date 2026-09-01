@@ -18,4 +18,6 @@ export const invitationStatusCopy = {
 export const adminShellCopy = {
   loading: 'Cargando panel…',
   placeholder: 'La consola de administración todavía no está implementada.',
+  title: 'Panel de administración',
+  logout: 'Cerrar sesión',
 } as const;
