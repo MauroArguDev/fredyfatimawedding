@@ -3,6 +3,7 @@ import { AdminAuthProvider } from '@/components/admin/auth/AdminAuthProvider';
 import { RequireAdminAuth } from '@/components/admin/auth/RequireAdminAuth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { useAdminAuth } from '@/components/admin/auth/useAdminAuth';
+import { AdminGuestsPage } from '@/components/admin/guests/AdminGuestsPage';
 import { adminShellCopy } from '@/content/appShell';
 
 const AdminConsole = (): ReactNode => {
@@ -16,7 +17,7 @@ const AdminConsole = (): ReactNode => {
         void signOutAdmin();
       }}
     >
-      <p>{adminShellCopy.placeholder}</p>
+      <AdminGuestsPage />
     </AdminShell>
   );
 };
