@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useAdminGuests } from '@/components/admin/guests/useAdminGuests';
+import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
 import { AdminGuestsBrowser } from '@/components/admin/guests/AdminGuestsBrowser';
 import { AdminLoadingState } from '@/components/admin/AdminLoadingState';
 import { AdminErrorState } from '@/components/admin/AdminErrorState';
@@ -15,7 +16,7 @@ export const AdminGuestsPage = (): ReactNode => {
   if (query.isError) {
     return (
       <AdminErrorState
-        message={adminGuestsPageCopy.errorMessage}
+        message={resolveAdminApiErrorMessage(query.error) ?? adminGuestsPageCopy.errorMessage}
         retry={{
           label: adminGuestsPageCopy.retry,
           onRetry: () => {

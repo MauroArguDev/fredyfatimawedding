@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminGuestsBrowser } from '@/components/admin/guests/AdminGuestsBrowser';
 import { adminGuestsTableCopy } from '@/content/adminGuests';
 import type { AdminGuest } from '@/schemas/guest';
+
+vi.mock('@/components/admin/auth/firebaseClient', () => ({ auth: {} }));
 
 const orlando: AdminGuest = {
   id: 'id-1',
@@ -32,6 +35,16 @@ const stats = {
   totalConfirmedPeople: 0,
 };
 
+function renderBrowser(guests: AdminGuest[]) {
+  const queryClient = new QueryClient();
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AdminGuestsBrowser guests={guests} stats={stats} />
+    </QueryClientProvider>,
+  );
+}
+
 function firstBodyRowName(): string | undefined {
   const table = screen.getByRole('table');
   const firstRow = within(table).getAllByRole('row')[1];
@@ -40,13 +53,13 @@ function firstBodyRowName(): string | undefined {
 
 describe('AdminGuestsBrowser', () => {
   it('sortsByNameAscendingByDefault', () => {
-    render(<AdminGuestsBrowser guests={[orlando, fatima]} stats={stats} />);
+    renderBrowser([orlando, fatima]);
 
     expect(firstBodyRowName()).toBe('Fátima');
   });
 
   it('flipsTheDirectionWhenTheSameHeaderIsClickedAgain', async () => {
-    render(<AdminGuestsBrowser guests={[orlando, fatima]} stats={stats} />);
+    renderBrowser([orlando, fatima]);
 
     const nameHeader = screen.getByRole('button', {
       name: new RegExp(adminGuestsTableCopy.firstName),
@@ -57,7 +70,7 @@ describe('AdminGuestsBrowser', () => {
   });
 
   it('switchesToAscendingWhenAPreviouslyUnsortedHeaderIsClicked', async () => {
-    render(<AdminGuestsBrowser guests={[orlando, fatima]} stats={stats} />);
+    renderBrowser([orlando, fatima]);
 
     await userEvent.click(screen.getByRole('button', { name: adminGuestsTableCopy.status }));
 

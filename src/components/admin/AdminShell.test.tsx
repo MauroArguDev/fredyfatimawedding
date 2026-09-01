@@ -13,6 +13,7 @@ describe('AdminShell', () => {
 
     expect(screen.getByRole('heading', { name: 'Panel de administración' })).toBeInTheDocument();
     expect(screen.getByText('Contenido')).toBeInTheDocument();
+    expect(document.querySelector('section[aria-live="polite"]')).toBeInTheDocument();
   });
 
   it('callsOnLogoutWhenTheLogoutButtonIsClicked', async () => {
