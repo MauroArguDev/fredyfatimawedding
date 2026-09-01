@@ -458,58 +458,62 @@ E0 (WED-01, WED-02) · E3 Design System · E5 Invitación · E6 Animaciones · W
 
 #### WED-10 — Repositorio y proyecto Vite
 
-**Setup · 2 · sin dependencias**
+**Setup · 2 · sin dependencias — cerrado**
 
-- [ ] Repositorio Git privado con `README.md` que explica cómo levantar el proyecto en ≤3 comandos.
-- [ ] Vite + React + TypeScript `strict`; `npm run dev` sin errores.
-- [ ] `.gitignore` cubre `node_modules`, `.env*`, `dist`, `.vercel`.
-- [ ] `.env.example` versionado con las variables de §3, sin valores reales.
-- [ ] Estructura: `src/components/ui/`, `src/components/sections/`, `src/pages/`, `src/hooks/`, `src/lib/`, `src/content/`, `src/schemas/`, `api/`, `public/assets/`, `public/audio/`.
-- [ ] Alias `@/` configurado en Vite y `tsconfig.json`.
-- [ ] `src/schemas/` importable desde `src/` **y** desde `api/`, verificado con un import real en ambos.
-- [ ] Todo identificador y nombre de archivo del scaffold inicial en inglés (§10).
+- [x] Repositorio Git privado con `README.md` que explica cómo levantar el proyecto en ≤3 comandos.
+- [x] Vite + React + TypeScript `strict`; `npm run dev` sin errores.
+- [x] `.gitignore` cubre `node_modules`, `.env*`, `dist`, `.vercel`.
+- [x] `.env.example` versionado con las variables de §3, sin valores reales.
+- [x] Estructura real: `src/components/ui/`, `src/components/admin/`, `src/pages/`, `src/hooks/`, `src/lib/`, `src/content/`, `src/schemas/`, `api/`, `public/assets/`, `public/audio/`. **Nota:** el ticket decía `src/components/sections/`; ADR-010 (posterior) lo reemplazó por el split `ui/`/`admin/` que sí existe. El texto de este ticket quedó desactualizado, no el código.
+- [x] Alias `@/` configurado en Vite y `tsconfig.json`.
+- [x] `src/schemas/` importable desde `api/`, con imports reales (`api/_lib/guests.ts`, `api/rsvp.ts`, etc.). **Aún no ejercitado desde `src/`** porque no hay componentes que consuman esquemas todavía (llega con WED-51/WED-70).
+- [x] Todo identificador y nombre de archivo del scaffold inicial en inglés (§10).
 
 #### WED-11 — Linting, formato y pre-commit
 
-**Setup · 2 · WED-10**
+**Setup · 2 · WED-10 — cerrado, con 3 gaps reales encontrados y corregidos el 2026-08-31**
 
-- [ ] ESLint + Prettier sin conflictos.
-- [ ] Scripts `lint`, `typecheck`, `format`, `test` pasan en limpio.
-- [ ] Husky + lint-staged; un commit con error de tipo es rechazado localmente.
-- [ ] **Regla de ESLint que prohíbe importar `firebase/firestore` fuera de `api/`** (ADR-001), verificada con un import de prueba que falla el lint.
-- [ ] **Regla que prohíbe imports cruzados entre `src/components/ui/` y `src/components/admin/`** (ADR-010), verificada en ambas direcciones.
-- [ ] Convención de ramas y commits (Conventional Commits, en inglés) documentada en el README.
+- [x] ESLint + Prettier sin conflictos (`eslint-config-prettier` aplicado al final de la config).
+- [~] Scripts `lint`, `typecheck`, `test` pasan en limpio. **`format` no** — `npm run format:check` falla en 31 archivos porque no hay `.gitattributes` que fije el line-ending y este entorno Windows tiene `core.autocrlf=true` (CRLF en disco vs LF que espera Prettier por defecto). No afecta a `lint` ni a CI (corre en `ubuntu-latest`, LF nativo), pero el checkbox no es honesto si se marca sin más. **Queda pendiente como fix aparte** (agregar `.gitattributes` con `eol=lf` normalizaría todo el repo de una vez, pero es un diff grande que merece su propio commit, no colarlo en esta verificación).
+- [x] **Husky + lint-staged; un commit con error de tipo es rechazado localmente.** Encontrados y corregidos dos problemas reales, verificados en vivo con un commit real que se intentó y se deshizo:
+  1. `core.hooksPath` **no estaba configurado** en este clon — el `prepare` de `package.json` (`husky`) nunca se había ejecutado, así que ningún hook corría nunca, en ninguna de las sesiones anteriores. Corregido con `npm run prepare`. **Esto modificó `.git/config` local** (`core.hooksPath = .husky/_`), la única forma de que Husky funcione; es config local de esta máquina, no se versiona, y es exactamente lo que `npm install` está pensado para hacer solo. Avisado explícitamente porque toca git config.
+  2. `.husky/pre-commit` solo corría `lint-staged` (eslint+prettier por archivo), **nunca `tsc`** — un error de tipos real no se detectaba antes del commit. Se agregó `npm run typecheck` al hook.
+  - Verificado en vivo: un archivo con `const x: number = 'string'` fue rechazado por el hook (`husky - pre-commit script failed`); con el fix ya no llega a la base.
+- [x] **Regla de ESLint que prohíbe importar `firebase/firestore` fuera de `api/`** (ADR-001) — verificada en vivo con un fixture temporal (`import { getFirestore } from 'firebase/firestore'` en `src/`), falló el lint como se esperaba, fixture borrado después.
+- [x] **Regla que prohíbe imports cruzados entre `src/components/ui/` y `src/components/admin/`** (ADR-010) — **gap real encontrado y corregido.** Los patrones originales (`**/components/admin/**`, `@/components/admin/**`) solo atrapaban imports por alias `@/...`; un import relativo natural (`../admin/Foo`, el que realmente escribiría alguien parado en `src/components/ui/`) pasaba el lint sin error. Se agregaron los patrones `**/admin/**` y `**/ui/**` a cada override. Verificado en ambas direcciones y con ambos estilos de import (relativo y alias) tras el fix.
+- [x] Convención de ramas y commits (Conventional Commits, en inglés) documentada en el README.
 
 #### WED-15 — Enforcement de las convenciones de código
 
-**Setup · 3 · WED-11**
+**Setup · 3 · WED-11 — cerrado, con 1 gap real encontrado y corregido el 2026-08-31**
 
 Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una intención y no una garantía.
 
-- [ ] `tsconfig.json` con `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `exactOptionalPropertyTypes`.
-- [ ] `@typescript-eslint/no-explicit-any` en `error`.
-- [ ] Límites activos y en `error`: `complexity` máx. 10, `max-lines-per-function` 50, `max-depth` 3, `max-params` 4.
-- [ ] `no-magic-numbers` activo con excepciones acotadas (`0`, `1`, `-1`).
-- [ ] `@typescript-eslint/naming-convention` fuerza camelCase para variables y funciones, PascalCase para tipos y componentes, UPPER_SNAKE_CASE para constantes de módulo.
-- [ ] **Regla local que prohíbe todos los comentarios** salvo directivas `eslint-disable`. ESLint no trae una regla equivalente, así que se define en `eslint.config.ts` usando `sourceCode.getAllComments()`. **No se crea ningún archivo `.js` en el repo**: la configuración de ESLint también es TypeScript, cargada con `jiti`.
-- [ ] **La regla acepta JSDoc bajo `api/_lib/`** (ADR-007), habilitado con un `override` de ESLint acotado a esa ruta y una opción `allowJsDoc` que solo tolera bloques `/** … */` adosados a declaraciones exportadas.
-- [ ] Un archivo de prueba con un comentario, un `any` y una función de 60 líneas falla el lint en los tres puntos.
-- [ ] Verificado que la excepción no se filtra: un JSDoc en `src/` falla, y un `//` dentro de `api/_lib/` también.
+- [x] `tsconfig.json` con `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `exactOptionalPropertyTypes` (en `tsconfig.app.json`, referenciado desde la raíz en modo project references).
+- [x] `@typescript-eslint/no-explicit-any` en `error`.
+- [x] Límites activos y en `error`: `complexity` máx. 10, `max-lines-per-function` 50, `max-depth` 3, `max-params` 4.
+- [x] `no-magic-numbers` activo con excepciones acotadas (`0`, `1`, `-1`).
+- [x] `@typescript-eslint/naming-convention` fuerza camelCase para variables y funciones, PascalCase para tipos y componentes, UPPER_SNAKE_CASE para constantes de módulo.
+- [x] **Regla local que prohíbe todos los comentarios** salvo directivas `eslint-disable`, definida en `eslint.config.ts` con `sourceCode.getAllComments()`. Cero archivos `.js` en el repo (config cargada con `jiti`).
+- [x] **La regla acepta JSDoc bajo `api/_lib/`** (ADR-007), con `override` acotado a esa ruta y opción `allowJsDoc`.
+- [x] Verificado en vivo con fixtures temporales: un archivo con comentario + `any` + función de 61 líneas falló en los tres puntos exactos (`local/no-comments`, `@typescript-eslint/no-explicit-any`, `max-lines-per-function`); un JSDoc fuera de `api/_lib/` falló; un `//` dentro de `api/_lib/` también falló (solo JSDoc se acepta ahí). Fixtures borrados después.
 
-**Control de las supresiones.** Sin esto, `eslint-disable` se vuelve la salida rápida ante cualquier regla incómoda y el enforcement queda decorativo a las tres semanas. Desactivar debe costar más que arreglar.
+**Control de las supresiones.**
 
-- [ ] `linterOptions.reportUnusedDisableDirectives: "error"`: una directiva que ya no suprime nada rompe el build.
-- [ ] `@eslint-community/eslint-plugin-eslint-comments` instalado con `no-unlimited-disable`, `require-description`, `no-aggregating-enable` y `disable-enable-pair` en `error`.
-- [ ] **Prohibido el `eslint-disable` de archivo o de bloque.** Solo se admite `eslint-disable-next-line`, con las reglas nombradas una por una. Un `/* eslint-disable */` al inicio de un archivo falla el lint.
-- [ ] **Toda directiva exige justificación en la misma línea**, con la sintaxis `-- motivo`. Sin descripción, falla. Ejemplo válido: `// eslint-disable-next-line complexity -- máquina de estados del sobre, dividirla la oscurece`.
-- [ ] `@typescript-eslint/ban-ts-comment` con `minimumDescriptionLength: 20`: `@ts-expect-error` requiere explicación y `@ts-ignore` está prohibido.
-- [ ] **Tope global de supresiones verificado en CI.** Un script cuenta las directivas en el repo y falla por encima de 10. Al superar el tope, la decisión es corregir el código o cambiar la regla, no acumular excepciones.
-- [ ] El tope y su motivo están documentados en el README, para que quien lo suba sepa lo que está haciendo.
-- [ ] Un archivo de prueba con `/* eslint-disable */` de archivo, y otro con una directiva sin descripción, fallan el lint.
+- [x] `linterOptions.reportUnusedDisableDirectives: "error"`.
+- [x] `@eslint-community/eslint-plugin-eslint-comments` con `no-unlimited-disable`, `require-description`, `no-aggregating-enable`, `disable-enable-pair`, `no-unused-disable` en `error`.
+- [x] **Prohibido el `eslint-disable` de archivo o de bloque — gap real encontrado y corregido.** La config original solo bloqueaba un `/* eslint-disable */` _sin_ reglas nombradas (vía `no-unlimited-disable`) o sin descripción/sin `eslint-enable` pareado. Un bloque **correctamente** formado — `/* eslint-disable no-console -- motivo */ ... /* eslint-enable no-console -- motivo */`, con reglas nombradas, descripción y su enable — **pasaba el lint limpio**, contradiciendo directamente este punto y el ejemplo de §10. Se agregó una regla local nueva, `local/no-block-disable`, que prohíbe cualquier `eslint-disable`/`eslint-enable` que no sea `eslint-disable-next-line`, sin excepción. Verificado: el bloque bien formado ahora falla; un `eslint-disable-next-line` legítimo con descripción sigue pasando.
+- [x] **Toda directiva exige justificación en la misma línea** — verificado con fixture (`eslint-disable-next-line` sin `-- motivo` falla).
+- [x] `@typescript-eslint/ban-ts-comment` con `minimumDescriptionLength: 20`.
+- [x] **Tope global de supresiones verificado en CI** (`scripts/countEslintDisables.ts`, corre en `npm run lint:disables` y en `ci.yml`).
+- [x] El tope y su motivo están documentados en el README (sección "Rules the linter enforces").
+- [x] Verificado con fixtures: un `/* eslint-disable */` de archivo sin reglas, y una directiva sin descripción, fallan el lint.
 
-- [ ] Cobertura mínima verificada en CI: **90 % en `api/` y `src/schemas/`**, 60 % global. Bajar de cualquiera de los dos umbrales rompe el build.
-- [ ] **`api/_lib/firestore.ts` excluido de cobertura**: es cableado de credenciales del SDK de Firebase, y testearlo solo testea al SDK. La exclusión está en `vitest.config.ts` y es la única permitida.
-- [ ] Las reglas están documentadas en el README, no solo en la configuración.
+- [x] Cobertura mínima verificada en CI: **90 % en `api/` y `src/schemas/`**, 60 % global (`vitest.config.ts`, y `ci.yml` corre `test:coverage`).
+- [x] **`api/_lib/firestore.ts` excluido de cobertura**, única exclusión en `vitest.config.ts`.
+- [x] Las reglas están documentadas en el README, no solo en la configuración.
+
+**Nota sobre esta verificación (2026-08-31).** Ninguno de los tres gaps de arriba (hooks de Husky inactivos, cruce `ui`/`admin` por import relativo, `eslint-disable` de bloque bien formado) se detectaba con `npm run verify` normal — los tres necesitaron fixtures deliberadamente "maliciosos" para salir a la luz. `npm run verify` sigue siendo la puerta de CI, pero no prueba sus propias reglas de exclusión; vale la pena repetir este tipo de verificación activa si se toca `eslint.config.ts` de nuevo.
 
 **Bug encontrado y corregido (2026-08-31).** `npm run typecheck` era `tsc --noEmit` a secas. Con el `tsconfig.json` raíz en modo _project references_ (`"files": []`, sin `include`, solo `references`), eso es un no-op silencioso: `tsc --noEmit --listFiles` no listaba ni un archivo. `npm run typecheck` y por lo tanto `npm run verify` pasaban en verde sin revisar nada, mientras que `npm run build` (`tsc -b && vite build`) sí compilaba de verdad — por eso un PR pasó todas las verificaciones locales y falló recién en el build de Vercel, con dos errores de tipos reales que ya existían. Corregido a `tsc -b --noEmit`, que construye ambos proyectos referenciados (`tsconfig.app.json`, `tsconfig.node.json`) sin emitir JS — verificado que reproduce exactamente los errores que dio Vercel. Los `.tsbuildinfo` que genera se agregaron a `.gitignore`.
 
@@ -527,16 +531,16 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 
 **Setup · 2 · WED-12, WED-15**
 
-- [ ] GitHub Action ejecuta `lint`, `typecheck`, `test` con umbral de cobertura, y `build` en cada PR.
-- [ ] `master` protegida: sin push directo, requiere CI en verde.
+- [x] `.github/workflows/ci.yml` ejecuta `lint`, `lint:disables`, `typecheck`, `test:coverage` (con umbral) y `build`, en cada PR y en push a `master`.
+- [ ] `master` protegida: sin push directo, requiere CI en verde. **No verificable desde el repo** — es configuración de GitHub (Settings → Branches), no código. Confirmar manualmente en GitHub.
 
 #### WED-14 — Bloqueo de indexación
 
 **Setup · 1 · WED-12**
 
-- [ ] `robots.txt` con `Disallow: /` y meta `noindex` mientras no se lance.
-- [ ] `/i/*` y `/admin` con `noindex` **permanente**.
-- [ ] Previews nunca indexables.
+- [x] `public/robots.txt` con `Disallow: /`, y `index.html` con `<meta name="robots" content="noindex, nofollow">` mientras no se lance.
+- [ ] `/i/*` y `/admin` con `noindex` **permanente**. Todavía no aplica: esas rutas no existen en la SPA (llegan con WED-50). El `noindex` global de arriba las cubre por ahora.
+- [~] Previews nunca indexables. Hoy sí lo están, como efecto colateral del bloqueo global (nada está lanzado). Falta el mecanismo definitivo que distinga "producción ya lanzada" de "preview", para que cuando WED-103 levante el `noindex` global, las previews sigan bloqueadas.
 
 ---
 
