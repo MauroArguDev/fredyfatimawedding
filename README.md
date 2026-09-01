@@ -12,16 +12,20 @@ npm run dev
 
 ## Scripts
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Vite dev server on `localhost:5173` |
-| `npm run build` | Type-checks and builds to `dist/` |
-| `npm run lint` | ESLint, zero warnings tolerated |
-| `npm run lint:disables` | Fails if lint suppressions exceed the budget of 10 |
-| `npm run typecheck` | TypeScript with no emit |
-| `npm run test` | Vitest once |
-| `npm run test:coverage` | Vitest with coverage thresholds enforced |
-| `npm run verify` | Everything above, in the order CI runs it |
+| Command                                                           | What it does                                                                                                                                                                                              |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                                                     | Vite dev server on `localhost:5173`                                                                                                                                                                       |
+| `npm run build`                                                   | Type-checks and builds to `dist/`                                                                                                                                                                         |
+| `npm run lint`                                                    | ESLint, zero warnings tolerated                                                                                                                                                                           |
+| `npm run lint:disables`                                           | Fails if lint suppressions exceed the budget of 10                                                                                                                                                        |
+| `npm run typecheck`                                               | TypeScript with no emit                                                                                                                                                                                   |
+| `npm run test`                                                    | Vitest once                                                                                                                                                                                               |
+| `npm run test:coverage`                                           | Vitest with coverage thresholds enforced                                                                                                                                                                  |
+| `npm run verify`                                                  | Everything above, in the order CI runs it                                                                                                                                                                 |
+| `npm run import:guests -- <path-to-csv>`                          | Bulk-creates guests from a `firstName,lastName,titleLabel,guestLimit,phone` CSV. Aborts without writing anything if any row is invalid. Skips rows whose `phone` already exists, so it is safe to re-run. |
+| `npm run normalize:guests -- <path-to-xlsx-or-csv> [output-path]` | Converts the couple's filled-in sheet (Spanish headers, loose phone formats) into the exact CSV `import:guests` expects. Validates every row first; writes nothing if any row fails.                      |
+
+Collecting the real guest list: share the `.xlsx` handed to the couple (its header row must match `HUMAN_SHEET_HEADER` in `scripts/lib/humanGuestSheet.ts`) → `npm run normalize:guests -- <their file>` → `npm run import:guests -- <the file it printed>`.
 
 Run `npm run verify` before opening a pull request. It is the same gate the CI uses.
 

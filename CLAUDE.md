@@ -30,6 +30,7 @@ El diseño se está rehaciendo. El backlog está partido en dos vías (§6): la 
 - **Nunca importar `firebase/firestore` fuera de `api/`** (ADR-001). El navegador no habla con la base de datos.
 - **Nunca poner un secreto en una variable `VITE_`.** Se compilan en el bundle y son públicas.
 - **Toda validación de negocio vive en el servidor.** El cliente valida para dar buena experiencia, no para proteger.
+- **Antes de cada commit, analizar y limpiar el código que se va a commitear.** Que pase lint/typecheck/test no es suficiente. Revisar explícitamente: duplicación evitable (DRY), funciones o archivos de un solo uso que no aportan nada recurrente (como un generador que corre una vez y se descarta), nombres, complejidad y superficie de seguridad (validación de entradas, manejo de errores explícito, sin secretos en logs). Esta limpieza es parte del trabajo, no un paso opcional al final.
 
 ### Si algo falta o no encaja
 
@@ -73,21 +74,21 @@ Solo la consola puede modificar una confirmación existente.
 
 ## 2. Decisiones de arquitectura
 
-| Área | Decisión |
-|---|---|
-| Frontend | React 18 + Vite + TypeScript (`strict`) |
-| Estilos | Tailwind CSS + variables CSS |
-| Router | React Router v6 (history API) |
-| Estado servidor | TanStack Query |
-| Formularios | React Hook Form + Zod |
-| Animaciones | Framer Motion (`LazyMotion` + `m`) |
-| Audio | HTML5 `<audio>` nativo, sin librería |
-| Backend | Vercel Serverless Functions (`/api/*.ts`) |
-| Base de datos | Firebase Firestore (plan Spark) |
-| Auth | Firebase Auth, email + contraseña, 1 usuario |
-| Hosting | Vercel (Hobby) |
-| Notificación | Enlace `wa.me` generado en servidor |
-| Testing | Vitest + Testing Library. Sin e2e automatizado (ADR-011) |
+| Área            | Decisión                                                 |
+| --------------- | -------------------------------------------------------- |
+| Frontend        | React 18 + Vite + TypeScript (`strict`)                  |
+| Estilos         | Tailwind CSS + variables CSS                             |
+| Router          | React Router v6 (history API)                            |
+| Estado servidor | TanStack Query                                           |
+| Formularios     | React Hook Form + Zod                                    |
+| Animaciones     | Framer Motion (`LazyMotion` + `m`)                       |
+| Audio           | HTML5 `<audio>` nativo, sin librería                     |
+| Backend         | Vercel Serverless Functions (`/api/*.ts`)                |
+| Base de datos   | Firebase Firestore (plan Spark)                          |
+| Auth            | Firebase Auth, email + contraseña, 1 usuario             |
+| Hosting         | Vercel (Hobby)                                           |
+| Notificación    | Enlace `wa.me` generado en servidor                      |
+| Testing         | Vitest + Testing Library. Sin e2e automatizado (ADR-011) |
 
 ### ADR-001 — El navegador nunca habla directo con Firestore
 
@@ -191,27 +192,28 @@ Sin esas tres condiciones, JSDoc se convierte en una puerta trasera para comenta
 **Consecuencia sobre WED-94.** El ticket original de e2e con Playwright pedía correr "en CI contra un proyecto Firebase de prueba, no producción". Sin ese proyecto, esa condición no se puede cumplir de forma segura: un e2e automatizado contra producción podría quemar la confirmación real de un invitado (ADR-006) o alterar datos reales del CRUD. **WED-94 queda eliminado del backlog.** La única red de seguridad para el flujo de RSVP son los tests unitarios de `POST /api/rsvp` (WED-41, cobertura ≥90 %) y el ensayo manual de WED-102.
 
 **Consecuencia sobre los Preview deploys de Vercel.** Cada preview de un PR habla con la base de datos real. Al probar un PR manualmente en su preview:
+
 - No usar tokens de invitados reales para probar el RSVP: se quema su única confirmación (R2/ADR-006) sin forma de deshacerlo salvo por la consola.
-- Cualquier prueba de CRUD del admin (editar, eliminar, rotar token) contra un invitado real es irreversible en los mismos términos que en producción, porque *es* producción.
+- Cualquier prueba de CRUD del admin (editar, eliminar, rotar token) contra un invitado real es irreversible en los mismos términos que en producción, porque _es_ producción.
 - Para probar sin ese riesgo, crear un invitado de prueba explícito en Firestore (marcado en `notes`, ej. `"TEST - borrar antes del lanzamiento"`) y borrarlo después. WED-101 y WED-102 ya piden verificar que no queden datos de prueba antes del envío real.
 
 ### Colección `guests/{guestId}`
 
-| Campo | Tipo | Obligatorio | Default | Notas |
-|---|---|---|---|---|
-| `token` | string | sí | — | `nanoid(21)`, generado en servidor |
-| `firstName` | string | sí | — | 1–60 caracteres |
-| `lastName` | string \| null | no | `null` | 0–60 caracteres |
-| `titleLabel` | string \| null | no | `null` | Texto del sobre, ej. `"Tío Orlando y Familia."` Si es `null`, se usa `firstName lastName` |
-| `guestLimit` | number | sí | — | Entero, 1–20 |
-| `phone` | string | sí | — | E.164, ej. `+50370000000` |
-| `confirmed` | boolean | sí | `false` | Una vez `true`, el invitado no puede volver a enviar (R2) |
-| `confirmedCount` | number | sí | `0` | Entero, 0 ≤ n ≤ `guestLimit` |
-| `confirmedAt` | Timestamp \| null | no | `null` | |
-| `firstOpenedAt` | Timestamp \| null | no | `null` | Se llena en el primer `GET` del enlace |
-| `notes` | string \| null | no | `null` | Uso interno |
-| `createdAt` | Timestamp | sí | — | |
-| `updatedAt` | Timestamp | sí | — | |
+| Campo            | Tipo              | Obligatorio | Default | Notas                                                                                     |
+| ---------------- | ----------------- | ----------- | ------- | ----------------------------------------------------------------------------------------- |
+| `token`          | string            | sí          | —       | `nanoid(21)`, generado en servidor                                                        |
+| `firstName`      | string            | sí          | —       | 1–60 caracteres                                                                           |
+| `lastName`       | string \| null    | no          | `null`  | 0–60 caracteres                                                                           |
+| `titleLabel`     | string \| null    | no          | `null`  | Texto del sobre, ej. `"Tío Orlando y Familia."` Si es `null`, se usa `firstName lastName` |
+| `guestLimit`     | number            | sí          | —       | Entero, 1–20                                                                              |
+| `phone`          | string            | sí          | —       | E.164, ej. `+50370000000`                                                                 |
+| `confirmed`      | boolean           | sí          | `false` | Una vez `true`, el invitado no puede volver a enviar (R2)                                 |
+| `confirmedCount` | number            | sí          | `0`     | Entero, 0 ≤ n ≤ `guestLimit`                                                              |
+| `confirmedAt`    | Timestamp \| null | no          | `null`  |                                                                                           |
+| `firstOpenedAt`  | Timestamp \| null | no          | `null`  | Se llena en el primer `GET` del enlace                                                    |
+| `notes`          | string \| null    | no          | `null`  | Uso interno                                                                               |
+| `createdAt`      | Timestamp         | sí          | —       |                                                                                           |
+| `updatedAt`      | Timestamp         | sí          | —       |                                                                                           |
 
 **Sobre `titleLabel`.** El sobre muestra tratamientos como "Tío Orlando y Familia.", que no se derivan de `firstName` + `lastName`. Se necesita un campo aparte porque esos dos siguen siendo indispensables para el mensaje de WhatsApp a la novia y para buscar y ordenar en la consola.
 
@@ -232,15 +234,15 @@ service cloud.firestore {
 
 ### Variables de entorno
 
-| Variable | Ámbito | Valor / descripción |
-|---|---|---|
-| `FIREBASE_PROJECT_ID` | Servidor | |
-| `FIREBASE_CLIENT_EMAIL` | Servidor | Service account |
-| `FIREBASE_PRIVATE_KEY` | Servidor | Con `\n` escapados |
-| `BRIDE_WHATSAPP` | Servidor | `50376982534` |
-| `RSVP_DEADLINE` | Servidor | `2026-10-25T23:59:59-06:00` |
-| `VITE_FIREBASE_API_KEY` | Cliente | Solo Auth, solo chunk de admin |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Cliente | Ídem |
+| Variable                    | Ámbito   | Valor / descripción            |
+| --------------------------- | -------- | ------------------------------ |
+| `FIREBASE_PROJECT_ID`       | Servidor |                                |
+| `FIREBASE_CLIENT_EMAIL`     | Servidor | Service account                |
+| `FIREBASE_PRIVATE_KEY`      | Servidor | Con `\n` escapados             |
+| `BRIDE_WHATSAPP`            | Servidor | `50376982534`                  |
+| `RSVP_DEADLINE`             | Servidor | `2026-10-25T23:59:59-06:00`    |
+| `VITE_FIREBASE_API_KEY`     | Cliente  | Solo Auth, solo chunk de admin |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Cliente  | Ídem                           |
 
 > Toda variable con prefijo `VITE_` queda compilada en el bundle y es **pública**.
 
@@ -260,7 +262,7 @@ service cloud.firestore {
   "guestLimit": 3,
   "confirmed": false,
   "confirmedCount": 0,
-  "rsvpOpen": true
+  "rsvpOpen": true,
 }
 // 404 { "code": "TOKEN_NOT_FOUND" }
 ```
@@ -284,6 +286,7 @@ Nunca devuelve `phone`, `notes` ni `token`. Efecto colateral: si `firstOpenedAt`
 ```
 
 Validaciones en servidor, no negociables:
+
 - `count` entero, `1 <= count <= guestLimit`.
 - `Date.now() <= RSVP_DEADLINE`.
 - **`confirmed === false`** (R2). La operación tiene éxito exactamente una vez por token.
@@ -294,14 +297,14 @@ Los dos casos de 409 se distinguen por `code`, porque la interfaz muestra mensaj
 
 Requieren `Authorization: Bearer <firebase-id-token>`, verificado con `admin.auth().verifyIdToken()`. Sin token válido → `401 { "code": "UNAUTHORIZED" }`.
 
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/admin/guests` | Lista + estadísticas |
-| `POST` | `/api/admin/guests` | Crea, genera `token` |
-| `PATCH` | `/api/admin/guests/[id]` | Actualiza (única vía para modificar una confirmación) |
-| `DELETE` | `/api/admin/guests/[id]` | Elimina |
-| `POST` | `/api/admin/guests/[id]/rotate-token` | Regenera token |
-| `GET` | `/api/admin/export` | CSV completo |
+| Método   | Ruta                                  | Descripción                                           |
+| -------- | ------------------------------------- | ----------------------------------------------------- |
+| `GET`    | `/api/admin/guests`                   | Lista + estadísticas                                  |
+| `POST`   | `/api/admin/guests`                   | Crea, genera `token`                                  |
+| `PATCH`  | `/api/admin/guests/[id]`              | Actualiza (única vía para modificar una confirmación) |
+| `DELETE` | `/api/admin/guests/[id]`              | Elimina                                               |
+| `POST`   | `/api/admin/guests/[id]/rotate-token` | Regenera token                                        |
+| `GET`    | `/api/admin/export`                   | CSV completo                                          |
 
 ---
 
@@ -313,21 +316,21 @@ Requieren `Authorization: Bearer <firebase-id-token>`, verificado con `admin.aut
 
 > Los marcados **(verificado)** salen del archivo de Figma. El resto sigue siendo aproximado por muestreo y se confirma al implementar cada sección.
 
-| Token | Valor | Uso |
-|---|---|---|
-| `--bg-base` | `#F7DBB4` | Fondo general y márgenes laterales en desktop |
-| `--bg-hero` | degradado `#F2CE9E → #F7DBB4` | Portada |
-| `--envelope-text` | `#465641` **(verificado)** | "Para:" y `titleLabel` en el sobre |
-| `--surface-dark` | `#48553F` | Tarjeta de calendario, select |
-| `--surface-sage` | `#97A98F` | Tarjeta de countdown, botón Enviar |
-| `--surface-muted` | `#EBC9A0` | Panel del bloque de RSVP |
-| `--accent-coral` | `#E9A98C` | Marcos de fotos, etiqueta de hora |
-| `--accent-terracotta` | `#E0855F` | Texto destacado |
-| `--text-heading` | `#4A5A46` | Títulos en script |
-| `--text-body` | `#7C8A78` | Párrafos |
-| `--text-on-dark` | `#F6D5A9` **(verificado)** | Texto sobre `--surface-dark`, ej. el select |
-| `--text-on-sage` | `#454F42` **(verificado)** | Texto sobre `--surface-sage`, ej. "Enviar" |
-| `--text-hero` | `#FFFFFF` | Nombres en la portada |
+| Token                 | Valor                         | Uso                                           |
+| --------------------- | ----------------------------- | --------------------------------------------- |
+| `--bg-base`           | `#F7DBB4`                     | Fondo general y márgenes laterales en desktop |
+| `--bg-hero`           | degradado `#F2CE9E → #F7DBB4` | Portada                                       |
+| `--envelope-text`     | `#465641` **(verificado)**    | "Para:" y `titleLabel` en el sobre            |
+| `--surface-dark`      | `#48553F`                     | Tarjeta de calendario, select                 |
+| `--surface-sage`      | `#97A98F`                     | Tarjeta de countdown, botón Enviar            |
+| `--surface-muted`     | `#EBC9A0`                     | Panel del bloque de RSVP                      |
+| `--accent-coral`      | `#E9A98C`                     | Marcos de fotos, etiqueta de hora             |
+| `--accent-terracotta` | `#E0855F`                     | Texto destacado                               |
+| `--text-heading`      | `#4A5A46`                     | Títulos en script                             |
+| `--text-body`         | `#7C8A78`                     | Párrafos                                      |
+| `--text-on-dark`      | `#F6D5A9` **(verificado)**    | Texto sobre `--surface-dark`, ej. el select   |
+| `--text-on-sage`      | `#454F42` **(verificado)**    | Texto sobre `--surface-sage`, ej. "Enviar"    |
+| `--text-hero`         | `#FFFFFF`                     | Nombres en la portada                         |
 
 El papel del sobre y el sello de lacre **no son colores sino imágenes**: ver ADR-008.
 
@@ -335,9 +338,9 @@ El papel del sobre y el sello de lacre **no son colores sino imágenes**: ver AD
 
 **Verificado en Figma (WED-02).** Dos familias, ambas de Google Fonts con licencia SIL Open Font License, autohospedables sin restricción:
 
-| Familia | Uso | Ejemplos medidos (a escala 1080) |
-|---|---|---|
-| **Great Vibes** Regular | Títulos en script | "Para:" 100 px · `titleLabel` 75 px |
+| Familia                  | Uso                               | Ejemplos medidos (a escala 1080)           |
+| ------------------------ | --------------------------------- | ------------------------------------------ |
+| **Great Vibes** Regular  | Títulos en script                 | "Para:" 100 px · `titleLabel` 75 px        |
 | **Inter** Regular / Bold | Cuerpo, horas, etiquetas, botones | Select 30 px Regular · "Enviar" 30 px Bold |
 
 Los tamaños del archivo están a escala 1080. Para llevarlos al contenedor de 432 px se dividen entre 2.5: "Para:" son 40 px reales, el `titleLabel` 30 px, el cuerpo 12 px.
@@ -350,15 +353,15 @@ Los tamaños del archivo están a escala 1080. Para llevarlos al contenedor de 4
 
 **Página (tras la apertura), ancho 432 px máx.:**
 
-| # | Sección | Ancla | Componente |
-|---|---|---|---|
-| 1 | Portada — foto vertical, "Fredy & Fátima" en script blanco, borde floral inferior | `#cover` | `CoverSection` |
-| 2 | "¡Nos vamos a casar!" — calendario de diciembre 2026 con el 20 marcado, etiqueta "4:30 p.m.", cuenta regresiva | `#date` | `DateSection` |
-| 3 | Collage de 5 polaroids en abanico + frase "Hemos elegido caminar juntos para siempre…" | `#about-us` | `AboutUsSection` |
-| 4 | "Ceremonia y Recepción." — foto del venue, dirección, botones de Waze y Google Maps | `#venue` | `VenueSection` |
-| 5 | "Itinerario." — timeline en zigzag, 7 hitos | `#timeline` | `TimelineSection` |
-| 6 | "Código de Vestimenta" — ilustración, nota, colores a evitar por género, **más un componente nuevo pendiente de definir en el Figma v2** | `#dress-code` | `DressCodeSection` |
-| 7 | "-Recuerda-" — solo adultos, regalo de sobre, fecha límite, selector y botón Enviar | `#rsvp` | `RsvpSection` |
+| #   | Sección                                                                                                                                  | Ancla         | Componente         |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------ |
+| 1   | Portada — foto vertical, "Fredy & Fátima" en script blanco, borde floral inferior                                                        | `#cover`      | `CoverSection`     |
+| 2   | "¡Nos vamos a casar!" — calendario de diciembre 2026 con el 20 marcado, etiqueta "4:30 p.m.", cuenta regresiva                           | `#date`       | `DateSection`      |
+| 3   | Collage de 5 polaroids en abanico + frase "Hemos elegido caminar juntos para siempre…"                                                   | `#about-us`   | `AboutUsSection`   |
+| 4   | "Ceremonia y Recepción." — foto del venue, dirección, botones de Waze y Google Maps                                                      | `#venue`      | `VenueSection`     |
+| 5   | "Itinerario." — timeline en zigzag, 7 hitos                                                                                              | `#timeline`   | `TimelineSection`  |
+| 6   | "Código de Vestimenta" — ilustración, nota, colores a evitar por género, **más un componente nuevo pendiente de definir en el Figma v2** | `#dress-code` | `DressCodeSection` |
+| 7   | "-Recuerda-" — solo adultos, regalo de sobre, fecha límite, selector y botón Enviar                                                      | `#rsvp`       | `RsvpSection`      |
 
 > El nombre del invitado aparece **solo en el sobre**, no en la portada.
 
@@ -402,11 +405,12 @@ E0 (WED-01, WED-02) · E3 Design System · E5 Invitación · E6 Animaciones · W
 
 ---
 
-### EPIC E0 — Descubrimiento  ·  *vía B, bloqueada*
+### EPIC E0 — Descubrimiento · _vía B, bloqueada_
 
 > Toda esta épica salvo WED-03 espera el Figma v2. WED-03 y WED-04 no dependen del diseño y pueden hacerse en cualquier momento.
 
 #### WED-01 — Activos finales
+
 **Chore · 2**
 
 - [ ] Foto de portada en resolución original, apta para recorte vertical.
@@ -419,6 +423,7 @@ E0 (WED-01, WED-02) · E3 Design System · E5 Invitación · E6 Animaciones · W
 - [ ] Selección aprobada por escrito por los novios.
 
 #### WED-02 — Auditoría de Figma y tokens
+
 **Spike · 3**
 
 - [~] Tokens de color: 3 verificados contra el archivo (`--envelope-text`, `--text-on-dark`, `--text-on-sage`); el resto se confirma al implementar cada sección.
@@ -430,6 +435,7 @@ E0 (WED-01, WED-02) · E3 Design System · E5 Invitación · E6 Animaciones · W
 - [ ] Cambios de diseño pendientes registrados con su impacto.
 
 #### WED-03 — Verificar enlaces externos y número de la novia
+
 **Chore · 1 · vía A, sin dependencias**
 
 - [ ] URL de Google Maps del Hotel Álamo verificada desde un teléfono.
@@ -437,6 +443,7 @@ E0 (WED-01, WED-02) · E3 Design System · E5 Invitación · E6 Animaciones · W
 - [ ] `wa.me/50376982534` probado manualmente: abre el chat correcto.
 
 #### WED-04 — Preparar la pista musical
+
 **Chore · 2 · vía A, sin dependencias**
 
 - [ ] Pista elegida y aprobada por los novios.
@@ -447,9 +454,10 @@ E0 (WED-01, WED-02) · E3 Design System · E5 Invitación · E6 Animaciones · W
 
 ---
 
-### EPIC E1 — Fundamentos  ·  *vía A*
+### EPIC E1 — Fundamentos · _vía A_
 
 #### WED-10 — Repositorio y proyecto Vite
+
 **Setup · 2 · sin dependencias**
 
 - [ ] Repositorio Git privado con `README.md` que explica cómo levantar el proyecto en ≤3 comandos.
@@ -462,6 +470,7 @@ E0 (WED-01, WED-02) · E3 Design System · E5 Invitación · E6 Animaciones · W
 - [ ] Todo identificador y nombre de archivo del scaffold inicial en inglés (§10).
 
 #### WED-11 — Linting, formato y pre-commit
+
 **Setup · 2 · WED-10**
 
 - [ ] ESLint + Prettier sin conflictos.
@@ -472,6 +481,7 @@ E0 (WED-01, WED-02) · E3 Design System · E5 Invitación · E6 Animaciones · W
 - [ ] Convención de ramas y commits (Conventional Commits, en inglés) documentada en el README.
 
 #### WED-15 — Enforcement de las convenciones de código
+
 **Setup · 3 · WED-11**
 
 Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una intención y no una garantía.
@@ -501,7 +511,10 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] **`api/_lib/firestore.ts` excluido de cobertura**: es cableado de credenciales del SDK de Firebase, y testearlo solo testea al SDK. La exclusión está en `vitest.config.ts` y es la única permitida.
 - [ ] Las reglas están documentadas en el README, no solo en la configuración.
 
+**Bug encontrado y corregido (2026-08-31).** `npm run typecheck` era `tsc --noEmit` a secas. Con el `tsconfig.json` raíz en modo _project references_ (`"files": []`, sin `include`, solo `references`), eso es un no-op silencioso: `tsc --noEmit --listFiles` no listaba ni un archivo. `npm run typecheck` y por lo tanto `npm run verify` pasaban en verde sin revisar nada, mientras que `npm run build` (`tsc -b && vite build`) sí compilaba de verdad — por eso un PR pasó todas las verificaciones locales y falló recién en el build de Vercel, con dos errores de tipos reales que ya existían. Corregido a `tsc -b --noEmit`, que construye ambos proyectos referenciados (`tsconfig.app.json`, `tsconfig.node.json`) sin emitir JS — verificado que reproduce exactamente los errores que dio Vercel. Los `.tsbuildinfo` que genera se agregaron a `.gitignore`.
+
 #### WED-12 — Despliegue en Vercel con fallback SPA
+
 **Setup · 3 · WED-11**
 
 - [x] Proyecto creado como `fredyfatimawedding`; push a `master` despliega a producción.
@@ -511,12 +524,14 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [x] Variables de entorno separadas en preview y producción.
 
 #### WED-13 — CI en pull requests
+
 **Setup · 2 · WED-12, WED-15**
 
 - [ ] GitHub Action ejecuta `lint`, `typecheck`, `test` con umbral de cobertura, y `build` en cada PR.
 - [ ] `master` protegida: sin push directo, requiere CI en verde.
 
 #### WED-14 — Bloqueo de indexación
+
 **Setup · 1 · WED-12**
 
 - [ ] `robots.txt` con `Disallow: /` y meta `noindex` mientras no se lance.
@@ -525,9 +540,10 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 
 ---
 
-### EPIC E2 — Firebase y datos  ·  *vía A*
+### EPIC E2 — Firebase y datos · _vía A_
 
 #### WED-20 — Configurar Firebase
+
 **Setup · 2 · WED-12**
 
 - [x] Proyecto en plan Spark; Firestore en modo producción, Auth con email/contraseña.
@@ -537,28 +553,48 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [x] Usuario administrador creado; login end-to-end verificado en producción con una página de prueba temporal (`public/test-admin-login.html`, PR #2). Esa página ya se eliminó del repo una vez confirmado el flujo.
 
 #### WED-21 — Esquemas Zod y capa de datos
+
 **Feature · 3 · WED-20, WED-15**
 
-- [ ] `src/schemas/guest.ts` con el esquema completo de §3 y tipos inferidos.
-- [ ] Esquemas separados: `createGuestSchema`, `updateGuestSchema`, `rsvpRequestSchema`.
-- [ ] `api/_lib/firestore.ts` centraliza `firebase-admin` y reutiliza la instancia entre invocaciones.
-- [ ] Sin `any` en la capa de datos.
-- [ ] Tests: `guestLimit = 0` falla, `count > guestLimit` falla, `phone` malformado falla, `lastName` y `titleLabel` ausentes pasan.
-- [ ] Cobertura ≥ 90 % en este módulo.
+- [x] `src/schemas/guest.ts` con el esquema completo de §3 y tipos inferidos.
+- [x] Esquemas separados: `createGuestSchema`, `updateGuestSchema`, `rsvpRequestSchema`.
+- [x] `api/_lib/firestore.ts` centraliza `firebase-admin` y reutiliza la instancia entre invocaciones.
+- [x] Sin `any` en la capa de datos.
+- [x] Tests: `guestLimit = 0` falla (`rejectsGuestLimitBelowOneBecauseAnInvitationWithoutSeatsIsMeaningless`), `count > guestLimit` falla (`rejectsACountAboveTheLimitEvenWhenTheClientAllowedIt`), `phone` malformado falla (`rejectsPhoneNumbersThatAreNotE164BecauseTheWaMeLinkWouldBreak`), `lastName` y `titleLabel` ausentes pasan (`acceptsAGuestWithoutLastNameOrTitleLabelBecauseBothAreOptional`).
+- [x] Cobertura ≥ 90 % en este módulo — 100 % líneas/ramas/funciones (`npm run test:coverage`).
 
 #### WED-22 — Script de importación
+
 **Chore · 2 · WED-21**
 
-- [ ] CLI que lee CSV con `firstName,lastName,titleLabel,guestLimit,phone` y crea documentos con `token`.
-- [ ] Una fila inválida aborta la importación completa **sin escribir nada**, reportando fila y error.
-- [ ] Ejecutarlo dos veces no duplica (detección por `phone`).
-- [ ] Acentos y `ñ` almacenados correctamente.
+- [x] CLI que lee CSV con `firstName,lastName,titleLabel,guestLimit,phone` y crea documentos con `token` (`scripts/importGuests.ts`, `npm run import:guests -- <path-to-csv>`).
+- [x] Una fila inválida aborta la importación completa **sin escribir nada**, reportando fila y error. Verificado tanto en tests (`scripts/lib/guestImport.test.ts`) como en una corrida real contra un CSV inválido: exit code 1, `Row 3: Number must be greater than or equal to 1`, sin tocar Firestore.
+- [x] Ejecutarlo dos veces no duplica (detección por `phone`). Verificado en vivo contra Firestore real (ADR-011): un invitado de prueba (`titleLabel: "TEST - borrar antes del lanzamiento"`, el CSV de importación no tiene columna `notes`) se creó en la primera corrida con token y defaults correctos; la segunda corrida reportó `Imported 0, skipped 1` y el documento (mismo `id`, mismo `token`) no cambió. Dato de prueba eliminado inmediatamente después.
+- [x] Acentos y `ñ` almacenados correctamente — cubierto en `scripts/lib/csv.test.ts` y `scripts/lib/guestImport.test.ts` (`Íñigo`, `Peña`).
+
+#### WED-23 — Normalizador para que los novios armen la lista en Excel
+
+**Chore · 2 · WED-22**
+
+WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLimit,phone`, encabezados en inglés, teléfono en E.164). Ese formato no es razonable para pedírselo directo a los novios: fallan el encabezado, el formato de teléfono, y sobre todo el encoding (Excel de Windows exporta CSV en ANSI por defecto, no UTF-8, y corrompe acentos y `ñ` silenciosamente). Este ticket resuelve eso con un normalizador que evita que los novios exporten nada — solo llenan un `.xlsx` con encabezados en español y lo devuelven tal cual.
+
+- [x] `npm run normalize:guests -- <xlsx-o-csv> [output-path]` lee el `.xlsx` que llenaron los novios (o un CSV), normaliza el teléfono (acepta `7000-0000`, `7000 0000`, `+503 7000 0000`, `00503...`; asume `+503` para números locales de 8 dígitos) y valida cada fila contra el mismo `createGuestSchema` de WED-21 antes de escribir nada — mismo criterio de "todo o nada" que WED-22.
+- [x] El header esperado (`Nombre, Apellido, Trato para el sobre, Cupo de invitados, Teléfono`) es la constante `HUMAN_SHEET_HEADER` en `scripts/lib/humanGuestSheet.ts` — es la referencia si hay que rearmar el archivo a compartir con los novios a mano.
+- [x] El CSV que produce es exactamente el que espera `npm run import:guests`; el mensaje final imprime el comando siguiente.
+- [x] Acentos y `ñ` preservados de punta a punta porque nunca se pasa por una exportación CSV manual (`.xlsx` → lectura directa con `exceljs`).
+- [x] Probado en vivo: una hoja de ejemplo válida normalizó y produjo el CSV correcto; una segunda hoja con una fila inválida (`guestLimit: 0`) abortó sin escribir el archivo de salida.
+- [x] Lógica pura (`normalizePhone`, `normalizeHumanGuestSheet`, `stringifyCsv`) cubierta con tests unitarios; el wrapper que lee el `.xlsx` no tiene tests, mismo criterio que `api/_lib/firestore.ts`.
+
+**Limpieza previa al cierre.** `guestImport.ts` y `humanGuestSheet.ts` tenían un `validateHeader` casi idéntico duplicado, y dos interfaces de error estructuralmente iguales (`GuestImportRowError` / `NormalizeRowError`). `importGuests.ts` y `normalizeGuestSheet.ts` repetían el mismo patrón de "leer argv o mostrar uso" y "imprimir fila+error y salir". Se extrajeron a `scripts/lib/rowValidation.ts` (`RowError`, `validateExactHeader`, con tests propios) y `scripts/lib/cli.ts` (`requireArg`, `reportRowErrorsAndExit`). Ambos CLI ahora envuelven `main()` en `.catch` para no filtrar un stack trace crudo de Node cuando el archivo de entrada no existe — verificado en vivo (`ENOENT` legible, exit 1). Se generó y borró el archivo de un solo uso mencionado arriba (`generateGuestTemplate.ts`); no quedan otros scripts equivalentes en el repo.
+
+**Nota.** Hubo un `scripts/generateGuestTemplate.ts` que generaba el `.xlsx` inicial por código; se eliminó porque es de un solo uso — el archivo ya generado y compartido con los novios es el entregable real, y regenerarlo por código no aporta sobre editar ese mismo archivo a mano (sigue en el historial de git, commit `d75ab94`, si hiciera falta recuperarlo).
 
 ---
 
-### EPIC E3 — Design System  ·  *vía B*
+### EPIC E3 — Design System · _vía B_
 
 #### WED-30 — Tokens
+
 **Feature · 3 · WED-02, WED-10 · vía B**
 
 - [ ] Los 14 tokens como variables CSS con nombre en inglés, expuestos en `tailwind.config`.
@@ -568,6 +604,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] **Contraste WCAG AA verificado en cada par texto/fondo.** `--text-body #7C8A78` sobre `--bg-base #F7DBB4` es sospechoso de no alcanzar 4.5:1; si falla, hay ajuste aprobado por diseño.
 
 #### WED-31 — Tipografías
+
 **Feature · 2 · WED-30**
 
 - [ ] Great Vibes e Inter autohospedadas en `public/fonts/` en WOFF2; sin CDN externo.
@@ -577,6 +614,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] **Great Vibes verificada en iOS Safari**, donde las caligráficas suelen romperse.
 
 #### WED-32 — Componentes base
+
 **Feature · 3 · WED-30, WED-31**
 
 - [ ] `Button` (default/hover/focus/active/disabled/loading), `Select`, `Card`, `Section`, `Divider`, `FloralOrnament`, `Modal`.
@@ -587,6 +625,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Props tipadas, sin `any`, con nombres en inglés.
 
 #### WED-33 — Iconos y ornamentos
+
 **Feature · 3 · WED-01**
 
 - [ ] Iconos funcionales en SVG optimizado con SVGO; heredan color con `currentColor` donde aplique.
@@ -598,6 +637,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Comparado el peso SVG vs WebP de un ornamento representativo, y la decisión documentada con el número real.
 
 #### WED-34 — Contenido desacoplado
+
 **Chore · 2 · WED-10**
 
 - [ ] Textos, itinerario, dirección, URLs de mapas y fecha en `src/content/`, tipados, **con claves en inglés y valores en español**.
@@ -608,9 +648,10 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 
 ---
 
-### EPIC E4 — Capa de API  ·  *vía A*
+### EPIC E4 — Capa de API · _vía A_
 
 #### WED-40 — `GET /api/invitation/[token]`
+
 **Feature · 3 · WED-21**
 
 - [ ] Devuelve el shape de §4 para un token válido.
@@ -622,6 +663,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Tests: válido, inexistente, malformado, pasada la fecha límite, segunda apertura, invitado ya confirmado.
 
 #### WED-41 — `POST /api/rsvp`
+
 **Feature · 5 · WED-40**
 
 - [ ] Valida con el esquema Zod compartido; inválido → 400 `INVALID_PAYLOAD`.
@@ -638,6 +680,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Cobertura ≥ 90 %; los nombres de los tests documentan cada regla (ADR-007).
 
 #### WED-42 — Middleware de auth admin
+
 **Feature · 3 · WED-20**
 
 - [ ] `requireAuth(request)` verifica el ID token con `verifyIdToken()`.
@@ -646,6 +689,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Test que confirma que ninguna ruta bajo `/api/admin/` quedó sin proteger.
 
 #### WED-43 — CRUD de invitados
+
 **Feature · 5 · WED-42**
 
 - [ ] `GET` devuelve lista + estadísticas: `total`, `confirmed`, `pending`, `openedNotConfirmed`, `totalConfirmedPeople`.
@@ -660,11 +704,12 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 
 ---
 
-### EPIC E5 — Invitación  ·  *vía B*
+### EPIC E5 — Invitación · _vía B_
 
 > Criterios compartidos: fiel al mock-up a 432 px (dividir entre 2.5 toda medida del archivo); textos desde `src/content/`; imágenes con `alt` descriptivo; sin errores de consola.
 
 #### WED-50 — Layout raíz, ancho fijo y enrutamiento
+
 **Feature · 3 · WED-10 · vía A**
 
 > Solo el enrutamiento y el contenedor. No necesita diseño: se puede hacer en la vía A y sirve de esqueleto para que `/admin` y `/i/:token` existan desde la semana 1.
@@ -677,6 +722,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] **El chunk de `/admin` no se descarga en la ruta de invitación** (verificado en Network).
 
 #### WED-51 — Carga de datos del invitado
+
 **Feature · 3 · WED-50, WED-40 · vía A**
 
 > Es lógica de datos, no presentación. Los estados de carga y error se maquetan sin estilo y se visten en la vía B.
@@ -688,6 +734,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] `titleLabel` (con fallback a `firstName lastName`), `guestLimit` y `confirmed` disponibles vía contexto.
 
 #### WED-52 — Pantalla del sobre
+
 **Feature · 5 · WED-51**
 
 - [ ] `EnvelopeGate` a pantalla completa: papel texturizado, doblez vertical, sello de lacre con monograma "F&F".
@@ -702,6 +749,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] **LCP del sobre < 2.5 s en 4G simulada.**
 
 #### WED-53 — `CoverSection`
+
 **Feature · 3 · WED-52**
 
 - [ ] Foto vertical con degradado durazno arriba y ornamento floral abajo.
@@ -711,6 +759,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Imagen en AVIF/WebP con fallback, `width`/`height` declarados (CLS ≈ 0).
 
 #### WED-54 — `DateSection`
+
 **Feature · 5 · WED-34**
 
 - [ ] Encabezado "¡Nos vamos a casar!" y subtítulo según el diseño.
@@ -723,6 +772,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] La cuenta regresiva no se anuncia repetidamente en lectores de pantalla.
 
 #### WED-55 — `AboutUsSection`
+
 **Feature · 3 · WED-34**
 
 - [ ] Collage de 5 polaroids en abanico, marcos coral, con las rotaciones del diseño.
@@ -730,6 +780,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Frase con "juntos para siempre" en terracota, según el diseño.
 
 #### WED-56 — `VenueSection`
+
 **Feature · 3 · WED-34, WED-03**
 
 - [ ] Título en script, foto del venue, nombre y dirección completa.
@@ -739,6 +790,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] **Probado desde un Android y un iPhone reales**: cada botón abre su app y llega al lugar correcto.
 
 #### WED-57 — `TimelineSection`
+
 **Feature · 3 · WED-34**
 
 - [ ] Timeline en zigzag con los 7 hitos alternando lados, con su icono.
@@ -747,6 +799,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Los ornamentos florales no tapan texto.
 
 #### WED-58 — `DressCodeSection`
+
 **Feature · 2 · WED-34**
 
 - [ ] Ilustración de la pareja, caja de nota y las dos listas por género.
@@ -754,6 +807,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Contraste de los nombres coloreados verificado; si "blanco" sobre durazno no alcanza AA, hay tratamiento alternativo aprobado.
 
 #### WED-59 — Bloque de recordatorios
+
 **Feature · 2 · WED-34**
 
 - [ ] Título "-Recuerda-" y los tres bloques con sus ilustraciones.
@@ -762,9 +816,10 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 
 ---
 
-### EPIC E6 — Animaciones y audio  ·  *vía B*
+### EPIC E6 — Animaciones y audio · _vía B_
 
 #### WED-60 — Animación de apertura del sobre
+
 **Feature · 5 · WED-52, WED-02**
 
 - [ ] Secuencia según la especificación de WED-02 (sello, solapa, salida de la tarjeta), con Framer Motion.
@@ -776,6 +831,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] No se dispara dos veces con doble tap.
 
 #### WED-61 — `MusicToggle`
+
 **Feature · 3 · WED-60, WED-04**
 
 - [ ] Disco fijo en la esquina inferior izquierda, girando mientras suena, quieto al estar en silencio.
@@ -791,6 +847,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Probado en iOS Safari, donde el interruptor físico de silencio puede impedir la reproducción: comportamiento documentado, no tratado como bug.
 
 #### WED-62 — Animaciones de entrada por sección
+
 **Feature · 3 · E5 completa**
 
 - [ ] Cada sección aparece al entrar en viewport vía IntersectionObserver, sin listeners de scroll sin throttle.
@@ -800,6 +857,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] Scroll fluido en un Android de gama media.
 
 #### WED-63 — Animaciones de detalle
+
 **Feature · 3 · WED-62**
 
 - [ ] Despliegue en abanico del collage de polaroids.
@@ -811,9 +869,10 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 
 ---
 
-### EPIC E7 — RSVP  ·  *vía B*
+### EPIC E7 — RSVP · _vía B_
 
 #### WED-70 — `RsvpForm`
+
 **Feature · 5 · WED-41, WED-51**
 
 - [ ] Selector con opciones de 1 a `guestLimit`, etiquetadas "1 persona." / "N personas." según el diseño.
@@ -823,13 +882,14 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] React Hook Form + Zod (mismo esquema que el servidor); errores en español, asociados al campo, anunciados con `role="alert"`.
 - [ ] Durante el envío el botón queda deshabilitado y en `loading`; doble clic no envía dos veces.
 - [ ] Error de red → mensaje claro **conservando la selección**.
-- [ ] **Si el invitado ya confirmó** (`confirmed === true` al cargar, o respuesta 409 `ALREADY_CONFIRMED`), muestra su cantidad confirmada en modo lectura y el texto literal: *"Ya confirmaste tu asistencia, en caso de querer hacer un cambio ponte en contacto con los novios por medio de Whatsapp"*. **Sin opción de modificar.**
+- [ ] **Si el invitado ya confirmó** (`confirmed === true` al cargar, o respuesta 409 `ALREADY_CONFIRMED`), muestra su cantidad confirmada en modo lectura y el texto literal: _"Ya confirmaste tu asistencia, en caso de querer hacer un cambio ponte en contacto con los novios por medio de Whatsapp"_. **Sin opción de modificar.**
 - [ ] Ese mensaje incluye un enlace `wa.me` a la novia, para que "ponerse en contacto" sea un tap y no una búsqueda de contacto.
 - [ ] Si `rsvpOpen === false` y aún no confirmó, muestra el mensaje de cierre en lugar del formulario.
 - [ ] Los tres estados (formulario, ya confirmado, cerrado) son visualmente distintos.
 - [ ] Operable completo con teclado, incluido el modal.
 
 #### WED-71 — Éxito y botón de WhatsApp
+
 **Feature · 3 · WED-70**
 
 - [ ] Tras un 200, confirmación con resumen ("Confirmaste 3 personas").
@@ -842,9 +902,10 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 
 ---
 
-### EPIC E8 — Consola  ·  *vía A*
+### EPIC E8 — Consola · _vía A_
 
 #### WED-79 — Base visual de la consola
+
 **Setup · 3 · WED-10 · vía A**
 
 La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una base decente sin diseñador.
@@ -857,6 +918,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] El chunk de `/admin` sigue siendo lazy y no entra en la carga de la invitación.
 
 #### WED-80 — Login
+
 **Feature · 3 · WED-42, WED-79 · vía A**
 
 - [ ] `/admin` sin sesión muestra login de email + contraseña, sin exponer datos.
@@ -867,6 +929,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] `/admin` con `noindex` y en `robots.txt`.
 
 #### WED-81 — Listado y tablero
+
 **Feature · 5 · WED-80, WED-43 · vía A**
 
 - [ ] Estadísticas: total, confirmados, pendientes, **abiertos sin confirmar**, y **total de personas confirmadas**.
@@ -877,6 +940,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] Estados de carga y de lista vacía diseñados.
 
 #### WED-82 — CRUD desde la interfaz
+
 **Feature · 5 · WED-81 · vía A**
 
 - [ ] Formulario de creación con los campos de §3, validado con el esquema compartido.
@@ -889,6 +953,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] Actualización optimista con reversión si la petición falla.
 
 #### WED-83 — Envío de invitaciones desde la consola
+
 **Feature · 3 · WED-82 · vía A**
 
 - [ ] Botón por fila que abre `wa.me/{phone}` con mensaje prellenado que **incluye el enlace único**.
@@ -898,6 +963,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] **Probado en móvil**: abre WhatsApp con el contacto y el texto correctos.
 
 #### WED-84 — Exportación y utilidades
+
 **Feature · 2 · WED-81 · vía A**
 
 - [ ] Exportar a CSV con encabezados en español.
@@ -909,6 +975,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 ### EPIC E9 — Calidad
 
 #### WED-90 — Accesibilidad
+
 **QA · 3 · E5, E6, E7, E8**
 
 - [ ] axe DevTools sin violaciones críticas ni serias en sobre, invitación, consola y 404.
@@ -921,6 +988,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] Contraste AA verificado en el sitio real.
 
 #### WED-91 — Rendimiento
+
 **QA · 3 · E5, E6**
 
 - [ ] Lighthouse móvil: Performance ≥ 90, Accessibility ≥ 95, Best Practices ≥ 95.
@@ -932,6 +1000,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] En 4G lenta simulada, el sobre es visible en < 3 s.
 
 #### WED-92 — Metadatos
+
 **Chore · 2 · WED-53**
 
 - [ ] `title` y `meta description` definidos.
@@ -941,6 +1010,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] Imagen OG de 1200×630, < 300 KB.
 
 #### WED-93 — Matriz cross-browser
+
 **QA · 3 · E5, E6, E7, E8**
 
 - [ ] Matriz con resultado para: iOS Safari, Android Chrome, Chrome desktop, Safari desktop, Firefox y **el navegador interno de WhatsApp**.
@@ -951,6 +1021,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] Bugs registrados con severidad.
 
 #### ~~WED-94 — Test end-to-end del RSVP~~
+
 **Eliminado — ver ADR-011.**
 
 > Requería un proyecto Firebase de prueba para no arriesgar datos reales de invitados. Sin ambiente de pruebas (ADR-011), automatizarlo contra producción es más riesgo que beneficio. La red de seguridad del flujo de RSVP queda en los tests unitarios de WED-41 y el ensayo manual de WED-102.
@@ -960,6 +1031,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 ### EPIC E10 — Lanzamiento
 
 #### WED-100 — Contenido final
+
 **Chore · 2 · E5, WED-01**
 
 - [ ] Cero placeholders.
@@ -971,6 +1043,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] Cambios de diseño pendientes incorporados o formalmente pospuestos.
 
 #### WED-101 — Carga de la lista real
+
 **Chore · 2 · WED-22, WED-100**
 
 - [ ] Lista importada; conteo validado contra el CSV origen.
@@ -981,6 +1054,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] 5 enlaces de muestra abiertos y verificados manualmente.
 
 #### WED-102 — Ensayo general
+
 **QA · 2 · WED-101, E7**
 
 - [ ] 3 personas ajenas recorren el flujo desde su celular: reciben el enlace por WhatsApp, abren el sobre, leen, confirman.
@@ -992,6 +1066,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] **Datos de prueba eliminados** antes del envío real.
 
 #### WED-103 — Go-live
+
 **Chore · 1 · WED-102**
 
 - [ ] `robots.txt` y `noindex` retirados de las páginas públicas, **manteniéndolos en `/i/*` y `/admin`**.
@@ -1006,6 +1081,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 ### EPIC E11 — Post-lanzamiento
 
 #### WED-110 — Seguimiento
+
 **Feature · 2 · WED-81**
 
 - [ ] Filtro de pendientes con acción de reenviar por `wa.me`.
@@ -1013,6 +1089,7 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 - [ ] Plantilla de recordatorio lista.
 
 #### WED-111 — Cierre y entrega
+
 **Chore · 1 · WED-81**
 
 - [ ] Pasado el 25 de octubre, el formulario muestra el cierre y `/api/rsvp` devuelve 409 `RSVP_CLOSED`.
@@ -1023,34 +1100,34 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 
 ## 7. Esfuerzo y calendario
 
-| Épica | Vía | Tickets | Puntos |
-|---|---|---|---|
-| E0 Descubrimiento | B (salvo WED-03/04) | 4 | 8 |
-| E1 Fundamentos | A | 6 | 13 |
-| E2 Firebase y datos | A | 3 | 7 |
-| E3 Design System | B | 5 | 13 |
-| E4 API | A | 4 | 16 |
-| E5 Invitación | A (50, 51) / B (resto) | 10 | 32 |
-| E6 Animaciones y audio | B | 4 | 14 |
-| E7 RSVP | B | 2 | 8 |
-| E8 Consola | A | 6 | 21 |
-| E9 Calidad | mixta | 4 | 11 |
-| E10 Lanzamiento | mixta | 4 | 7 |
-| E11 Post | A | 2 | 3 |
-| **Total** | | **54** | **153** |
+| Épica                  | Vía                    | Tickets | Puntos  |
+| ---------------------- | ---------------------- | ------- | ------- |
+| E0 Descubrimiento      | B (salvo WED-03/04)    | 4       | 8       |
+| E1 Fundamentos         | A                      | 6       | 13      |
+| E2 Firebase y datos    | A                      | 3       | 7       |
+| E3 Design System       | B                      | 5       | 13      |
+| E4 API                 | A                      | 4       | 16      |
+| E5 Invitación          | A (50, 51) / B (resto) | 10      | 32      |
+| E6 Animaciones y audio | B                      | 4       | 14      |
+| E7 RSVP                | B                      | 2       | 8       |
+| E8 Consola             | A                      | 6       | 21      |
+| E9 Calidad             | mixta                  | 4       | 11      |
+| E10 Lanzamiento        | mixta                  | 4       | 7       |
+| E11 Post               | A                      | 2       | 3       |
+| **Total**              |                        | **54**  | **153** |
 
 **Reparto entre vías:** 70 puntos en la vía A (46 %), 75 en la vía B, 8 mixtos. WED-94 (3 puntos, vía B) se eliminó por ADR-011.
 
 ### Calendario con lanzamiento el 10 de octubre
 
-| Semana | Vía A (arranca ya) | Vía B (espera el Figma) |
-|---|---|---|
-| 1 · ago 28 – sep 5 | E1 completa, E2, WED-03, WED-04 | — |
-| 2 · sep 6 – 12 | E4 completa con tests, WED-50, WED-51 | — |
-| 3 · sep 13 – 19 | E8 completa (WED-79 a WED-84) | *llega el Figma v2* → WED-01, WED-02 |
-| 4 · sep 20 – 26 | WED-101 (lista real) | E3 Design System |
-| 5 · sep 27 – oct 3 | — | E5 secciones de la invitación |
-| 6 · oct 4 – 10 | WED-93, WED-103 | E6, E7, WED-90, WED-91, WED-102 |
+| Semana             | Vía A (arranca ya)                    | Vía B (espera el Figma)              |
+| ------------------ | ------------------------------------- | ------------------------------------ |
+| 1 · ago 28 – sep 5 | E1 completa, E2, WED-03, WED-04       | —                                    |
+| 2 · sep 6 – 12     | E4 completa con tests, WED-50, WED-51 | —                                    |
+| 3 · sep 13 – 19    | E8 completa (WED-79 a WED-84)         | _llega el Figma v2_ → WED-01, WED-02 |
+| 4 · sep 20 – 26    | WED-101 (lista real)                  | E3 Design System                     |
+| 5 · sep 27 – oct 3 | —                                     | E5 secciones de la invitación        |
+| 6 · oct 4 – 10     | WED-93, WED-103                       | E6, E7, WED-90, WED-91, WED-102      |
 
 ### La fecha límite del diseño
 
@@ -1069,29 +1146,29 @@ En orden: WED-63 (animaciones de detalle), WED-61 (música), WED-110. El sitio f
 
 ## 8. Riesgos
 
-| Riesgo | Prob. | Impacto | Mitigación |
-|---|---|---|---|
-| Los invitados no entienden que hay que tocar el sobre | Media | **Crítico** | Affordance en WED-52 y observación en WED-102. Si falla, nadie llega a la invitación |
-| Confirmaciones erróneas por mis-tap, irreversibles para el invitado | **Alta** | Medio | Modal en WED-70; enlace `wa.me` en el mensaje de R2; ambas vías de corrección en WED-82 |
-| Sin ambiente de pruebas (ADR-011), un Preview de Vercel o una prueba manual quema la confirmación de un invitado real o altera sus datos | Media | Alto | Nunca probar con tokens reales; usar invitados de prueba marcados en `notes` y borrarlos antes de WED-101/WED-103; WED-94 (e2e automatizado) queda eliminado por esta misma razón |
-| ~~Las fuentes no son licenciables para web~~ | — | — | **CERRADO en WED-02.** Great Vibes e Inter son Google Fonts bajo SIL OFL |
-| Los ornamentos importados de Illustrator inflan el peso de la página | Media | Medio | ADR-008 los manda a WebP en vez de SVG; presupuesto verificado en WED-33 y WED-91 |
-| La animación de apertura no está especificada en ninguna parte | **Alta** | Medio | El Figma v1 no la contenía (ADR-009). Pedirla explícitamente para el v2 |
-| **El Figma v2 llega después del 19 de septiembre** | Media | **Crítico** | Es el día en que se agota el trabajo sin diseño. Retraso día por día en el lanzamiento. Salidas en §7: correr la fecha, o pedir el diseño por partes empezando por sobre y portada |
-| ~~Las modificaciones del cliente cambian el modelo de datos o el flujo de RSVP~~ | — | — | **CERRADO.** Confirmado que los cambios son solo visuales: colores, tamaños de fuente y un componente nuevo en el código de vestimenta. §3 y §4 quedan firmes y la vía A puede avanzar sin riesgo de retrabajo |
-| La geometría del sobre cambia y rompe el supuesto de ADR-009 | Media | Medio | La animación asume dos hojas verticales. Confirmar que el v2 conserva esa estructura |
-| La animación del sobre va lenta en gama media | Media | Alto | Medición obligatoria en WED-60; fallback a fundido simple |
-| Renderizado o audio roto en el navegador interno de WhatsApp | Media | Alto | WED-93 lo prueba explícitamente; es el canal principal |
-| Uso de una pista musical comercial sin licencia | Alta | Bajo–Medio | Riesgo asumido de forma explícita en WED-04; el sitio se mantiene `noindex` |
-| La música no reproduce (silencio de iOS, políticas del navegador) | Alta | Bajo | Degradación elegante en WED-61, no un fallo |
-| Las reglas de §10 se aplican tarde y obligan a refactorizar | Media | Alto | WED-15 en la semana 1, antes de escribir features |
-| Los límites de complejidad producen abstracciones forzadas | Media | Bajo | Los umbrales son generosos; si un caso legítimo los excede, se documenta la excepción en el PR |
-| Los cambios pendientes de diseño no son mínimos | Media | Medio | Congelar diseño al terminar E3 (≈12 de septiembre) |
-| Contraste insuficiente del texto salvia sobre durazno | Alta | Bajo | Detectado en WED-30 |
-| Un `titleLabel` mal escrito en el sobre | Media | Medio | Revisión uno por uno en WED-101 |
-| Secreto filtrado por prefijo `VITE_` | Baja | **Crítico** | Regla de ESLint (WED-11) y verificación en WED-20 |
-| Un enlace se comparte y alguien confirma por otro | Baja | Medio | R2 hace que la primera confirmación sea la única; token rotable (WED-84) |
-| El invitado no envía o edita el `wa.me` | Alta | Bajo | Riesgo aceptado; la consola es la fuente de verdad |
+| Riesgo                                                                                                                                   | Prob.    | Impacto     | Mitigación                                                                                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Los invitados no entienden que hay que tocar el sobre                                                                                    | Media    | **Crítico** | Affordance en WED-52 y observación en WED-102. Si falla, nadie llega a la invitación                                                                                                                           |
+| Confirmaciones erróneas por mis-tap, irreversibles para el invitado                                                                      | **Alta** | Medio       | Modal en WED-70; enlace `wa.me` en el mensaje de R2; ambas vías de corrección en WED-82                                                                                                                        |
+| Sin ambiente de pruebas (ADR-011), un Preview de Vercel o una prueba manual quema la confirmación de un invitado real o altera sus datos | Media    | Alto        | Nunca probar con tokens reales; usar invitados de prueba marcados en `notes` y borrarlos antes de WED-101/WED-103; WED-94 (e2e automatizado) queda eliminado por esta misma razón                              |
+| ~~Las fuentes no son licenciables para web~~                                                                                             | —        | —           | **CERRADO en WED-02.** Great Vibes e Inter son Google Fonts bajo SIL OFL                                                                                                                                       |
+| Los ornamentos importados de Illustrator inflan el peso de la página                                                                     | Media    | Medio       | ADR-008 los manda a WebP en vez de SVG; presupuesto verificado en WED-33 y WED-91                                                                                                                              |
+| La animación de apertura no está especificada en ninguna parte                                                                           | **Alta** | Medio       | El Figma v1 no la contenía (ADR-009). Pedirla explícitamente para el v2                                                                                                                                        |
+| **El Figma v2 llega después del 19 de septiembre**                                                                                       | Media    | **Crítico** | Es el día en que se agota el trabajo sin diseño. Retraso día por día en el lanzamiento. Salidas en §7: correr la fecha, o pedir el diseño por partes empezando por sobre y portada                             |
+| ~~Las modificaciones del cliente cambian el modelo de datos o el flujo de RSVP~~                                                         | —        | —           | **CERRADO.** Confirmado que los cambios son solo visuales: colores, tamaños de fuente y un componente nuevo en el código de vestimenta. §3 y §4 quedan firmes y la vía A puede avanzar sin riesgo de retrabajo |
+| La geometría del sobre cambia y rompe el supuesto de ADR-009                                                                             | Media    | Medio       | La animación asume dos hojas verticales. Confirmar que el v2 conserva esa estructura                                                                                                                           |
+| La animación del sobre va lenta en gama media                                                                                            | Media    | Alto        | Medición obligatoria en WED-60; fallback a fundido simple                                                                                                                                                      |
+| Renderizado o audio roto en el navegador interno de WhatsApp                                                                             | Media    | Alto        | WED-93 lo prueba explícitamente; es el canal principal                                                                                                                                                         |
+| Uso de una pista musical comercial sin licencia                                                                                          | Alta     | Bajo–Medio  | Riesgo asumido de forma explícita en WED-04; el sitio se mantiene `noindex`                                                                                                                                    |
+| La música no reproduce (silencio de iOS, políticas del navegador)                                                                        | Alta     | Bajo        | Degradación elegante en WED-61, no un fallo                                                                                                                                                                    |
+| Las reglas de §10 se aplican tarde y obligan a refactorizar                                                                              | Media    | Alto        | WED-15 en la semana 1, antes de escribir features                                                                                                                                                              |
+| Los límites de complejidad producen abstracciones forzadas                                                                               | Media    | Bajo        | Los umbrales son generosos; si un caso legítimo los excede, se documenta la excepción en el PR                                                                                                                 |
+| Los cambios pendientes de diseño no son mínimos                                                                                          | Media    | Medio       | Congelar diseño al terminar E3 (≈12 de septiembre)                                                                                                                                                             |
+| Contraste insuficiente del texto salvia sobre durazno                                                                                    | Alta     | Bajo        | Detectado en WED-30                                                                                                                                                                                            |
+| Un `titleLabel` mal escrito en el sobre                                                                                                  | Media    | Medio       | Revisión uno por uno en WED-101                                                                                                                                                                                |
+| Secreto filtrado por prefijo `VITE_`                                                                                                     | Baja     | **Crítico** | Regla de ESLint (WED-11) y verificación en WED-20                                                                                                                                                              |
+| Un enlace se comparte y alguien confirma por otro                                                                                        | Baja     | Medio       | R2 hace que la primera confirmación sea la única; token rotable (WED-84)                                                                                                                                       |
+| El invitado no envía o edita el `wa.me`                                                                                                  | Alta     | Bajo        | Riesgo aceptado; la consola es la fuente de verdad                                                                                                                                                             |
 
 ---
 
@@ -1106,16 +1183,16 @@ Estas reglas son parte del DoD de todo ticket y se verifican automáticamente en
 
 ### Nomenclatura
 
-| Elemento | Convención | Ejemplo |
-|---|---|---|
-| Variables y funciones | camelCase | `confirmedCount`, `buildWhatsAppLink` |
-| Componentes React y tipos | PascalCase | `EnvelopeGate`, `GuestRecord` |
-| Constantes de módulo | UPPER_SNAKE_CASE | `MAX_GUEST_LIMIT` |
-| Hooks | `use` + camelCase | `useInvitation` |
-| Archivos de componente | PascalCase.tsx | `RsvpForm.tsx` |
-| Otros archivos | camelCase.ts | `buildWhatsAppLink.ts` |
-| Booleanos | prefijo `is`/`has`/`should` | `isSubmitting`, `hasConfirmed` |
-| Rutas y anclas | kebab-case | `/api/admin/guests`, `#dress-code` |
+| Elemento                  | Convención                  | Ejemplo                               |
+| ------------------------- | --------------------------- | ------------------------------------- |
+| Variables y funciones     | camelCase                   | `confirmedCount`, `buildWhatsAppLink` |
+| Componentes React y tipos | PascalCase                  | `EnvelopeGate`, `GuestRecord`         |
+| Constantes de módulo      | UPPER_SNAKE_CASE            | `MAX_GUEST_LIMIT`                     |
+| Hooks                     | `use` + camelCase           | `useInvitation`                       |
+| Archivos de componente    | PascalCase.tsx              | `RsvpForm.tsx`                        |
+| Otros archivos            | camelCase.ts                | `buildWhatsAppLink.ts`                |
+| Booleanos                 | prefijo `is`/`has`/`should` | `isSubmitting`, `hasConfirmed`        |
+| Rutas y anclas            | kebab-case                  | `/api/admin/guests`, `#dress-code`    |
 
 ### Reglas de Clean Code exigibles
 
