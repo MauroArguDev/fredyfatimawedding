@@ -38,6 +38,7 @@ src/schemas/    Zod schemas shared between the browser and api/.
 src/components/ui/                 Invitation components. Uses the design tokens.
 src/components/admin/              Console components. Uses shadcn/ui. Never imports from ui/.
 src/components/admin/primitives/   Generated shadcn/Radix primitives (`shadcn add`). Vendored, not hand-styled.
+src/components/admin/auth/         Firebase Auth client, login gate. The only place firebase/auth may be imported.
 src/content/    Every user-facing Spanish string. Keys in English, values in Spanish.
 scripts/        Maintenance scripts run with tsx.
 types/          Ambient declarations for untyped dependencies.
@@ -51,6 +52,7 @@ These are not style preferences. A pull request that breaks one of them does not
 - **No comments.** The only exception is JSDoc on exported declarations inside `api/_lib/`. Rules live in ADRs; behaviour lives in test names.
 - **No `any`, no `@ts-ignore`.** `@ts-expect-error` needs a description of at least 20 characters.
 - **The browser never imports Firestore.** All data access goes through `api/`.
+- **Firebase Auth is admin-console-only.** `firebase/auth` and `firebase/app` can only be imported from `src/components/admin/`; everywhere else (including `src/components/ui/`) it's an ESLint error, so the SDK never ends up in the invitation's bundle.
 - **`ui/` and `admin/` never import each other.** They are two products that happen to share a repository.
 - **Complexity 10, functions 50 lines, nesting 3, parameters 4.** More than three parameters go in an object.
 - **Coverage: 90% in `api/` and `src/schemas/`, 60% overall.** Firebase credential bootstrap is excluded because testing it only tests the Firebase SDK. `src/components/admin/primitives/` is excluded for the same reason: it's generated shadcn/Radix code, not hand-written app logic.

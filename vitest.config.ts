@@ -15,10 +15,12 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}', 'api/**/*.ts'],
       exclude: [
         '**/*.test.{ts,tsx}',
+        '**/*.d.ts',
         'src/testSetup.ts',
         'src/main.tsx',
         'api/_lib/firestore.ts',
         'src/components/admin/primitives/**',
+        'src/components/admin/auth/firebaseClient.ts',
       ],
       thresholds: {
         lines: 60,
