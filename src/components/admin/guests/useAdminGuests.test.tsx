@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAdminGuests } from '@/components/admin/guests/useAdminGuests';
 import { fetchAdminApi } from '@/components/admin/auth/fetchAdminApi';
 
-vi.mock('@/components/admin/auth/fetchAdminApi');
+vi.mock('@/components/admin/auth/fetchAdminApi', () => ({ fetchAdminApi: vi.fn() }));
 
 const fetchAdminApiMock = vi.mocked(fetchAdminApi);
 

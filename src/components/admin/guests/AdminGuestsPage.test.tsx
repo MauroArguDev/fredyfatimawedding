@@ -6,7 +6,7 @@ import { useAdminGuests } from '@/components/admin/guests/useAdminGuests';
 import { adminGuestsPageCopy } from '@/content/adminGuests';
 import type { AdminGuest } from '@/schemas/guest';
 
-vi.mock('@/components/admin/guests/useAdminGuests');
+vi.mock('@/components/admin/guests/useAdminGuests', () => ({ useAdminGuests: vi.fn() }));
 
 const useAdminGuestsMock = vi.mocked(useAdminGuests);
 
