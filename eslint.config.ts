@@ -165,6 +165,13 @@ export default defineConfig(
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    },
+  },
+
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/components/ui/**', 'src/components/admin/**'],
+    rules: {
       'no-restricted-imports': [
         'error',
         {
@@ -178,6 +185,16 @@ export default defineConfig(
               name: 'firebase-admin',
               message: 'ADR-001: firebase-admin is server-only. It belongs in api/.',
             },
+            {
+              name: 'firebase/auth',
+              message:
+                'ADR-001: the Firebase Auth SDK is admin-console-only, to keep it out of the invitation bundle.',
+            },
+            {
+              name: 'firebase/app',
+              message:
+                'ADR-001: the Firebase Auth SDK is admin-console-only, to keep it out of the invitation bundle.',
+            },
           ],
         },
       ],
@@ -190,6 +207,27 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         {
+          paths: [
+            {
+              name: 'firebase/firestore',
+              message:
+                'ADR-001: the browser never talks to Firestore. Go through an /api endpoint instead.',
+            },
+            {
+              name: 'firebase-admin',
+              message: 'ADR-001: firebase-admin is server-only. It belongs in api/.',
+            },
+            {
+              name: 'firebase/auth',
+              message:
+                'ADR-001: the Firebase Auth SDK is admin-console-only, to keep it out of the invitation bundle.',
+            },
+            {
+              name: 'firebase/app',
+              message:
+                'ADR-001: the Firebase Auth SDK is admin-console-only, to keep it out of the invitation bundle.',
+            },
+          ],
           patterns: [
             {
               group: ['**/components/admin/**', '@/components/admin/**', '**/admin/**'],
@@ -207,6 +245,17 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         {
+          paths: [
+            {
+              name: 'firebase/firestore',
+              message:
+                'ADR-001: the browser never talks to Firestore. Go through an /api endpoint instead.',
+            },
+            {
+              name: 'firebase-admin',
+              message: 'ADR-001: firebase-admin is server-only. It belongs in api/.',
+            },
+          ],
           patterns: [
             {
               group: ['**/components/ui/**', '@/components/ui/**', '**/ui/**'],
@@ -228,6 +277,16 @@ export default defineConfig(
     rules: {
       '@typescript-eslint/naming-convention': 'off',
       'react-refresh/only-export-components': 'off',
+    },
+  },
+
+  {
+    files: ['src/vite-env.d.ts'],
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'error',
+        { selector: 'typeProperty', format: ['camelCase', 'UPPER_CASE'] },
+      ],
     },
   },
 
