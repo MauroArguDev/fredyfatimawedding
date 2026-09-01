@@ -10,6 +10,7 @@ import { resolveAdminGuestErrorMessage } from '@/content/adminGuestForm';
 import type { AdminGuest } from '@/schemas/guest';
 
 vi.mock('@/components/admin/guests/useAdminGuests', () => ({ useAdminGuests: vi.fn() }));
+vi.mock('@/components/admin/auth/firebaseClient', () => ({ auth: {} }));
 
 const useAdminGuestsMock = vi.mocked(useAdminGuests);
 
