@@ -1,7 +1,7 @@
-import { publicInvitationSchema } from '../../src/schemas/guest';
-import { findGuestByToken } from '../_lib/guests';
-import { extractRouteParam } from '../_lib/httpParams';
-import { isRsvpOpen } from '../_lib/rsvpDeadline';
+import { publicInvitationSchema } from '../../src/schemas/guest.js';
+import { findGuestByToken } from '../_lib/guests.js';
+import { extractRouteParam } from '../_lib/httpParams.js';
+import { isRsvpOpen } from '../_lib/rsvpDeadline.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const HTTP_OK = 200;

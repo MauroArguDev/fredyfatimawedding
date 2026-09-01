@@ -527,6 +527,8 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [x] Cada PR genera preview funcional.
 - [x] Variables de entorno separadas en preview y producción.
 
+**Bug de build encontrado en un preview real y corregido (2026-08-31).** El deploy de Vercel falló el type-check de las funciones de `api/` con `TS2835: Relative import paths need explicit file extensions...`. Causa: `package.json` tiene `"type": "module"`, y Vercel tipa cada función de `api/` con resolución `node16`/`nodenext` (la correcta para validar ESM real de Node), mientras que `tsconfig.app.json` usa `moduleResolution: "bundler"` (más permisiva, pensada para Vite). `tsc -b` local no lo detectaba porque usa esa config permisiva; reproducido localmente forzando `--moduleResolution nodenext` sobre los mismos archivos, con el mismo error letra por letra. **Corregido** agregando la extensión `.js` a todos los imports relativos de los archivos de producción bajo `api/` (apunta al `.ts` real; es la convención estándar de TypeScript para Node16/NodeNext, y Vite/Vitest/`tsc -b` la resuelven igual que sin extensión, verificado). Los archivos `*.test.ts` se dejaron sin tocar porque además se agregó **`.vercelignore`** excluyendo `**/*.test.ts` y `**/*.test.tsx`: sin él, Vercel intentaba compilar `api/rsvp.test.ts` como si fuera una función deployable (apareció en el mismo log de error), algo que nunca debió pasar.
+
 #### WED-13 — CI en pull requests
 
 **Setup · 2 · WED-12, WED-15**

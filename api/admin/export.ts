@@ -1,13 +1,13 @@
-import { stringifyCsv } from '../../scripts/lib/csv';
+import { stringifyCsv } from '../../scripts/lib/csv.js';
 import {
   CONFIRMED_LABEL,
   GUEST_EXPORT_FILENAME,
   GUEST_EXPORT_HEADER,
   NOT_CONFIRMED_LABEL,
-} from '../../src/content/guestExport';
-import { withAdminAuth } from '../_lib/adminAuth';
-import { listGuests } from '../_lib/guests';
-import type { Guest } from '../../src/schemas/guest';
+} from '../../src/content/guestExport.js';
+import { withAdminAuth } from '../_lib/adminAuth.js';
+import { listGuests } from '../_lib/guests.js';
+import type { Guest } from '../../src/schemas/guest.js';
 
 const HTTP_OK = 200;
 const HTTP_METHOD_NOT_ALLOWED = 405;

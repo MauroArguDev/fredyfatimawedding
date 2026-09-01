@@ -1,4 +1,4 @@
-import { auth } from './firestore';
+import { auth } from './firestore.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 
@@ -41,7 +41,11 @@ export async function requireAuth(request: VercelRequest): Promise<DecodedIdToke
   }
 }
 
-export type AdminHandler = (request: VercelRequest, response: VercelResponse, admin: DecodedIdToken) => Promise<void>;
+export type AdminHandler = (
+  request: VercelRequest,
+  response: VercelResponse,
+  admin: DecodedIdToken,
+) => Promise<void>;
 
 /**
  * Wraps an /api/admin/* handler so it is protected by construction: a

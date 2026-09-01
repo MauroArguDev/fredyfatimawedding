@@ -1,6 +1,6 @@
-import { withAdminAuth } from '../../../_lib/adminAuth';
-import { rotateGuestToken } from '../../../_lib/guests';
-import { extractRouteParam } from '../../../_lib/httpParams';
+import { withAdminAuth } from '../../../_lib/adminAuth.js';
+import { rotateGuestToken } from '../../../_lib/guests.js';
+import { extractRouteParam } from '../../../_lib/httpParams.js';
 
 const HTTP_OK = 200;
 const HTTP_NOT_FOUND = 404;

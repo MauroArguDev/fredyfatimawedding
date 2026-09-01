@@ -1,7 +1,7 @@
-import { computeGuestStats, createGuestSchema } from '../../src/schemas/guest';
-import { withAdminAuth } from '../_lib/adminAuth';
-import { createGuest, listGuests } from '../_lib/guests';
-import type { GuestListItem } from '../_lib/guests';
+import { computeGuestStats, createGuestSchema } from '../../src/schemas/guest.js';
+import { withAdminAuth } from '../_lib/adminAuth.js';
+import { createGuest, listGuests } from '../_lib/guests.js';
+import type { GuestListItem } from '../_lib/guests.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const HTTP_OK = 200;

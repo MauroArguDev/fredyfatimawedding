@@ -1,9 +1,13 @@
 import { nanoid } from 'nanoid';
 import { Timestamp } from 'firebase-admin/firestore';
-import { GUESTS_COLLECTION, firestore } from './firestore';
-import { TOKEN_LENGTH, guestLimitCoversConfirmedCount, guestSchema } from '../../src/schemas/guest';
+import { GUESTS_COLLECTION, firestore } from './firestore.js';
+import {
+  TOKEN_LENGTH,
+  guestLimitCoversConfirmedCount,
+  guestSchema,
+} from '../../src/schemas/guest.js';
 import type { DocumentReference, DocumentSnapshot } from 'firebase-admin/firestore';
-import type { CreateGuestInput, Guest, UpdateGuestInput } from '../../src/schemas/guest';
+import type { CreateGuestInput, Guest, UpdateGuestInput } from '../../src/schemas/guest.js';
 
 export interface GuestRecord {
   ref: DocumentReference;
