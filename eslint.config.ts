@@ -25,8 +25,7 @@ const noComments: Rule.RuleModule = {
         'Comments are not allowed (ADR-007). Rename the symbol or write a test that documents the rule.',
       jsDocOnly:
         'Only JSDoc blocks on exported declarations are allowed here (ADR-007). Line comments are not.',
-      jsDocNotExported:
-        'JSDoc is allowed only directly above an exported declaration (ADR-007).',
+      jsDocNotExported: 'JSDoc is allowed only directly above an exported declaration (ADR-007).',
     },
   },
   create(context) {
@@ -64,7 +63,34 @@ const noComments: Rule.RuleModule = {
   },
 };
 
-const local = { rules: { 'no-comments': noComments } };
+const BLOCK_DISABLE_PATTERN = /^\s*eslint-(disable|enable)(?!-next-line)\b/;
+
+const noBlockDisable: Rule.RuleModule = {
+  meta: {
+    type: 'suggestion',
+    docs: { description: 'Disallow file- or block-level eslint-disable and eslint-enable' },
+    schema: [],
+    messages: {
+      blockDisable:
+        'Only eslint-disable-next-line is allowed (§10). A file- or block-level eslint-disable or eslint-enable is not, even with a description.',
+    },
+  },
+  create(context) {
+    const sourceCode = context.sourceCode;
+
+    return {
+      Program() {
+        for (const comment of sourceCode.getAllComments()) {
+          if (comment.loc && BLOCK_DISABLE_PATTERN.test(comment.value)) {
+            context.report({ loc: comment.loc, messageId: 'blockDisable' });
+          }
+        }
+      },
+    };
+  },
+};
+
+const local = { rules: { 'no-comments': noComments, 'no-block-disable': noBlockDisable } };
 
 export default defineConfig(
   { ignores: ['dist', 'coverage', 'node_modules', '.vercel'] },
@@ -81,6 +107,7 @@ export default defineConfig(
     linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: {
       'local/no-comments': 'error',
+      'local/no-block-disable': 'error',
 
       '@eslint-community/eslint-comments/no-unlimited-disable': 'error',
       '@eslint-community/eslint-comments/require-description': ['error', { ignore: [] }],
@@ -91,13 +118,22 @@ export default defineConfig(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/ban-ts-comment': [
         'error',
-        { 'ts-ignore': true, 'ts-expect-error': 'allow-with-description', minimumDescriptionLength: 20 },
+        {
+          'ts-ignore': true,
+          'ts-expect-error': 'allow-with-description',
+          minimumDescriptionLength: 20,
+        },
       ],
       '@typescript-eslint/naming-convention': [
         'error',
         { selector: 'default', format: ['camelCase'], leadingUnderscore: 'forbid' },
         { selector: 'variable', format: ['camelCase', 'UPPER_CASE'] },
-        { selector: 'variable', modifiers: ['const'], types: ['function'], format: ['camelCase', 'PascalCase'] },
+        {
+          selector: 'variable',
+          modifiers: ['const'],
+          types: ['function'],
+          format: ['camelCase', 'PascalCase'],
+        },
         { selector: 'parameter', format: ['camelCase'], leadingUnderscore: 'allow' },
         { selector: 'typeLike', format: ['PascalCase'] },
         { selector: 'enumMember', format: ['UPPER_CASE'] },
@@ -156,7 +192,7 @@ export default defineConfig(
         {
           patterns: [
             {
-              group: ['**/components/admin/**', '@/components/admin/**'],
+              group: ['**/components/admin/**', '@/components/admin/**', '**/admin/**'],
               message: 'ADR-010: the invitation and the console do not share components.',
             },
           ],
@@ -173,7 +209,7 @@ export default defineConfig(
         {
           patterns: [
             {
-              group: ['**/components/ui/**', '@/components/ui/**'],
+              group: ['**/components/ui/**', '@/components/ui/**', '**/ui/**'],
               message: 'ADR-010: the console does not consume the invitation design system.',
             },
           ],

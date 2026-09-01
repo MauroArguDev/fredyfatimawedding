@@ -1,4 +1,4 @@
-import { readRequiredEnv } from './env';
+import { readRequiredEnv } from './env.js';
 
 const RSVP_DEADLINE_ENV_VAR = 'RSVP_DEADLINE';
 

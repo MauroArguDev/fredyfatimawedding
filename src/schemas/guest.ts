@@ -11,11 +11,7 @@ const phoneSchema = z
   .string()
   .regex(/^\+[1-9]\d{7,14}$/, 'Phone must be E.164, for example +50370000000');
 
-const guestLimitSchema = z
-  .number()
-  .int()
-  .min(MIN_GUEST_LIMIT)
-  .max(MAX_GUEST_LIMIT);
+const guestLimitSchema = z.number().int().min(MIN_GUEST_LIMIT).max(MAX_GUEST_LIMIT);
 
 export const createGuestSchema = z.object({
   firstName: z.string().trim().min(1).max(MAX_NAME_LENGTH),
@@ -70,10 +66,54 @@ export function fitsWithinGuestLimit(count: number, guestLimit: number): boolean
   return Number.isInteger(count) && count >= MIN_GUEST_LIMIT && count <= guestLimit;
 }
 
-export function resolveDisplayName(guest: Pick<Guest, 'titleLabel' | 'firstName' | 'lastName'>): string {
+export function guestLimitCoversConfirmedCount(
+  guestLimit: number,
+  confirmedCount: number,
+): boolean {
+  return confirmedCount <= guestLimit;
+}
+
+export function resolveDisplayName(
+  guest: Pick<Guest, 'titleLabel' | 'firstName' | 'lastName'>,
+): string {
   if (guest.titleLabel !== null && guest.titleLabel.length > 0) {
     return guest.titleLabel;
   }
 
-  return [guest.firstName, guest.lastName].filter((part) => part !== null && part.length > 0).join(' ');
+  return [guest.firstName, guest.lastName]
+    .filter((part) => part !== null && part.length > 0)
+    .join(' ');
+}
+
+export interface GuestStats {
+  total: number;
+  confirmed: number;
+  pending: number;
+  openedNotConfirmed: number;
+  totalConfirmedPeople: number;
+}
+
+type GuestStatsInput = Pick<Guest, 'confirmed' | 'confirmedCount' | 'firstOpenedAt'>;
+
+const EMPTY_GUEST_STATS: GuestStats = {
+  total: 0,
+  confirmed: 0,
+  pending: 0,
+  openedNotConfirmed: 0,
+  totalConfirmedPeople: 0,
+};
+
+function addGuestToStats(stats: GuestStats, guest: GuestStatsInput): GuestStats {
+  return {
+    total: stats.total + 1,
+    confirmed: stats.confirmed + (guest.confirmed ? 1 : 0),
+    pending: stats.pending + (guest.confirmed ? 0 : 1),
+    openedNotConfirmed:
+      stats.openedNotConfirmed + (!guest.confirmed && guest.firstOpenedAt !== null ? 1 : 0),
+    totalConfirmedPeople: stats.totalConfirmedPeople + (guest.confirmed ? guest.confirmedCount : 0),
+  };
+}
+
+export function computeGuestStats(guests: readonly GuestStatsInput[]): GuestStats {
+  return guests.reduce(addGuestToStats, EMPTY_GUEST_STATS);
 }

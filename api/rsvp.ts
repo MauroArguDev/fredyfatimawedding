@@ -1,9 +1,9 @@
-import { fitsWithinGuestLimit, rsvpRequestSchema } from '../src/schemas/guest';
-import { buildRsvpConfirmationMessage } from '../src/content/whatsapp';
-import { confirmGuest, findGuestByToken } from './_lib/guests';
-import { isRsvpOpen } from './_lib/rsvpDeadline';
-import { rsvpRateLimiter } from './_lib/rateLimit';
-import { buildWhatsAppLink } from './_lib/whatsapp';
+import { fitsWithinGuestLimit, rsvpRequestSchema } from '../src/schemas/guest.js';
+import { buildRsvpConfirmationMessage } from '../src/content/whatsapp.js';
+import { confirmGuest, findGuestByToken } from './_lib/guests.js';
+import { isRsvpOpen } from './_lib/rsvpDeadline.js';
+import { rsvpRateLimiter } from './_lib/rateLimit.js';
+import { buildWhatsAppLink } from './_lib/whatsapp.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const HTTP_OK = 200;
@@ -29,7 +29,10 @@ function submittedTooFastOrNeverOpened(firstOpenedAt: Date | null, now: Date): b
   return firstOpenedAt === null || now.getTime() - firstOpenedAt.getTime() < MINIMUM_FILL_TIME_MS;
 }
 
-export default async function handler(request: VercelRequest, response: VercelResponse): Promise<void> {
+export default async function handler(
+  request: VercelRequest,
+  response: VercelResponse,
+): Promise<void> {
   if (rsvpRateLimiter.shouldLimit(extractClientIp(request), new Date())) {
     response.status(HTTP_TOO_MANY_REQUESTS).json({ code: 'RATE_LIMITED' });
     return;

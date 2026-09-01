@@ -1,4 +1,4 @@
-import { readRequiredEnv } from './env';
+import { readRequiredEnv } from './env.js';
 
 const BRIDE_WHATSAPP_ENV_VAR = 'BRIDE_WHATSAPP';
 
