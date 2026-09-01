@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminGuestsPage } from '@/components/admin/guests/AdminGuestsPage';
 import { useAdminGuests } from '@/components/admin/guests/useAdminGuests';
 import { adminGuestsPageCopy } from '@/content/adminGuests';
@@ -9,6 +10,16 @@ import type { AdminGuest } from '@/schemas/guest';
 vi.mock('@/components/admin/guests/useAdminGuests', () => ({ useAdminGuests: vi.fn() }));
 
 const useAdminGuestsMock = vi.mocked(useAdminGuests);
+
+function renderPage() {
+  const queryClient = new QueryClient();
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AdminGuestsPage />
+    </QueryClientProvider>,
+  );
+}
 
 const orlando: AdminGuest = {
   id: 'id-1',
@@ -39,7 +50,7 @@ describe('AdminGuestsPage', () => {
   it('showsALoadingStateWhileThePendingQueryIsInFlight', () => {
     useAdminGuestsMock.mockReturnValue({ isPending: true, isError: false } as never);
 
-    render(<AdminGuestsPage />);
+    renderPage();
 
     expect(screen.getByText(adminGuestsPageCopy.loading)).toBeInTheDocument();
   });
@@ -48,7 +59,7 @@ describe('AdminGuestsPage', () => {
     const refetch = vi.fn();
     useAdminGuestsMock.mockReturnValue({ isPending: false, isError: true, refetch } as never);
 
-    render(<AdminGuestsPage />);
+    renderPage();
     await userEvent.click(screen.getByRole('button', { name: adminGuestsPageCopy.retry }));
 
     expect(refetch).toHaveBeenCalledTimes(1);
@@ -61,7 +72,7 @@ describe('AdminGuestsPage', () => {
       data: { guests: [], stats: { ...stats, total: 0 } },
     } as never);
 
-    render(<AdminGuestsPage />);
+    renderPage();
 
     expect(screen.getByText(adminGuestsPageCopy.emptyList)).toBeInTheDocument();
   });
@@ -73,7 +84,7 @@ describe('AdminGuestsPage', () => {
       data: { guests: [orlando], stats },
     } as never);
 
-    render(<AdminGuestsPage />);
+    renderPage();
 
     await userEvent.type(screen.getByLabelText('Buscar invitados'), 'nadie-coincide');
 
@@ -87,7 +98,7 @@ describe('AdminGuestsPage', () => {
       data: { guests: [orlando], stats },
     } as never);
 
-    render(<AdminGuestsPage />);
+    renderPage();
 
     expect(screen.getByText('Orlando')).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();

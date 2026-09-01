@@ -29,6 +29,7 @@ export const adminGuestsTableCopy = {
   never: '—',
   sortByName: 'Ordenar por nombre',
   sortByStatus: 'Ordenar por estado',
+  actionsColumn: 'Acciones',
 } as const;
 
 export const adminGuestsPageCopy = {

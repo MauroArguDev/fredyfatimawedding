@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AdminGuestsTable } from '@/components/admin/guests/AdminGuestsTable';
 import { adminGuestsTableCopy } from '@/content/adminGuests';
+import { editGuestDialogCopy } from '@/content/adminGuestForm';
+import { deleteGuestDialogCopy, releaseConfirmationDialogCopy } from '@/content/adminGuestActions';
 import type { AdminGuest } from '@/schemas/guest';
 
 const orlando: AdminGuest = {
@@ -32,15 +34,26 @@ const fatima: AdminGuest = {
   firstOpenedAt: new Date('2026-08-15T18:30:00-06:00'),
 };
 
+function renderTable(
+  guests: AdminGuest[],
+  overrides: Partial<Parameters<typeof AdminGuestsTable>[0]> = {},
+) {
+  return render(
+    <AdminGuestsTable
+      guests={guests}
+      sort={{ key: 'name', direction: 'asc' }}
+      onToggleSort={vi.fn()}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+      onReleaseConfirmation={vi.fn()}
+      {...overrides}
+    />,
+  );
+}
+
 describe('AdminGuestsTable', () => {
   it('rendersOneRowPerGuestWithTheirData', () => {
-    render(
-      <AdminGuestsTable
-        guests={[orlando, fatima]}
-        sort={{ key: 'name', direction: 'asc' }}
-        onToggleSort={vi.fn()}
-      />,
-    );
+    renderTable([orlando, fatima]);
 
     expect(screen.getByText('Orlando')).toBeInTheDocument();
     expect(screen.getByText('Tía Fátima')).toBeInTheDocument();
@@ -49,13 +62,7 @@ describe('AdminGuestsTable', () => {
   });
 
   it('showsAPlaceholderForAGuestWhoNeverOpenedTheInvitation', () => {
-    render(
-      <AdminGuestsTable
-        guests={[orlando]}
-        sort={{ key: 'name', direction: 'asc' }}
-        onToggleSort={vi.fn()}
-      />,
-    );
+    renderTable([orlando]);
 
     const row = screen.getByText('Orlando').closest('tr');
     expect(row).not.toBeNull();
@@ -64,14 +71,7 @@ describe('AdminGuestsTable', () => {
 
   it('callsOnToggleSortWithNameWhenTheNameHeaderIsClicked', async () => {
     const onToggleSort = vi.fn();
-
-    render(
-      <AdminGuestsTable
-        guests={[orlando]}
-        sort={{ key: 'name', direction: 'asc' }}
-        onToggleSort={onToggleSort}
-      />,
-    );
+    renderTable([orlando], { onToggleSort });
 
     await userEvent.click(
       screen.getByRole('button', { name: new RegExp(adminGuestsTableCopy.firstName) }),
@@ -82,17 +82,57 @@ describe('AdminGuestsTable', () => {
 
   it('callsOnToggleSortWithStatusWhenTheStatusHeaderIsClicked', async () => {
     const onToggleSort = vi.fn();
-
-    render(
-      <AdminGuestsTable
-        guests={[orlando]}
-        sort={{ key: 'name', direction: 'asc' }}
-        onToggleSort={onToggleSort}
-      />,
-    );
+    renderTable([orlando], { onToggleSort });
 
     await userEvent.click(screen.getByRole('button', { name: adminGuestsTableCopy.status }));
 
     expect(onToggleSort).toHaveBeenCalledWith('status');
+  });
+
+  it('showsEditAndDeleteButtonsButNotReleaseForAPendingGuest', () => {
+    renderTable([orlando]);
+
+    expect(screen.getByRole('button', { name: editGuestDialogCopy.trigger })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: deleteGuestDialogCopy.trigger })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: releaseConfirmationDialogCopy.trigger }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('alsoShowsTheReleaseConfirmationButtonForAConfirmedGuest', () => {
+    renderTable([fatima]);
+
+    expect(
+      screen.getByRole('button', { name: releaseConfirmationDialogCopy.trigger }),
+    ).toBeInTheDocument();
+  });
+
+  it('callsOnEditWithTheGuestWhenEditIsClicked', async () => {
+    const onEdit = vi.fn();
+    renderTable([orlando], { onEdit });
+
+    await userEvent.click(screen.getByRole('button', { name: editGuestDialogCopy.trigger }));
+
+    expect(onEdit).toHaveBeenCalledWith(orlando);
+  });
+
+  it('callsOnDeleteWithTheGuestWhenDeleteIsClicked', async () => {
+    const onDelete = vi.fn();
+    renderTable([orlando], { onDelete });
+
+    await userEvent.click(screen.getByRole('button', { name: deleteGuestDialogCopy.trigger }));
+
+    expect(onDelete).toHaveBeenCalledWith(orlando);
+  });
+
+  it('callsOnReleaseConfirmationWithTheGuestWhenReleaseIsClicked', async () => {
+    const onReleaseConfirmation = vi.fn();
+    renderTable([fatima], { onReleaseConfirmation });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: releaseConfirmationDialogCopy.trigger }),
+    );
+
+    expect(onReleaseConfirmation).toHaveBeenCalledWith(fatima);
   });
 });

@@ -985,14 +985,21 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 
 **Feature · 5 · WED-81 · vía A**
 
-- [ ] Formulario de creación con los campos de §3, validado con el esquema compartido.
-- [ ] Edición en modal o vista de detalle, precargada.
-- [ ] **Ambas vías de corrección soportadas** (Q17): editar `confirmedCount` dejando la confirmación cerrada, o liberar `confirmed` a `false` para que el invitado reenvíe. Las dos acciones son visibles y distinguibles en la interfaz.
-- [ ] Liberar una confirmación pide confirmación explícita y advierte que el invitado podrá enviar de nuevo.
-- [ ] Eliminación con confirmación que **muestra el nombre del invitado**.
-- [ ] Lista y estadísticas se actualizan sin recargar la página.
-- [ ] Errores del servidor mostrados de forma legible.
-- [ ] Actualización optimista con reversión si la petición falla.
+- [x] Formulario de creación con los campos de §3, validado con el esquema compartido. `CreateGuestDialog` usa React Hook Form + Zod; el schema del formulario (`guestFormSchema.ts`) reutiliza `phoneSchema` y las constantes `MAX_*`/`MIN_GUEST_LIMIT` de `src/schemas/guest.ts` en vez de duplicar los límites, así que sigue siendo "el esquema compartido" aunque el shape del formulario (campos de texto vacíos en vez de `null`) no sea idéntico byte a byte al de la API — la conversión ocurre en `toCreateGuestInput`, justo antes de llamar al endpoint.
+- [x] Edición en modal, precargada. `EditGuestDialog` recibe el invitado seleccionado y hace `reset()` del formulario con sus valores actuales cada vez que cambia.
+- [x] **Ambas vías de corrección soportadas** (Q17): `EditGuestDialog` incluye `confirmedCount` como campo editable normal (deja `confirmed` intacto); `ReleaseConfirmationDialog` es una acción **separada**, con su propio botón visible solo cuando `guest.confirmed === true`, que hace `PATCH {confirmed: false}` — nunca se mezclan en el mismo formulario ni el mismo botón.
+- [x] Liberar una confirmación pide confirmación explícita y advierte que el invitado podrá enviar de nuevo — texto literal en `releaseConfirmationDialogCopy.body` (`src/content/adminGuestActions.ts`), con el nombre del invitado interpolado.
+- [x] Eliminación con confirmación que **muestra el nombre del invitado** — `DeleteGuestDialog` interpola `resolveDisplayName(guest)` (ya existía desde WED-21) en el texto de la advertencia.
+- [x] Lista y estadísticas se actualizan sin recargar la página — las tres mutaciones invalidan `['admin','guests']` en `onSettled`, forzando un refetch de TanStack Query.
+- [x] Errores del servidor mostrados de forma legible. `AdminGuestsApiError` lleva el `code` crudo de la API; `resolveAdminGuestErrorMessage` (`src/content/adminGuestForm.ts`) lo traduce a un mensaje en español o cae a un genérico si el código no es uno de los conocidos — nunca se muestra el `code` ni un mensaje del servidor sin traducir.
+- [x] Actualización optimista con reversión si la petición falla. `adminGuestsOptimisticUpdate.ts`: cada mutación (`onMutate`) cancela refetches en curso, guarda una foto del caché y aplica el cambio (agregar/parchear/quitar + `computeGuestStats` recalculado); `onError` restaura la foto exacta. Verificado con tests que fuerzan un 400/404/500 y comprueban que el caché vuelve a su estado anterior.
+
+**Dos bugs reales encontrados al conectar las mutaciones de verdad (ninguno era visible en el ticket anterior porque nada llamaba a `mutateAsync` todavía):**
+
+1. **`await mutation.mutateAsync(...)` sin `try/catch` producía un `Unhandled Rejection` en cada error del servidor.** `mutateAsync` relanza el error después de que `onError` ya actualizó el estado reactivo (`mutation.error`), así que el rechazo llegaba sin nadie que lo esperara. La UI funcionaba bien (el mensaje de error sí aparecía), pero el rechazo quedaba sin capturar — mismo problema en el navegador real, no solo en los tests. **Corregido en los 4 diálogos** cambiando de `mutateAsync` + `await` a `mutation.mutate(variables, { onSuccess: ... })`, el patrón idiomático de TanStack Query para "dispara y reacciona sin necesitar el resultado en el mismo scope" — el estado de error se sigue leyendo de forma reactiva, nunca hay una promesa sin capturar.
+2. **Repetición del hallazgo de WED-80: `Button` y `DialogOverlay`/`DialogContent` tampoco tenían `React.forwardRef`.** Se detectó por la misma advertencia de React ("Function components cannot be given refs") al renderizar `DialogTrigger asChild` con nuestro `Button`. Corregidos los tres (`button.tsx`, y `DialogOverlay`/`DialogContent` en `dialog.tsx`) — son los primitivos que este ticket usa activamente con `asChild`. **Los demás primitivos de Radix (`Select`, `Badge`, resto de `Field`) siguen sin `forwardRef`**; corregir solo cuando un ticket futuro los conecte a un patrón que lo necesite de verdad, mismo criterio que WED-80.
+
+**Cobertura.** 286 tests en el repo (antes 235), 98.6 % de cobertura global. `npm run verify` y `npm run build` en verde; el chunk principal de la invitación se mantiene aislado (259.25 kB, prácticamente sin cambio), todo el peso nuevo (RHF + Zod resolver + Dialog) va al chunk de `/admin` (362.51 kB).
 
 #### WED-83 — Envío de invitaciones desde la consola
 

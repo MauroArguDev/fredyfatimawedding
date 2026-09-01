@@ -7,7 +7,7 @@ export const MAX_TITLE_LABEL_LENGTH = 120;
 export const MAX_NOTES_LENGTH = 500;
 export const TOKEN_LENGTH = 21;
 
-const phoneSchema = z
+export const phoneSchema = z
   .string()
   .regex(/^\+[1-9]\d{7,14}$/, 'Phone must be E.164, for example +50370000000');
 
