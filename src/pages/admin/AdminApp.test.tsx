@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import AdminApp from '@/pages/admin/AdminApp';
 import { adminShellCopy } from '@/content/appShell';
 import { adminLoginCopy } from '@/content/adminAuth';
+import { adminGuestsPageCopy } from '@/content/adminGuests';
+import { useAdminGuests } from '@/components/admin/guests/useAdminGuests';
 
 const authStateCallbacks: ((user: { uid: string } | null) => void)[] = [];
 const { signOutMock } = vi.hoisted(() => ({ signOutMock: vi.fn() }));
@@ -22,11 +24,19 @@ vi.mock('firebase/auth', () => ({
   signInWithEmailAndPassword: vi.fn(),
   signOut: (...args: unknown[]): unknown => signOutMock(...args),
 }));
+vi.mock('@/components/admin/guests/useAdminGuests');
+
+const useAdminGuestsMock = vi.mocked(useAdminGuests);
 
 describe('AdminApp', () => {
   beforeEach(() => {
     authStateCallbacks.length = 0;
     signOutMock.mockReset();
+    useAdminGuestsMock.mockReturnValue({
+      isPending: true,
+      isError: false,
+      isSuccess: false,
+    } as never);
   });
 
   it('showsTheLoginPageWhenThereIsNoSignedInUser', async () => {
@@ -39,7 +49,7 @@ describe('AdminApp', () => {
     });
   });
 
-  it('showsTheShellWithThePlaceholderOnceAUserIsSignedIn', async () => {
+  it('showsTheShellWithTheGuestsPageOnceAUserIsSignedIn', async () => {
     render(<AdminApp />);
 
     authStateCallbacks[0]?.({ uid: 'admin-1' });
@@ -47,7 +57,7 @@ describe('AdminApp', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: adminShellCopy.title })).toBeInTheDocument();
     });
-    expect(screen.getByText(adminShellCopy.placeholder)).toBeInTheDocument();
+    expect(screen.getByText(adminGuestsPageCopy.loading)).toBeInTheDocument();
   });
 
   it('callsFirebaseSignOutWhenTheShellsLogoutButtonIsClicked', async () => {

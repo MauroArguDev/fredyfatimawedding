@@ -47,6 +47,30 @@ export const guestSchema = createGuestSchema.extend({
   updatedAt: z.date(),
 });
 
+export const adminGuestSchema = guestSchema.extend({
+  id: z.string(),
+  confirmedAt: z.coerce.date().nullable(),
+  firstOpenedAt: z.coerce.date().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export const guestStatsSchema = z.object({
+  total: z.number().int().min(0),
+  confirmed: z.number().int().min(0),
+  pending: z.number().int().min(0),
+  openedNotConfirmed: z.number().int().min(0),
+  totalConfirmedPeople: z.number().int().min(0),
+});
+
+export const adminGuestListResponseSchema = z.object({
+  guests: z.array(adminGuestSchema),
+  stats: guestStatsSchema,
+});
+
+export type AdminGuest = z.infer<typeof adminGuestSchema>;
+export type AdminGuestListResponse = z.infer<typeof adminGuestListResponseSchema>;
+
 export const publicInvitationSchema = z.object({
   titleLabel: z.string().nullable(),
   firstName: z.string(),

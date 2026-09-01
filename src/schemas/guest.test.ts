@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_GUEST_LIMIT,
+  adminGuestListResponseSchema,
+  adminGuestSchema,
   computeGuestStats,
   createGuestSchema,
   fitsWithinGuestLimit,
@@ -204,5 +206,44 @@ describe('computeGuestStats', () => {
     const pendingWithStaleCount = { confirmed: false, confirmedCount: 4, firstOpenedAt: null };
 
     expect(computeGuestStats([pendingWithStaleCount]).totalConfirmedPeople).toBe(0);
+  });
+});
+
+describe('adminGuestSchema', () => {
+  const wireGuest = {
+    ...validGuest,
+    id: 'doc-1',
+    token: validToken,
+    confirmed: false,
+    confirmedCount: 0,
+    confirmedAt: null,
+    firstOpenedAt: '2026-08-30T12:00:00.000Z',
+    createdAt: '2026-08-01T00:00:00.000Z',
+    updatedAt: '2026-08-01T00:00:00.000Z',
+  };
+
+  it('coercesIsoDateStringsFromJsonIntoRealDateInstances', () => {
+    const parsed = adminGuestSchema.parse(wireGuest);
+
+    expect(parsed.firstOpenedAt).toBeInstanceOf(Date);
+    expect(parsed.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('keepsNullDatesAsNullInsteadOfCoercingThem', () => {
+    const parsed = adminGuestSchema.parse(wireGuest);
+
+    expect(parsed.confirmedAt).toBeNull();
+  });
+});
+
+describe('adminGuestListResponseSchema', () => {
+  it('parsesAGuestsAndStatsEnvelopeTogether', () => {
+    const parsed = adminGuestListResponseSchema.parse({
+      guests: [],
+      stats: { total: 0, confirmed: 0, pending: 0, openedNotConfirmed: 0, totalConfirmedPeople: 0 },
+    });
+
+    expect(parsed.guests).toEqual([]);
+    expect(parsed.stats.total).toBe(0);
   });
 });
