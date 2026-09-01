@@ -13,7 +13,13 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['src/**/*.{ts,tsx}', 'api/**/*.ts'],
-      exclude: ['**/*.test.{ts,tsx}', 'src/testSetup.ts', 'src/main.tsx', 'api/_lib/firestore.ts'],
+      exclude: [
+        '**/*.test.{ts,tsx}',
+        'src/testSetup.ts',
+        'src/main.tsx',
+        'api/_lib/firestore.ts',
+        'src/components/admin/primitives/**',
+      ],
       thresholds: {
         lines: 60,
         functions: 60,

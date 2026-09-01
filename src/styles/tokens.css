@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+@source not '../components/admin';
+@source not '../pages/admin';
 
 @theme {
   --color-bg-base: #f7dbb4;
