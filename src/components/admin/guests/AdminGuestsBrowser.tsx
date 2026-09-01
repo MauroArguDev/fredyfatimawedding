@@ -30,75 +30,6 @@ function toggleSortState(current: GuestSortState, key: GuestSortState['key']): G
   return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
 }
 
-function clearSelection(setSelected: (value: null) => void): () => void {
-  return () => {
-    setSelected(null);
-  };
-}
-
-interface AdminGuestsCrudDialogsProps {
-  guestToEdit: AdminGuest | null;
-  guestToDelete: AdminGuest | null;
-  guestToRelease: AdminGuest | null;
-  onCloseEdit: () => void;
-  onCloseDelete: () => void;
-  onCloseRelease: () => void;
-}
-
-const AdminGuestsCrudDialogs = ({
-  guestToEdit,
-  guestToDelete,
-  guestToRelease,
-  onCloseEdit,
-  onCloseDelete,
-  onCloseRelease,
-}: AdminGuestsCrudDialogsProps): ReactNode => (
-  <>
-    <EditGuestDialog guest={guestToEdit} onClose={onCloseEdit} />
-    <DeleteGuestDialog guest={guestToDelete} onClose={onCloseDelete} />
-    <ReleaseConfirmationDialog guest={guestToRelease} onClose={onCloseRelease} />
-  </>
-);
-
-interface AdminGuestsResultsProps {
-  guests: readonly AdminGuest[];
-  visibleGuests: readonly AdminGuest[];
-  sort: GuestSortState;
-  onToggleSort: (key: GuestSortState['key']) => void;
-  onEdit: (guest: AdminGuest) => void;
-  onDelete: (guest: AdminGuest) => void;
-  onReleaseConfirmation: (guest: AdminGuest) => void;
-}
-
-const AdminGuestsResults = ({
-  guests,
-  visibleGuests,
-  sort,
-  onToggleSort,
-  onEdit,
-  onDelete,
-  onReleaseConfirmation,
-}: AdminGuestsResultsProps): ReactNode => {
-  if (guests.length === 0) {
-    return <p className="text-sm text-muted-foreground">{adminGuestsPageCopy.emptyList}</p>;
-  }
-
-  if (visibleGuests.length === 0) {
-    return <p className="text-sm text-muted-foreground">{adminGuestsPageCopy.emptyFiltered}</p>;
-  }
-
-  return (
-    <AdminGuestsTable
-      guests={visibleGuests}
-      sort={sort}
-      onToggleSort={onToggleSort}
-      onEdit={onEdit}
-      onDelete={onDelete}
-      onReleaseConfirmation={onReleaseConfirmation}
-    />
-  );
-};
-
 export const AdminGuestsBrowser = ({ guests, stats }: AdminGuestsBrowserProps): ReactNode => {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<GuestStatusFilter>('all');
@@ -124,24 +55,39 @@ export const AdminGuestsBrowser = ({ guests, stats }: AdminGuestsBrowserProps): 
         />
         <CreateGuestDialog />
       </div>
-      <AdminGuestsResults
-        guests={guests}
-        visibleGuests={visibleGuests}
-        sort={sort}
-        onToggleSort={(key) => {
-          setSort((current) => toggleSortState(current, key));
+      {guests.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{adminGuestsPageCopy.emptyList}</p>
+      ) : visibleGuests.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{adminGuestsPageCopy.emptyFiltered}</p>
+      ) : (
+        <AdminGuestsTable
+          guests={visibleGuests}
+          sort={sort}
+          onToggleSort={(key) => {
+            setSort((current) => toggleSortState(current, key));
+          }}
+          onEdit={setGuestToEdit}
+          onDelete={setGuestToDelete}
+          onReleaseConfirmation={setGuestToRelease}
+        />
+      )}
+      <EditGuestDialog
+        guest={guestToEdit}
+        onClose={() => {
+          setGuestToEdit(null);
         }}
-        onEdit={setGuestToEdit}
-        onDelete={setGuestToDelete}
-        onReleaseConfirmation={setGuestToRelease}
       />
-      <AdminGuestsCrudDialogs
-        guestToEdit={guestToEdit}
-        guestToDelete={guestToDelete}
-        guestToRelease={guestToRelease}
-        onCloseEdit={clearSelection(setGuestToEdit)}
-        onCloseDelete={clearSelection(setGuestToDelete)}
-        onCloseRelease={clearSelection(setGuestToRelease)}
+      <DeleteGuestDialog
+        guest={guestToDelete}
+        onClose={() => {
+          setGuestToDelete(null);
+        }}
+      />
+      <ReleaseConfirmationDialog
+        guest={guestToRelease}
+        onClose={() => {
+          setGuestToRelease(null);
+        }}
       />
     </div>
   );

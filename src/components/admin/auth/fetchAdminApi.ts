@@ -11,7 +11,7 @@ export async function fetchAdminApi(input: string, init: RequestInit = {}): Prom
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(input, { ...init, headers, cache: 'no-store' });
+  const response = await fetch(input, { ...init, headers });
 
   if (response.status === HTTP_UNAUTHORIZED) {
     await signOut(auth);
