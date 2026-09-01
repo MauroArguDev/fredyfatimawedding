@@ -14,7 +14,7 @@
     "lint:disables": "tsx scripts/countEslintDisables.ts",
     "import:guests": "tsx scripts/importGuests.ts",
     "normalize:guests": "tsx scripts/normalizeGuestSheet.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",

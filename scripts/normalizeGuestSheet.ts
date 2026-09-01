@@ -60,9 +60,11 @@ function stringifyCellObject(value: CellObjectValue): string {
     return '';
   }
 
-  return typeof value.result === 'object'
-    ? stringifyCellObject(value.result)
-    : scalarToString(value.result);
+  if (value.result instanceof Date || typeof value.result !== 'object') {
+    return scalarToString(value.result);
+  }
+
+  return stringifyCellObject(value.result);
 }
 
 function cellToString(value: ExcelJS.CellValue): string {

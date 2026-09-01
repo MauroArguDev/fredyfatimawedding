@@ -27,7 +27,7 @@ describe('normalizePhone', () => {
 describe('normalizeHumanGuestSheet', () => {
   it('mapsSpanishHeaderRowsIntoTheMachineColumnOrder', () => {
     const result = normalizeHumanGuestSheet([
-      HUMAN_SHEET_HEADER,
+      [...HUMAN_SHEET_HEADER],
       ['Orlando', 'Martínez', 'Tío Orlando y Familia.', '3', '7000-0000'],
     ]);
 
@@ -39,7 +39,7 @@ describe('normalizeHumanGuestSheet', () => {
 
   it('preservesAccentsAndEneWhileNormalizing', () => {
     const result = normalizeHumanGuestSheet([
-      HUMAN_SHEET_HEADER,
+      [...HUMAN_SHEET_HEADER],
       ['Íñigo', 'Peña', '', '1', '70000000'],
     ]);
 

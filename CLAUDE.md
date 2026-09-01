@@ -511,6 +511,8 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 - [ ] **`api/_lib/firestore.ts` excluido de cobertura**: es cableado de credenciales del SDK de Firebase, y testearlo solo testea al SDK. La exclusión está en `vitest.config.ts` y es la única permitida.
 - [ ] Las reglas están documentadas en el README, no solo en la configuración.
 
+**Bug encontrado y corregido (2026-08-31).** `npm run typecheck` era `tsc --noEmit` a secas. Con el `tsconfig.json` raíz en modo _project references_ (`"files": []`, sin `include`, solo `references`), eso es un no-op silencioso: `tsc --noEmit --listFiles` no listaba ni un archivo. `npm run typecheck` y por lo tanto `npm run verify` pasaban en verde sin revisar nada, mientras que `npm run build` (`tsc -b && vite build`) sí compilaba de verdad — por eso un PR pasó todas las verificaciones locales y falló recién en el build de Vercel, con dos errores de tipos reales que ya existían. Corregido a `tsc -b --noEmit`, que construye ambos proyectos referenciados (`tsconfig.app.json`, `tsconfig.node.json`) sin emitir JS — verificado que reproduce exactamente los errores que dio Vercel. Los `.tsbuildinfo` que genera se agregaron a `.gitignore`.
+
 #### WED-12 — Despliegue en Vercel con fallback SPA
 
 **Setup · 3 · WED-11**
