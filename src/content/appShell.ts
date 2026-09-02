@@ -19,4 +19,6 @@ export const adminShellCopy = {
   loading: 'Cargando panel…',
   title: 'Panel de administración',
   logout: 'Cerrar sesión',
+  switchToLightTheme: 'Cambiar a modo claro',
+  switchToDarkTheme: 'Cambiar a modo oscuro',
 } as const;

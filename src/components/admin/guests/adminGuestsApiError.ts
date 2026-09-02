@@ -26,3 +26,54 @@ export async function readAdminGuestsApiError(response: Response): Promise<Admin
 
   return new AdminGuestsApiError(readErrorCode(body));
 }
+
+export interface GuestImportRowError {
+  row: number;
+  message: string;
+}
+
+export class GuestImportValidationError extends Error {
+  errors: GuestImportRowError[];
+
+  constructor(errors: GuestImportRowError[]) {
+    super('Guest import validation failed');
+    this.name = 'GuestImportValidationError';
+    this.errors = errors;
+  }
+}
+
+function readImportRowErrors(body: unknown): GuestImportRowError[] | null {
+  if (
+    typeof body !== 'object' ||
+    body === null ||
+    !('errors' in body) ||
+    !Array.isArray(body.errors)
+  ) {
+    return null;
+  }
+
+  return body.errors.filter(
+    (item: unknown): item is GuestImportRowError =>
+      typeof item === 'object' &&
+      item !== null &&
+      typeof (item as { row: unknown }).row === 'number' &&
+      typeof (item as { message: unknown }).message === 'string',
+  );
+}
+
+export async function readGuestImportError(
+  response: Response,
+): Promise<GuestImportValidationError | AdminGuestsApiError> {
+  const body: unknown = await response.json().catch(() => null);
+  const code = readErrorCode(body);
+
+  if (code === 'INVALID_CSV') {
+    const rowErrors = readImportRowErrors(body);
+
+    if (rowErrors !== null) {
+      return new GuestImportValidationError(rowErrors);
+    }
+  }
+
+  return new AdminGuestsApiError(code);
+}

@@ -113,6 +113,14 @@
   cursor: pointer;
 }
 
+body:has(.admin-shell) {
+  background-color: oklch(1 0 0);
+}
+
+body:has(.admin-shell.dark) {
+  background-color: oklch(0.145 0 0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-shell *,
   .admin-shell *::before,

@@ -16,7 +16,7 @@ export const adminGuestsFiltersCopy = {
 } as const;
 
 export const adminGuestsTableCopy = {
-  titleLabel: 'Trato',
+  titleLabel: 'Texto en sobre',
   firstName: 'Nombre',
   lastName: 'Apellido',
   phone: 'Teléfono',
@@ -45,3 +45,23 @@ export const adminGuestsExportCopy = {
   downloading: 'Exportando…',
   error: 'No pudimos exportar la lista de invitados.',
 } as const;
+
+export const adminGuestsImportCopy = {
+  trigger: 'Importar CSV',
+  title: 'Importar invitados desde CSV',
+  fileLabel: 'Archivo CSV',
+  submit: 'Importar',
+  submitting: 'Importando…',
+  genericError: 'No pudimos importar el archivo. Revisa que sea un CSV válido e intenta de nuevo.',
+  rowErrorsHeading: 'Revisa estas filas y vuelve a intentar:',
+} as const;
+
+export function buildGuestImportSuccessMessage(imported: number, skipped: number): string {
+  const skippedSuffix = skipped > 0 ? `, ${String(skipped)} omitidos (ya existían)` : '';
+
+  return `${String(imported)} invitados importados${skippedSuffix}.`;
+}
+
+export function buildGuestImportRowErrorLabel(row: number, message: string): string {
+  return `Fila ${String(row)}: ${message}`;
+}

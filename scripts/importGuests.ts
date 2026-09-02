@@ -1,50 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { nanoid } from 'nanoid';
-import { firestore, GUESTS_COLLECTION } from '../api/_lib/firestore';
-import { TOKEN_LENGTH } from '../src/schemas/guest';
-import type { CreateGuestInput } from '../src/schemas/guest';
+import { importGuests } from '../api/_lib/guests';
 import { requireArg, reportRowErrorsAndExit } from './lib/cli';
 import { parseCsv } from './lib/csv';
-import { mapCsvToGuestInputs, partitionNewGuests } from './lib/guestImport';
-
-async function fetchExistingPhones(): Promise<Set<string>> {
-  const snapshot = await firestore().collection(GUESTS_COLLECTION).select('phone').get();
-
-  return new Set(snapshot.docs.map((doc) => String(doc.get('phone'))));
-}
-
-function buildGuestDocument(input: CreateGuestInput): Record<string, unknown> {
-  const now = new Date();
-
-  return {
-    ...input,
-    token: nanoid(TOKEN_LENGTH),
-    confirmed: false,
-    confirmedCount: 0,
-    confirmedAt: null,
-    firstOpenedAt: null,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-async function writeGuests(guests: CreateGuestInput[], existingPhones: Set<string>): Promise<void> {
-  const { toCreate, alreadyPresent } = partitionNewGuests(guests, existingPhones);
-  const collection = firestore().collection(GUESTS_COLLECTION);
-  const batch = firestore().batch();
-
-  for (const guest of toCreate) {
-    batch.set(collection.doc(), buildGuestDocument(guest));
-  }
-
-  if (toCreate.length > 0) {
-    await batch.commit();
-  }
-
-  console.warn(
-    `Imported ${String(toCreate.length)} guest(s), skipped ${String(alreadyPresent.length)} already present by phone.`,
-  );
-}
+import { mapCsvToGuestInputs } from './lib/guestImport';
 
 async function main(): Promise<void> {
   const path = requireArg(2, 'Usage: npm run import:guests -- <path-to-csv>');
@@ -55,8 +13,11 @@ async function main(): Promise<void> {
     reportRowErrorsAndExit('Import aborted, nothing was written. Errors:', errors);
   }
 
-  const existingPhones = await fetchExistingPhones();
-  await writeGuests(guests, existingPhones);
+  const { imported, skipped } = await importGuests(guests);
+
+  console.warn(
+    `Imported ${String(imported)} guest(s), skipped ${String(skipped)} already present by phone.`,
+  );
 }
 
 main().catch((error: unknown) => {

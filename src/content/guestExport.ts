@@ -3,7 +3,7 @@ export const GUEST_EXPORT_FILENAME = 'invitados.csv';
 export const GUEST_EXPORT_HEADER = [
   'Nombre',
   'Apellido',
-  'Trato para el sobre',
+  'Texto en sobre',
   'Cupo de invitados',
   'Teléfono',
   'Confirmado',

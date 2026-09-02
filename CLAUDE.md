@@ -306,6 +306,20 @@ Requieren `Authorization: Bearer <firebase-id-token>`, verificado con `admin.aut
 | `DELETE` | `/api/admin/guests/[id]`              | Elimina                                               |
 | `POST`   | `/api/admin/guests/[id]/rotate-token` | Regenera token                                        |
 | `GET`    | `/api/admin/export`                   | CSV completo                                          |
+| `POST`   | `/api/admin/guests/import`            | Importa invitados desde CSV                           |
+
+**`POST /api/admin/guests/import`.** Mismo formato de CSV que `npm run import:guests` (encabezado exacto `firstName,lastName,titleLabel,guestLimit,phone`, valores como los espera `createGuestSchema`). Todo-o-nada: si una sola fila falla la validación, no se escribe nada. Detecta duplicados por `phone` contra los invitados ya existentes y los omite (no los sobreescribe).
+
+```jsonc
+// Request
+{ "csv": "firstName,lastName,titleLabel,guestLimit,phone\nOrlando,,Tío Orlando y Familia.,3,+50370000000\n" }
+
+// 200
+{ "imported": 3, "skipped": 1 }
+
+// 400 { "code": "INVALID_PAYLOAD" }                                   // el body no es { csv: string }
+// 400 { "code": "INVALID_CSV", "errors": [{ "row": 3, "message": "..." }] }  // nada se escribió
+```
 
 ---
 
@@ -586,7 +600,7 @@ Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una 
 WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLimit,phone`, encabezados en inglés, teléfono en E.164). Ese formato no es razonable para pedírselo directo a los novios: fallan el encabezado, el formato de teléfono, y sobre todo el encoding (Excel de Windows exporta CSV en ANSI por defecto, no UTF-8, y corrompe acentos y `ñ` silenciosamente). Este ticket resuelve eso con un normalizador que evita que los novios exporten nada — solo llenan un `.xlsx` con encabezados en español y lo devuelven tal cual.
 
 - [x] `npm run normalize:guests -- <xlsx-o-csv> [output-path]` lee el `.xlsx` que llenaron los novios (o un CSV), normaliza el teléfono (acepta `7000-0000`, `7000 0000`, `+503 7000 0000`, `00503...`; asume `+503` para números locales de 8 dígitos) y valida cada fila contra el mismo `createGuestSchema` de WED-21 antes de escribir nada — mismo criterio de "todo o nada" que WED-22.
-- [x] El header esperado (`Nombre, Apellido, Trato para el sobre, Cupo de invitados, Teléfono`) es la constante `HUMAN_SHEET_HEADER` en `scripts/lib/humanGuestSheet.ts` — es la referencia si hay que rearmar el archivo a compartir con los novios a mano.
+- [x] El header esperado (`Nombre, Apellido, Texto en sobre, Cupo de invitados, Teléfono`) es la constante `HUMAN_SHEET_HEADER` en `scripts/lib/humanGuestSheet.ts` — es la referencia si hay que rearmar el archivo a compartir con los novios a mano. **Nota (2026-09-01):** el header decía originalmente "Trato para el sobre"; se renombró a "Texto en sobre" a pedido del usuario, junto con el mismo término en la consola (`adminGuestsTableCopy.titleLabel`, `guestFormFieldsCopy.titleLabel`) y en el CSV exportado (`GUEST_EXPORT_HEADER`), para que los tres queden consistentes.
 - [x] El CSV que produce es exactamente el que espera `npm run import:guests`; el mensaje final imprime el comando siguiente.
 - [x] Acentos y `ñ` preservados de punta a punta porque nunca se pasa por una exportación CSV manual (`.xlsx` → lectura directa con `exceljs`).
 - [x] Probado en vivo: una hoja de ejemplo válida normalizó y produjo el CSV correcto; una segunda hoja con una fila inválida (`guestLimit: 0`) abortó sin escribir el archivo de salida.
@@ -1059,6 +1073,24 @@ Juntos explican el reporte exacto del usuario: "Agregar invitado" sí abría el 
 **Explícitamente fuera de esta pasada:** no se agregó un menú "⋯ más acciones" (`DropdownMenu` de shadcn) para las 6 acciones por fila, ni se rediseñó la paleta de color — la paleta neutra de WED-79 sigue siendo la decisión correcta, el problema era que no cargaba.
 
 **Verificación.** No se pudo iniciar sesión real en `/admin` para probar los diálogos en un navegador (sin credenciales de Firebase Auth en este entorno, y sin herramienta de navegador disponible en esta sesión); la verificación quedó en el nivel de build (CSS generado, confirmado arriba) y de test (324 tests, 99.3 % de cobertura, sin modificar el comportamiento de los tests existentes de Dialog/Select). **Pendiente honesto:** confirmar visualmente en un navegador real con sesión iniciada que los diálogos, el `Select` de filtros y los toasts se ven como se espera.
+
+---
+
+### Corrección fuera de ticket — renombrar "Trato", modo claro/oscuro, importar CSV desde la consola (2026-09-01, mismo día)
+
+**No es un ticket del backlog**, mismo criterio que la corrección de estilos anterior: pedido explícito del usuario mientras la vía A sigue sin material nuevo.
+
+**Renombrado.** "Trato" (columna de la tabla) y "Trato para el sobre" (label del formulario, encabezado del CSV exportado, encabezado del Excel de los novios) pasan a ser un único término: "Texto en sobre", en los 4 lugares donde aparecía (`adminGuestsTableCopy.titleLabel`, `guestFormFieldsCopy.titleLabel`, `GUEST_EXPORT_HEADER`, `HUMAN_SHEET_HEADER`). El campo de datos `titleLabel` no cambia — es un identificador de código, no contenido.
+
+**Modo claro/oscuro.** `admin.css` ya traía la paleta oscura completa desde WED-79 (`.admin-shell.dark`, generada por el scaffold de shadcn) sin que nada la activara nunca. `useAdminTheme.ts` (nuevo) es un hook propio de ~30 líneas — **no se reinstaló `next-themes`**, que WED-79 había quitado a propósito por innecesario, y cuyo comportamiento por defecto (alternar la clase en `<html>`) no encaja con el escopeo deliberado a `.admin-shell`. Lee `localStorage` (`admin-theme`), cae a `prefers-color-scheme` si no hay nada guardado, y persiste cada cambio. `AdminShell` aplica la clase `dark` a su raíz y agrega el botón de toggle (`SunIcon`/`MoonIcon`) junto a "Cerrar sesión"; `LoginPage` (su propio `<div className="admin-shell">`, antes de autenticar) lee el mismo hook para no verse distinto del resto de la consola, sin mostrar el botón. El `<Toaster>` de sonner ahora recibe `theme={theme}` explícito en vez de `theme="system"` — si no, los toasts se verían con el tema del sistema operativo en vez del tema elegido a mano.
+
+**Importar CSV desde la consola.** Nuevo endpoint documentado arriba en §4 (`POST /api/admin/guests/import`), con la misma lógica que ya tenía `npm run import:guests` — no se reescribió nada, se reutilizaron las funciones puras existentes (`parseCsv`, `mapCsvToGuestInputs`, `partitionNewGuests` de `scripts/lib/`). **Se unificó la escritura**: `api/_lib/guests.ts` gana `importGuests()`, que hace el fetch de teléfonos existentes + partición + `batch()` de Firestore; tanto el endpoint nuevo como `scripts/importGuests.ts` (simplificado a un wrapper de CLI) la usan ahora. De paso corrigió un gap real: la construcción del documento del script de CLI (`buildGuestDocument`, ahora eliminada) le faltaba `invitedAt: null` desde que WED-83 agregó ese campo — no era un bug visible (`toDateOrNull` ya trata un campo ausente como `null` al leer), pero sí una inconsistencia real entre dos copias de la misma lógica. `ImportGuestsDialog.tsx` (nuevo): input de archivo, todo-o-nada (si el CSV tiene una fila inválida, no se escribe nada y las filas con error se listan **dentro del diálogo**, no en un toast, porque pueden ser varias), duplicados por teléfono reportados como "omitidos" sin sobreescribir. Fuera de alcance a propósito: el normalizador de Excel de los novios (WED-23, encabezados en español) sigue siendo solo de CLI — el pedido fue "CSV", meter `exceljs` al bundle del cliente es una pieza aparte.
+
+**Quitar el beige.** Ningún componente de `admin/` usa los tokens de la invitación (verificado con `grep`, cero resultados) — el beige venía de `body { background-color: var(--color-bg-base) }` en `tokens.css`, que `main.tsx` carga de forma global e incondicional para toda la SPA, invitación y consola por igual. `admin.css` gana `body:has(.admin-shell)` (fondo blanco) y `body:has(.admin-shell.dark)` (fondo casi negro) para que el `<body>` real detrás de la consola nunca muestre el beige, sin tocar `tokens.css`. Verificado en el CSS de producción: ambas reglas presentes en el chunk de `/admin`, `tokens.css` de la invitación sin cambios.
+
+**Hallazgo real de test: jsdom no implementa `File.prototype.text()`.** El diálogo de importación lee el archivo con `file.text()`; el primer test que subió un `File` real explotó con `TypeError: file.text is not a function` (confirmado con Node directo: jsdom tiene `FileReader` pero no `.text()` en esta versión). Agregado como polyfill global en `src/testSetup.ts` — mismo criterio que los polyfills de Radix (`hasPointerCapture`, etc., WED-81) y `matchMedia` (estabilización de endpoints): un gap real de la API del navegador que jsdom no cubre, no algo específico de un test.
+
+**Cobertura.** 346 tests (antes 324), 99.14 % de cobertura global. `npm run verify`, `npm run build` y el suite completo con `.env.local` oculto (réplica de CI) en verde. Mismo pendiente honesto que la corrección anterior: sin navegador real disponible en este entorno, no se verificó visualmente el toggle de tema ni el diálogo de importación con una sesión real.
 
 ---
 

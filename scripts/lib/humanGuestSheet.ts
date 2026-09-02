@@ -4,7 +4,7 @@ import type { RowError } from './rowValidation';
 export const HUMAN_SHEET_HEADER = [
   'Nombre',
   'Apellido',
-  'Trato para el sobre',
+  'Texto en sobre',
   'Cupo de invitados',
   'Teléfono',
 ] as const;

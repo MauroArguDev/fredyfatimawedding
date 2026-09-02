@@ -97,7 +97,7 @@ describe('GET /api/admin/export', () => {
     await handler(buildRequest('GET'), response);
 
     const [body] = send.mock.calls[0] as [string];
-    expect(body).toContain('Nombre,Apellido,Trato para el sobre');
+    expect(body).toContain('Nombre,Apellido,Texto en sobre');
   });
 
   it('rendersAConfirmedGuestRowWithSiAndTheirCounts', async () => {
