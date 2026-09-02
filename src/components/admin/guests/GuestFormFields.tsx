@@ -26,7 +26,7 @@ const GuestField = ({ htmlFor, label, error, children }: GuestFieldProps): React
   </Field>
 );
 
-type TextFieldName = 'firstName' | 'lastName' | 'titleLabel' | 'guestLimit' | 'phone' | 'notes';
+type TextFieldName = 'firstName' | 'lastName' | 'titleLabel' | 'guestLimit' | 'phone';
 
 interface TextFieldSpec {
   name: TextFieldName;
@@ -41,7 +41,6 @@ const TEXT_FIELDS: TextFieldSpec[] = [
   { name: 'titleLabel', id: 'guest-title-label', label: guestFormFieldsCopy.titleLabel },
   { name: 'guestLimit', id: 'guest-limit', label: guestFormFieldsCopy.guestLimit, isNumber: true },
   { name: 'phone', id: 'guest-phone', label: guestFormFieldsCopy.phone },
-  { name: 'notes', id: 'guest-notes', label: guestFormFieldsCopy.notes },
 ];
 
 export const GuestFormFields = ({

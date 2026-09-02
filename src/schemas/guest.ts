@@ -4,7 +4,6 @@ export const MIN_GUEST_LIMIT = 1;
 export const MAX_GUEST_LIMIT = 20;
 export const MAX_NAME_LENGTH = 60;
 export const MAX_TITLE_LABEL_LENGTH = 120;
-export const MAX_NOTES_LENGTH = 500;
 export const TOKEN_LENGTH = 21;
 
 export const phoneSchema = z
@@ -19,7 +18,6 @@ export const createGuestSchema = z.object({
   titleLabel: z.string().trim().max(MAX_TITLE_LABEL_LENGTH).nullable().default(null),
   guestLimit: guestLimitSchema,
   phone: phoneSchema,
-  notes: z.string().trim().max(MAX_NOTES_LENGTH).nullable().default(null),
 });
 
 export const updateGuestSchema = createGuestSchema

@@ -50,6 +50,7 @@ export const adminGuestsImportCopy = {
   trigger: 'Importar CSV',
   title: 'Importar invitados desde CSV',
   fileLabel: 'Archivo CSV',
+  fileHint: 'Encabezado: Nombre, Apellido, Texto en sobre, Cupo de invitados, Teléfono.',
   submit: 'Importar',
   submitting: 'Importando…',
   genericError: 'No pudimos importar el archivo. Revisa que sea un CSV válido e intenta de nuevo.',

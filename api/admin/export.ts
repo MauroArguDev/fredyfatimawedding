@@ -28,7 +28,6 @@ function toRow(guest: Guest): string[] {
     String(guest.confirmedCount),
     formatDate(guest.confirmedAt),
     formatDate(guest.firstOpenedAt),
-    guest.notes ?? '',
   ];
 }
 

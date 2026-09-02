@@ -18,7 +18,6 @@ const validGuest = {
   titleLabel: 'Tío Orlando y Familia.',
   guestLimit: 3,
   phone: '+50370000000',
-  notes: null,
 };
 
 const validToken = 'V1StGXR8_Z5jdHi6B-myT';

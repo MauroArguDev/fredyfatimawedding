@@ -274,7 +274,6 @@ describe('createGuest', () => {
     titleLabel: null,
     guestLimit: 2,
     phone: '+50370000000',
-    notes: null,
   };
 
   it('generatesATokenAndAppliesDefaultsBeforeWriting', async () => {
@@ -325,7 +324,6 @@ describe('importGuests', () => {
     titleLabel: null,
     guestLimit: 2,
     phone: '+50370000000',
-    notes: null,
   };
   const guestB: CreateGuestInput = {
     firstName: 'Fátima',
@@ -333,7 +331,6 @@ describe('importGuests', () => {
     titleLabel: null,
     guestLimit: 1,
     phone: '+50370000001',
-    notes: null,
   };
 
   it('createsEveryGuestWhenNonePhoneAlreadyExists', async () => {
@@ -400,10 +397,10 @@ describe('updateGuest', () => {
   it('appliesThePatchAndUpdatesUpdatedAt', async () => {
     const fake = useFakeGuestsCollection({ abc: storedGuest });
 
-    const outcome = await updateGuest('abc', { notes: 'called them to confirm' });
+    const outcome = await updateGuest('abc', { titleLabel: 'Called them to confirm' });
 
     expect(outcome.ok).toBe(true);
-    expect(fake.store.get('abc')).toMatchObject({ notes: 'called them to confirm' });
+    expect(fake.store.get('abc')).toMatchObject({ titleLabel: 'Called them to confirm' });
   });
 });
 

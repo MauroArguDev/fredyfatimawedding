@@ -17,7 +17,6 @@ const input: CreateGuestInput = {
   titleLabel: null,
   guestLimit: 3,
   phone: '+50370000000',
-  notes: null,
 };
 
 const emptyList: AdminGuestListResponse = {

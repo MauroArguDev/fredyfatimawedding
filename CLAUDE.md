@@ -195,7 +195,7 @@ Sin esas tres condiciones, JSDoc se convierte en una puerta trasera para comenta
 
 - No usar tokens de invitados reales para probar el RSVP: se quema su única confirmación (R2/ADR-006) sin forma de deshacerlo salvo por la consola.
 - Cualquier prueba de CRUD del admin (editar, eliminar, rotar token) contra un invitado real es irreversible en los mismos términos que en producción, porque _es_ producción.
-- Para probar sin ese riesgo, crear un invitado de prueba explícito en Firestore (marcado en `notes`, ej. `"TEST - borrar antes del lanzamiento"`) y borrarlo después. WED-101 y WED-102 ya piden verificar que no queden datos de prueba antes del envío real.
+- Para probar sin ese riesgo, crear un invitado de prueba explícito en Firestore (marcado en `titleLabel`, ej. `"TEST - borrar antes del lanzamiento"`) y borrarlo después. WED-101 y WED-102 ya piden verificar que no queden datos de prueba antes del envío real.
 
 ### Colección `guests/{guestId}`
 
@@ -212,7 +212,6 @@ Sin esas tres condiciones, JSDoc se convierte en una puerta trasera para comenta
 | `confirmedAt`    | Timestamp \| null | no          | `null`  |                                                                                           |
 | `firstOpenedAt`  | Timestamp \| null | no          | `null`  | Se llena en el primer `GET` del enlace                                                    |
 | `invitedAt`      | Timestamp \| null | no          | `null`  | Se llena cuando la consola marca el envío por WhatsApp (WED-83)                           |
-| `notes`          | string \| null    | no          | `null`  | Uso interno                                                                               |
 | `createdAt`      | Timestamp         | sí          | —       |                                                                                           |
 | `updatedAt`      | Timestamp         | sí          | —       |                                                                                           |
 
@@ -221,6 +220,8 @@ Sin esas tres condiciones, JSDoc se convierte en una puerta trasera para comenta
 **Sobre `confirmed` como booleano.** Bajo R1, no hace falta distinguir "declinó" de "no respondió": ambos cuentan como ausentes y ambos reciben recordatorio antes del cierre.
 
 **Sobre `firstOpenedAt`.** Cuesta una escritura por invitado y separa dos poblaciones con seguimiento distinto: quien abrió la invitación y no confirmó (hay que insistirle) frente a quien nunca la abrió (probablemente no le llegó el mensaje).
+
+**`notes` eliminado (2026-09-02).** Existía como campo de uso interno libre, sin ningún flujo real que lo necesitara — a pedido del usuario se quitó del modelo, del formulario de la consola, del CSV exportado y de `createGuestSchema`/`updateGuestSchema`. Firestore puede seguir teniendo el campo en documentos viejos (zod lo descarta en modo `strip` al leer, no hace falta migrar datos). **Consecuencia para ADR-011:** la convención de marcar invitados de prueba ya no puede usar `notes` — se marca en `titleLabel` (ej. `"TEST - borrar antes del lanzamiento"`), que es lo que varias verificaciones en vivo de esta sesión ya venían haciendo de todas formas.
 
 ### Reglas de seguridad de Firestore
 
@@ -268,7 +269,7 @@ service cloud.firestore {
 // 404 { "code": "TOKEN_NOT_FOUND" }
 ```
 
-Nunca devuelve `phone`, `notes` ni `token`. Efecto colateral: si `firstOpenedAt` es `null`, la escribe.
+Nunca devuelve `phone` ni `token`. Efecto colateral: si `firstOpenedAt` es `null`, la escribe.
 
 **`POST /api/rsvp`**
 
@@ -308,17 +309,17 @@ Requieren `Authorization: Bearer <firebase-id-token>`, verificado con `admin.aut
 | `GET`    | `/api/admin/export`                   | CSV completo                                          |
 | `POST`   | `/api/admin/guests/import`            | Importa invitados desde CSV                           |
 
-**`POST /api/admin/guests/import`.** Mismo formato de CSV que `npm run import:guests` (encabezado exacto `firstName,lastName,titleLabel,guestLimit,phone`, valores como los espera `createGuestSchema`). Todo-o-nada: si una sola fila falla la validación, no se escribe nada. Detecta duplicados por `phone` contra los invitados ya existentes y los omite (no los sobreescribe).
+**`POST /api/admin/guests/import`.** **Encabezado humano, no el de `npm run import:guests`.** El CSV esperado es el mismo formato que llenan los novios en Excel (`HUMAN_SHEET_HEADER` de `scripts/lib/humanGuestSheet.ts`: `Nombre,Apellido,Texto en sobre,Cupo de invitados,Teléfono`, en ese orden) — no el header en inglés (`firstName,lastName,...`) que sí exige el script de CLI. Internamente reutiliza `normalizeHumanGuestSheet` (normaliza teléfono, igual que `npm run normalize:guests`) y luego valida contra `createGuestSchema`, vía `mapHumanCsvToGuestInputs` (`scripts/lib/guestImport.ts`). `parseCsv` detecta automáticamente si el archivo viene delimitado por coma o por punto y coma — Excel en configuración regional en español suele exportar CSV con `;`, no con `,`. Todo-o-nada: si una sola fila falla la validación, no se escribe nada. Detecta duplicados por `phone` contra los invitados ya existentes y los omite (no los sobreescribe).
 
 ```jsonc
 // Request
-{ "csv": "firstName,lastName,titleLabel,guestLimit,phone\nOrlando,,Tío Orlando y Familia.,3,+50370000000\n" }
+{ "csv": "Nombre;Apellido;Texto en sobre;Cupo de invitados;Teléfono\nOrlando;;Tío Orlando y Familia.;3;7000-0000\n" }
 
 // 200
 { "imported": 3, "skipped": 1 }
 
 // 400 { "code": "INVALID_PAYLOAD" }                                   // el body no es { csv: string }
-// 400 { "code": "INVALID_CSV", "errors": [{ "row": 3, "message": "..." }] }  // nada se escribió
+// 400 { "code": "INVALID_CSV", "errors": [{ "row": 3, "message": "..." }] }  // nada se escribió, encabezado no coincide o alguna fila no valida
 ```
 
 ---
@@ -1114,6 +1115,23 @@ Juntos explican el reporte exacto del usuario: "Agregar invitado" sí abría el 
 
 ---
 
+### Corrección fuera de ticket — importar CSV esperaba el formato equivocado, más eliminación del campo `notes` (2026-09-02)
+
+**Bug real reportado por el usuario al usar la función recién entregada.** `POST /api/admin/guests/import` (y por lo tanto `ImportGuestsDialog`) exigía el encabezado en inglés de `npm run import:guests` (`firstName,lastName,titleLabel,guestLimit,phone`) — pero el archivo real que el usuario intentó subir tiene el encabezado en español que la propia consola usa (`Nombre,Apellido,Texto en sobre,Cupo de invitados,Teléfono`), **y además viene delimitado por punto y coma, no por coma** (típico de un CSV exportado desde Excel en configuración regional en español). `parseCsv` solo reconocía `,`, así que interpretaba la fila completa del encabezado como un único campo — de ahí el mensaje de error exacto que reportó el usuario.
+
+**Corrección — el import de la consola ahora usa el mismo camino que `npm run normalize:guests`, no el de `npm run import:guests`:**
+
+- `scripts/lib/csv.ts#parseCsv` detecta automáticamente el delimitador (cuenta `;` vs `,` en la primera línea, usa el que predomine) — sigue aceptando comas por defecto, no rompe nada de lo que ya funcionaba con CSVs en inglés.
+- Nueva `mapHumanCsvToGuestInputs` en `scripts/lib/guestImport.ts`: encadena `normalizeHumanGuestSheet` (valida el encabezado humano + normaliza teléfono, ya existía desde WED-23) con `mapCsvToGuestInputs` (sustituyendo el encabezado por `REQUIRED_CSV_HEADER` antes de validar) — es exactamente la misma lógica que ya usaba `scripts/normalizeGuestSheet.ts`, solo que expuesta como función reutilizable en vez de estar inline en el script de CLI.
+- `api/admin/guests/import.ts` cambia de `mapCsvToGuestInputs` a `mapHumanCsvToGuestInputs`. El CSV que exige la consola ahora es el mismo formato que produce "Exportar CSV" (mismos 5 primeros encabezados) y el mismo que llenan los novios en Excel — no el formato de máquina que sigue siendo exclusivo de `npm run import:guests` para uso por CLI.
+- Contrato de §4 actualizado con el nuevo formato de request. Diálogo con una pista visible del encabezado esperado (`adminGuestsImportCopy.fileHint`).
+
+**Campo `notes` eliminado del modelo de datos**, a pedido del usuario en el mismo mensaje — nunca tuvo un flujo real que lo necesitara. Quitado de `createGuestSchema`/`updateGuestSchema`, el formulario de la consola (`GuestFormFields`, ambos diálogos), el CSV exportado (`GUEST_EXPORT_HEADER`, `api/admin/export.ts`) y el schema del formulario cliente. **Blast radius: ~25 archivos de test** (mismo patrón que el de `invitedAt` en WED-83), encontrado limpiamente con `tsc -b --noEmit`. Un puñado de tests usaban `notes` como "cualquier campo válido de ejemplo" para probar PATCH genérico — se cambiaron a `titleLabel`/`guestLimit` en vez de solo borrar la aserción, para no perder cobertura real. **Consecuencia sobre ADR-011:** la convención de marcar invitados de prueba se mueve enteramente a `titleLabel` (documentado en §3 arriba); varias verificaciones en vivo de sesiones anteriores ya lo hacían por partida doble (`titleLabel`/`notes`), así que no es un cambio de hábito, es quitar la mitad redundante.
+
+354 tests (antes 347), 99.14 % de cobertura global. `npm run verify` y `npm run build` en verde.
+
+---
+
 ### EPIC E9 — Calidad
 
 #### WED-90 — Accesibilidad
@@ -1292,7 +1310,7 @@ En orden: WED-63 (animaciones de detalle), WED-61 (música), WED-110. El sitio f
 | ---------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Los invitados no entienden que hay que tocar el sobre                                                                                    | Media    | **Crítico** | Affordance en WED-52 y observación en WED-102. Si falla, nadie llega a la invitación                                                                                                                           |
 | Confirmaciones erróneas por mis-tap, irreversibles para el invitado                                                                      | **Alta** | Medio       | Modal en WED-70; enlace `wa.me` en el mensaje de R2; ambas vías de corrección en WED-82                                                                                                                        |
-| Sin ambiente de pruebas (ADR-011), un Preview de Vercel o una prueba manual quema la confirmación de un invitado real o altera sus datos | Media    | Alto        | Nunca probar con tokens reales; usar invitados de prueba marcados en `notes` y borrarlos antes de WED-101/WED-103; WED-94 (e2e automatizado) queda eliminado por esta misma razón                              |
+| Sin ambiente de pruebas (ADR-011), un Preview de Vercel o una prueba manual quema la confirmación de un invitado real o altera sus datos | Media    | Alto        | Nunca probar con tokens reales; usar invitados de prueba marcados en `titleLabel` y borrarlos antes de WED-101/WED-103; WED-94 (e2e automatizado) queda eliminado por esta misma razón                         |
 | ~~Las fuentes no son licenciables para web~~                                                                                             | —        | —           | **CERRADO en WED-02.** Great Vibes e Inter son Google Fonts bajo SIL OFL                                                                                                                                       |
 | Los ornamentos importados de Illustrator inflan el peso de la página                                                                     | Media    | Medio       | ADR-008 los manda a WebP en vez de SVG; presupuesto verificado en WED-33 y WED-91                                                                                                                              |
 | La animación de apertura no está especificada en ninguna parte                                                                           | **Alta** | Medio       | El Figma v1 no la contenía (ADR-009). Pedirla explícitamente para el v2                                                                                                                                        |

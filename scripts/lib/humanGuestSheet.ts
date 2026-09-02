@@ -1,5 +1,5 @@
-import { validateExactHeader } from './rowValidation';
-import type { RowError } from './rowValidation';
+import { validateExactHeader } from './rowValidation.js';
+import type { RowError } from './rowValidation.js';
 
 export const HUMAN_SHEET_HEADER = [
   'Nombre',

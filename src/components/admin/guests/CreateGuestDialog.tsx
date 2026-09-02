@@ -30,7 +30,6 @@ const EMPTY_VALUES: EditGuestFormValues = {
   titleLabel: '',
   guestLimit: 1,
   phone: '',
-  notes: '',
   confirmedCount: 0,
 };
 

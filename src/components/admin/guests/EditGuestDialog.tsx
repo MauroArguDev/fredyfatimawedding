@@ -39,7 +39,6 @@ function toFormValues(guest: AdminGuest): EditGuestFormValues {
     titleLabel: guest.titleLabel ?? '',
     guestLimit: guest.guestLimit,
     phone: guest.phone,
-    notes: guest.notes ?? '',
     confirmedCount: guest.confirmedCount,
   };
 }

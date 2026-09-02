@@ -4,6 +4,7 @@ interface CsvParseState {
   field: string;
   inQuotes: boolean;
   skipNext: boolean;
+  delimiter: string;
 }
 
 function pushField(state: CsvParseState): void {
@@ -31,7 +32,7 @@ function consumeQuotedChar(state: CsvParseState, char: string, nextChar: string)
 function consumeUnquotedChar(state: CsvParseState, char: string): void {
   if (char === '"') {
     state.inQuotes = true;
-  } else if (char === ',') {
+  } else if (char === state.delimiter) {
     pushField(state);
   } else if (char === '\n') {
     pushRow(state);
@@ -40,9 +41,24 @@ function consumeUnquotedChar(state: CsvParseState, char: string): void {
   }
 }
 
+function detectDelimiter(text: string): string {
+  const firstLine = text.split('\n')[0] ?? '';
+  const semicolonCount = (firstLine.match(/;/g) ?? []).length;
+  const commaCount = (firstLine.match(/,/g) ?? []).length;
+
+  return semicolonCount > commaCount ? ';' : ',';
+}
+
 export function parseCsv(content: string): string[][] {
   const text = content.replace(/\r\n/g, '\n');
-  const state: CsvParseState = { rows: [], row: [], field: '', inQuotes: false, skipNext: false };
+  const state: CsvParseState = {
+    rows: [],
+    row: [],
+    field: '',
+    inQuotes: false,
+    skipNext: false,
+    delimiter: detectDelimiter(text),
+  };
 
   for (let index = 0; index < text.length; index += 1) {
     if (state.skipNext) {

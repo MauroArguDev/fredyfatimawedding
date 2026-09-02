@@ -41,6 +41,20 @@ describe('parseCsv', () => {
   it('returnsAnEmptyArrayForEmptyContent', () => {
     expect(parseCsv('')).toEqual([]);
   });
+
+  it('detectsSemicolonAsTheDelimiterWhenTheHeaderHasMoreSemicolonsThanCommas', () => {
+    expect(parseCsv('Nombre;Apellido;Teléfono\nOrlando;Martínez;+50370000000')).toEqual([
+      ['Nombre', 'Apellido', 'Teléfono'],
+      ['Orlando', 'Martínez', '+50370000000'],
+    ]);
+  });
+
+  it('keepsUsingCommaWhenThereAreNoSemicolonsInTheHeader', () => {
+    expect(parseCsv('a,b\n1,2')).toEqual([
+      ['a', 'b'],
+      ['1', '2'],
+    ]);
+  });
 });
 
 describe('stringifyCsv', () => {

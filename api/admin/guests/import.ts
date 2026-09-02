@@ -1,5 +1,5 @@
 import { parseCsv } from '../../../scripts/lib/csv.js';
-import { mapCsvToGuestInputs } from '../../../scripts/lib/guestImport.js';
+import { mapHumanCsvToGuestInputs } from '../../../scripts/lib/guestImport.js';
 import { withAdminAuth } from '../../_lib/adminAuth.js';
 import { importGuests } from '../../_lib/guests.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -18,7 +18,7 @@ async function handleImport(request: VercelRequest, response: VercelResponse): P
     return;
   }
 
-  const { guests, errors } = mapCsvToGuestInputs(parseCsv(request.body.csv));
+  const { guests, errors } = mapHumanCsvToGuestInputs(parseCsv(request.body.csv));
 
   if (errors.length > 0) {
     response.status(HTTP_BAD_REQUEST).json({ code: 'INVALID_CSV', errors });

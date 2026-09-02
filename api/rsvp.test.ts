@@ -43,7 +43,6 @@ function buildGuestRecord(overrides: Partial<GuestRecord['data']> = {}): GuestRe
       titleLabel: 'Tío Orlando y Familia.',
       guestLimit: 3,
       phone: '+50370000000',
-      notes: null,
       token: TOKEN,
       confirmed: false,
       confirmedCount: 0,

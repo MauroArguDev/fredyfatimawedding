@@ -19,7 +19,6 @@ function makeGuest(overrides: Partial<AdminGuest>): AdminGuest {
     titleLabel: null,
     guestLimit: 3,
     phone: '+50370000000',
-    notes: null,
     confirmed: false,
     confirmedCount: 0,
     confirmedAt: null,
@@ -56,9 +55,9 @@ describe('withPatchedGuest', () => {
       stats: { total: 2, confirmed: 1, pending: 1, openedNotConfirmed: 0, totalConfirmedPeople: 2 },
     };
 
-    const next = withPatchedGuest(previous, 'id-1', { notes: 'called them' });
+    const next = withPatchedGuest(previous, 'id-1', { titleLabel: 'Called them' });
 
-    expect(next.guests[0]?.notes).toBe('called them');
+    expect(next.guests[0]?.titleLabel).toBe('Called them');
     expect(next.guests[1]).toEqual(fatima);
   });
 

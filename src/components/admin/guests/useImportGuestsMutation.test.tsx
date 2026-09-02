@@ -18,7 +18,7 @@ function createWrapper(queryClient: QueryClient) {
   return wrapper;
 }
 
-const CSV = 'firstName,lastName,titleLabel,guestLimit,phone\nOrlando,,,3,+50370000000\n';
+const CSV = 'Nombre,Apellido,Texto en sobre,Cupo de invitados,Teléfono\nOrlando,,,3,7000-0000\n';
 
 describe('useImportGuestsMutation', () => {
   it('postsTheCsvTextToTheImportEndpoint', async () => {

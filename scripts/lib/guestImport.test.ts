@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { mapCsvToGuestInputs, partitionNewGuests } from './guestImport';
+import { mapCsvToGuestInputs, mapHumanCsvToGuestInputs, partitionNewGuests } from './guestImport';
 
 const HEADER = ['firstName', 'lastName', 'titleLabel', 'guestLimit', 'phone'];
+const HUMAN_HEADER = ['Nombre', 'Apellido', 'Texto en sobre', 'Cupo de invitados', 'Teléfono'];
 
 describe('mapCsvToGuestInputs', () => {
   it('mapsValidRowsIntoGuestInputs', () => {
@@ -18,7 +19,6 @@ describe('mapCsvToGuestInputs', () => {
         titleLabel: 'Tío Orlando y Familia.',
         guestLimit: 3,
         phone: '+50370000000',
-        notes: null,
       },
     ]);
   });
@@ -73,6 +73,40 @@ describe('mapCsvToGuestInputs', () => {
   });
 });
 
+describe('mapHumanCsvToGuestInputs', () => {
+  it('mapsValidRowsFromTheHumanHeaderAndNormalizesThePhone', () => {
+    const result = mapHumanCsvToGuestInputs([
+      HUMAN_HEADER,
+      ['Orlando', 'Martínez', 'Tío Orlando y Familia.', '3', '7000-0000'],
+    ]);
+
+    expect(result.errors).toEqual([]);
+    expect(result.guests).toEqual([
+      {
+        firstName: 'Orlando',
+        lastName: 'Martínez',
+        titleLabel: 'Tío Orlando y Familia.',
+        guestLimit: 3,
+        phone: '+50370000000',
+      },
+    ]);
+  });
+
+  it('rejectsTheMachineReadableEnglishHeaderBecauseItExpectsTheHumanOne', () => {
+    const result = mapHumanCsvToGuestInputs([HEADER, ['Orlando', '', '', '3', '+50370000000']]);
+
+    expect(result.guests).toEqual([]);
+    expect(result.errors[0]?.message).toContain('Expected header');
+  });
+
+  it('abortsWithoutWritingAnyGuestWhenARowFailsValidation', () => {
+    const result = mapHumanCsvToGuestInputs([HUMAN_HEADER, ['Orlando', '', '', '', '']]);
+
+    expect(result.guests).toEqual([]);
+    expect(result.errors[0]?.row).toBe(2);
+  });
+});
+
 describe('partitionNewGuests', () => {
   const orlando = {
     firstName: 'Orlando',
@@ -80,7 +114,6 @@ describe('partitionNewGuests', () => {
     titleLabel: null,
     guestLimit: 3,
     phone: '+50370000000',
-    notes: null,
   };
   const fatima = { ...orlando, firstName: 'Fátima', phone: '+50370000001' };
 

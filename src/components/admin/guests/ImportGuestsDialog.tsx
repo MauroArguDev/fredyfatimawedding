@@ -68,6 +68,7 @@ const ImportGuestsForm = ({
           onFileChange(event.target.files?.[0] ?? null);
         }}
       />
+      <p className="text-xs text-muted-foreground">{adminGuestsImportCopy.fileHint}</p>
     </Field>
     {rowErrors !== null && <RowErrorsList errors={rowErrors} />}
     <DialogFooter>

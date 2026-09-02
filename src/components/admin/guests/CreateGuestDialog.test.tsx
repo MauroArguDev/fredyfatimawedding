@@ -56,7 +56,6 @@ describe('CreateGuestDialog', () => {
           titleLabel: null,
           guestLimit: 3,
           phone: '+50370000000',
-          notes: null,
           confirmed: false,
           confirmedCount: 0,
           confirmedAt: null,
