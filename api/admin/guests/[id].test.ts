@@ -34,7 +34,6 @@ const guestRecord: GuestRecord = {
     titleLabel: null,
     guestLimit: 4,
     phone: '+50370000000',
-    notes: null,
     token: 'V1StGXR8_Z5jdHi6B-myT',
     confirmed: false,
     confirmedCount: 0,
@@ -50,7 +49,7 @@ describe('PATCH /api/admin/guests/[id]', () => {
   it('respondsWithNotFoundWhenTheIdParamIsMissing', async () => {
     const { response, status } = buildResponse();
 
-    await handler(buildRequest('PATCH', undefined, { notes: 'x' }), response);
+    await handler(buildRequest('PATCH', undefined, { guestLimit: 2 }), response);
 
     expect(status).toHaveBeenCalledWith(404);
     expect(updateGuest).not.toHaveBeenCalled();
@@ -70,7 +69,7 @@ describe('PATCH /api/admin/guests/[id]', () => {
     vi.mocked(updateGuest).mockResolvedValue({ ok: false, code: 'NOT_FOUND' });
     const { response, status, json } = buildResponse();
 
-    await handler(buildRequest('PATCH', 'missing', { notes: 'x' }), response);
+    await handler(buildRequest('PATCH', 'missing', { guestLimit: 2 }), response);
 
     expect(status).toHaveBeenCalledWith(404);
     expect(json).toHaveBeenCalledWith({ code: 'NOT_FOUND' });
@@ -95,7 +94,7 @@ describe('PATCH /api/admin/guests/[id]', () => {
     vi.mocked(updateGuest).mockResolvedValue({ ok: true, record: guestRecord });
     const { response, status, json } = buildResponse();
 
-    await handler(buildRequest('PATCH', 'abc', { notes: 'called them' }), response);
+    await handler(buildRequest('PATCH', 'abc', { guestLimit: 2 }), response);
 
     expect(status).toHaveBeenCalledWith(200);
     expect(json).toHaveBeenCalledWith({ id: 'abc', ...guestRecord.data });

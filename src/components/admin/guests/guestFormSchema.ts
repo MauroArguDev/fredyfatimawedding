@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   MAX_GUEST_LIMIT,
   MAX_NAME_LENGTH,
-  MAX_NOTES_LENGTH,
   MAX_TITLE_LABEL_LENGTH,
   MIN_GUEST_LIMIT,
   guestLimitCoversConfirmedCount,
@@ -17,7 +16,6 @@ export const guestFormSchema = z.object({
   titleLabel: z.string().trim().max(MAX_TITLE_LABEL_LENGTH),
   guestLimit: z.coerce.number().int().min(MIN_GUEST_LIMIT).max(MAX_GUEST_LIMIT),
   phone: phoneSchema,
-  notes: z.string().trim().max(MAX_NOTES_LENGTH),
 });
 
 export type GuestFormValues = z.infer<typeof guestFormSchema>;
@@ -42,7 +40,6 @@ export function toCreateGuestInput(values: GuestFormValues): CreateGuestInput {
     titleLabel: emptyToNull(values.titleLabel),
     guestLimit: values.guestLimit,
     phone: values.phone,
-    notes: emptyToNull(values.notes),
   };
 }
 

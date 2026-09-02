@@ -2,6 +2,7 @@ import { createGuestSchema } from '../../src/schemas/guest.js';
 import type { CreateGuestInput } from '../../src/schemas/guest.js';
 import { validateExactHeader } from './rowValidation.js';
 import type { RowError } from './rowValidation.js';
+import { normalizeHumanGuestSheet } from './humanGuestSheet.js';
 
 export const REQUIRED_CSV_HEADER = [
   'firstName',
@@ -62,6 +63,16 @@ export function mapCsvToGuestInputs(rows: string[][]): GuestImportResult {
   });
 
   return errors.length > 0 ? { guests: [], errors } : { guests, errors: [] };
+}
+
+export function mapHumanCsvToGuestInputs(rows: string[][]): GuestImportResult {
+  const normalized = normalizeHumanGuestSheet(rows);
+
+  if (normalized.errors.length > 0) {
+    return { guests: [], errors: normalized.errors };
+  }
+
+  return mapCsvToGuestInputs([[...REQUIRED_CSV_HEADER], ...normalized.rows]);
 }
 
 export function partitionNewGuests(

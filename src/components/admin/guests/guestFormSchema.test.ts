@@ -12,7 +12,6 @@ const validValues = {
   titleLabel: '',
   guestLimit: 3,
   phone: '+50370000000',
-  notes: '',
 };
 
 describe('guestFormSchema', () => {
@@ -67,15 +66,13 @@ describe('toCreateGuestInput', () => {
       titleLabel: null,
       guestLimit: 3,
       phone: '+50370000000',
-      notes: null,
     });
   });
 
   it('keepsNonEmptyOptionalValuesAsStrings', () => {
-    const input = toCreateGuestInput({ ...validValues, lastName: 'Martínez', notes: 'VIP' });
+    const input = toCreateGuestInput({ ...validValues, lastName: 'Martínez' });
 
     expect(input.lastName).toBe('Martínez');
-    expect(input.notes).toBe('VIP');
   });
 });
 

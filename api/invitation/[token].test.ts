@@ -36,7 +36,6 @@ function buildGuestRecord(overrides: Partial<GuestRecord['data']> = {}): {
         titleLabel: 'Tío Orlando y Familia.',
         guestLimit: 3,
         phone: '+50370000000',
-        notes: null,
         token: TOKEN,
         confirmed: false,
         confirmedCount: 0,
@@ -75,7 +74,7 @@ describe('GET /api/invitation/[token]', () => {
     });
   });
 
-  it('neverReturnsPhoneNotesOrTokenBecauseTheyAreNotForTheGuestsEyes', async () => {
+  it('neverReturnsPhoneOrTokenBecauseTheyAreNotForTheGuestsEyes', async () => {
     vi.mocked(findGuestByToken).mockResolvedValue(buildGuestRecord().record);
     const response = buildResponse();
 
@@ -84,7 +83,6 @@ describe('GET /api/invitation/[token]', () => {
     const [body] = response.json.mock.calls[0] as [Record<string, unknown>];
 
     expect(body).not.toHaveProperty('phone');
-    expect(body).not.toHaveProperty('notes');
     expect(body).not.toHaveProperty('token');
   });
 

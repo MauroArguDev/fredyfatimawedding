@@ -10,7 +10,6 @@ export const GUEST_EXPORT_HEADER = [
   'Personas confirmadas',
   'Fecha de confirmación',
   'Fecha de apertura',
-  'Notas',
 ] as const;
 
 export const CONFIRMED_LABEL = 'Sí';

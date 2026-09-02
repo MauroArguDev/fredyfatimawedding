@@ -1,4 +1,4 @@
-import type { RowError } from './rowValidation';
+import type { RowError } from './rowValidation.js';
 
 export function requireArg(index: number, usage: string): string {
   const value = process.argv[index];

@@ -4,7 +4,6 @@ export const guestFormFieldsCopy = {
   titleLabel: 'Texto en sobre',
   guestLimit: 'Cupo de invitados',
   phone: 'Teléfono',
-  notes: 'Notas',
   confirmedCount: 'Cantidad confirmada',
 } as const;
 

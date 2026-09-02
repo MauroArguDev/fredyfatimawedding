@@ -27,7 +27,7 @@ function renderDialog() {
 }
 
 async function openDialogAndSelectFile(
-  content = 'firstName,lastName,titleLabel,guestLimit,phone\n',
+  content = 'Nombre,Apellido,Texto en sobre,Cupo de invitados,Teléfono\n',
 ): Promise<void> {
   await userEvent.click(screen.getByRole('button', { name: adminGuestsImportCopy.trigger }));
   const file = new File([content], 'guests.csv', { type: 'text/csv' });
@@ -49,7 +49,7 @@ describe('ImportGuestsDialog', () => {
     );
     renderDialog();
     await openDialogAndSelectFile(
-      'firstName,lastName,titleLabel,guestLimit,phone\nOrlando,,,3,+50370000000\n',
+      'Nombre,Apellido,Texto en sobre,Cupo de invitados,Teléfono\nOrlando,,,3,7000-0000\n',
     );
 
     await userEvent.click(screen.getByRole('button', { name: adminGuestsImportCopy.submit }));

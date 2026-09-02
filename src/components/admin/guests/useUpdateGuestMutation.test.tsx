@@ -19,7 +19,6 @@ const orlando: AdminGuest = {
   titleLabel: null,
   guestLimit: 3,
   phone: '+50370000000',
-  notes: null,
   confirmed: true,
   confirmedCount: 2,
   confirmedAt: new Date('2026-08-01'),
@@ -99,13 +98,13 @@ describe('useUpdateGuestMutation', () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(ADMIN_GUESTS_QUERY_KEY, listWithOrlando);
     fetchAdminApiMock.mockResolvedValue(
-      new Response(JSON.stringify({ ...orlando, notes: 'x' }), { status: 200 }),
+      new Response(JSON.stringify({ ...orlando, titleLabel: 'x' }), { status: 200 }),
     );
 
     const { result } = renderHook(() => useUpdateGuestMutation(), {
       wrapper: createWrapper(queryClient),
     });
-    result.current.mutate({ id: 'id-1', patch: { notes: 'x' } });
+    result.current.mutate({ id: 'id-1', patch: { titleLabel: 'x' } });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
