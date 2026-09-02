@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import '@/styles/admin.css';
 import { AdminAuthProvider } from '@/components/admin/auth/AdminAuthProvider';
 import { RequireAdminAuth } from '@/components/admin/auth/RequireAdminAuth';
 import { AdminShell } from '@/components/admin/AdminShell';

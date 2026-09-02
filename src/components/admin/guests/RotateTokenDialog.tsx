@@ -2,7 +2,11 @@ import type { ReactNode } from 'react';
 import { ConfirmGuestActionDialog } from '@/components/admin/guests/ConfirmGuestActionDialog';
 import { useRotateTokenMutation } from '@/components/admin/guests/useRotateTokenMutation';
 import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
-import { notifyOnSuccess } from '@/components/admin/guests/closeAndNotify';
+import {
+  closeWhenClosed,
+  notifyOnError,
+  notifyOnSuccess,
+} from '@/components/admin/guests/closeAndNotify';
 import { rotateTokenDialogCopy } from '@/content/adminGuestActions';
 import { adminGuestToastCopy } from '@/content/adminGuestForm';
 import { resolveDisplayName, type AdminGuest } from '@/schemas/guest';
@@ -22,17 +26,14 @@ export const RotateTokenDialog = ({ guest, onClose }: RotateTokenDialogProps): R
 
     mutation.mutate(guest.id, {
       onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.tokenRotated),
+      onError: notifyOnError(),
     });
   };
 
   return (
     <ConfirmGuestActionDialog
       open={guest !== null}
-      onOpenChange={(next) => {
-        if (!next) {
-          onClose();
-        }
-      }}
+      onOpenChange={closeWhenClosed(onClose)}
       title={rotateTokenDialogCopy.title}
       body={
         guest !== null && (

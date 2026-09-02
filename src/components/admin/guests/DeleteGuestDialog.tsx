@@ -2,7 +2,11 @@ import type { ReactNode } from 'react';
 import { ConfirmGuestActionDialog } from '@/components/admin/guests/ConfirmGuestActionDialog';
 import { useDeleteGuestMutation } from '@/components/admin/guests/useDeleteGuestMutation';
 import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
-import { notifyOnSuccess } from '@/components/admin/guests/closeAndNotify';
+import {
+  closeWhenClosed,
+  notifyOnError,
+  notifyOnSuccess,
+} from '@/components/admin/guests/closeAndNotify';
 import { deleteGuestDialogCopy } from '@/content/adminGuestActions';
 import { adminGuestToastCopy } from '@/content/adminGuestForm';
 import { resolveDisplayName, type AdminGuest } from '@/schemas/guest';
@@ -20,17 +24,16 @@ export const DeleteGuestDialog = ({ guest, onClose }: DeleteGuestDialogProps): R
       return;
     }
 
-    mutation.mutate(guest.id, { onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.deleted) });
+    mutation.mutate(guest.id, {
+      onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.deleted),
+      onError: notifyOnError(),
+    });
   };
 
   return (
     <ConfirmGuestActionDialog
       open={guest !== null}
-      onOpenChange={(next) => {
-        if (!next) {
-          onClose();
-        }
-      }}
+      onOpenChange={closeWhenClosed(onClose)}
       title={deleteGuestDialogCopy.title}
       body={
         guest !== null && (

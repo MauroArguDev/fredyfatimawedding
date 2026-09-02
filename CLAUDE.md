@@ -1030,6 +1030,38 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 
 ---
 
+### Corrección fuera de ticket — la consola llevaba sin estilos desde WED-79 (2026-09-01)
+
+**No es un ticket del backlog.** Se hizo a pedido explícito del usuario ("mejora la consola admin... el botón de agregar invitado no hace nada"), aprovechando que la vía A se quedó sin material nuevo (E8 completa, WED-101 bloqueado por diseño) — mismo criterio que la "Estabilización de consumo de endpoints admin" de WED-82/83.
+
+**Diagnóstico verificado, no supuesto.** Dos bugs reales, ambos preexistentes desde WED-79 y nunca detectados porque ningún test ni build automatizado los ejercita:
+
+1. **`src/styles/admin.css` nunca se importaba en ningún archivo de la app.** Solo aparecía referenciado en `components.json` (config del CLI `shadcn add`). Verificado inspeccionando el CSS de producción real antes del fix: `dist/assets/index-*.css` (7.6 KB) no contenía ni una clase usada por `admin/` (`bg-primary`, `.admin-shell`, etc.). La consola entera corría con Tailwind preflight y nada más — sin color, sin spacing, sin las animaciones `data-open:animate-in`/`fade-in-0` que `tw-animate-css` ya provee y que `dialog.tsx`/`select.tsx` ya usan en su markup desde WED-79.
+2. **`Dialog` y `Select` de Radix se portalan a `document.body` por defecto**, fuera del `<div className="admin-shell">` donde WED-79 escopeó a propósito las variables de color para no filtrar hacia la invitación (ver nota de WED-79 más arriba). Verificado en el código fuente real de `@radix-ui/react-portal`: `container = containerProp || (mounted && document.body)`.
+
+Juntos explican el reporte exacto del usuario: "Agregar invitado" sí abría el diálogo (`open=true` real), pero sin overlay, posición ni color — indistinguible de "no pasa nada".
+
+**Corrección.**
+
+- `src/pages/admin/AdminApp.tsx` ahora importa `@/styles/admin.css`. Es el módulo que ya se carga vía `React.lazy` (WED-50), así que Vite emite el CSS como parte del mismo chunk async, no del bundle de la invitación.
+- Nuevo `src/components/admin/adminShellRoot.ts` (`ADMIN_SHELL_ROOT_ID`, `getAdminShellRootContainer()`) para no repetir el id en 3 archivos. `AdminShell.tsx` le pone ese id a su `<div className="admin-shell">` raíz; `dialog.tsx` (`DialogPortal`) y `select.tsx` (`SelectContent`) lo usan como `container` del Portal.
+- **Por qué esto no rompe los tests existentes:** el propio código de Radix cae a `document.body` cuando `container` es `null` — exactamente lo que pasa en cualquier test que renderiza un diálogo sin envolver en `<AdminShell>` (la mayoría). Verificado en el código fuente antes de aplicar el fix, no después de que fallara.
+- Verificado en el CSS de producción **después** del fix: apareció un chunk nuevo `dist/assets/AdminApp-*.css` (~47 kB) — antes no existía ninguno — con `.admin-shell` presente, `.bg-primary` generado, `animate-in` presente.
+- **Hallazgo colateral, no introducido por este fix: `index-*.css` (Tailwind de la invitación) genera `.inline`/`.animate-spin` de más (~150 bytes) de forma intermitente.** Al comparar tamaños noté que el CSS de la invitación creció de 7.60 a 7.75 kB y pasé un buen rato haciendo bisection pensando que algún archivo nuevo de esta sesión se estaba filtrando pese al `@source not` de `tokens.css`. **Verificado que no es así:** revirtiendo el working tree a `HEAD` (idéntico a `master`, cero cambios propios) el mismo par de clases sigue apareciendo — es reproducible en `master` puro bajo ciertos estados de caché de Vite/Tailwind (encontré además 4 procesos `npm run dev` huérfanos de intentos anteriores en esta misma sesión, que complicaron el diagnóstico). No se identificó la causa raíz exacta ni vale la pena seguir: son dos utilidades genéricas sin ningún token/color de admin, no aplicadas a ningún elemento real de la invitación — cero impacto visual o de datos, ~2 % de un archivo de 7.6 kB. Documentado por transparencia, no por gravedad.
+
+**Pulido de UX agregado en la misma pasada** (una vez que la consola es visible de verdad, la paleta neutra de WED-79 y las animaciones de `tw-animate-css` quedan cubiertas gratis; no se rediseñó la paleta):
+
+- `PendingButtonLabel` (`src/components/admin/`, nuevo): spinner (`Loader2Icon` + `animate-spin`) junto al texto "…ando" en cualquier botón con estado pendiente. Se extrajo porque el mismo par `{isPending && <Loader2Icon/>}` + toggle de texto se repitió en 4 lugares (`ConfirmGuestActionDialog`, `CreateGuestDialog`, `EditGuestDialog`, `ExportGuestsButton`) — regla de tres.
+- `notifyOnError` en `closeAndNotify.ts` (mismo patrón que el `notifyOnSuccess` ya existente): toast de error en el `onError` de las 5 mutaciones de guests (Create/Edit/Delete/Release/Rotate), además del `FieldError` inline que ya existía. Se excluye a propósito el código `UNAUTHORIZED` porque `fetchAdminApi.ts` ya muestra su propio toast de sesión expirada — mostrar los dos sería redundante.
+- `AdminLoadingState` gana el mismo spinner (antes era texto plano).
+- `admin.css` gana un bloque `@media (prefers-reduced-motion: reduce)` que neutraliza duración de animación/transición dentro de `.admin-shell` — mismo cuidado que el proyecto exige para la invitación (WED-60/62/63), aplicado aquí aunque no esté pedido explícitamente para la consola.
+
+**Explícitamente fuera de esta pasada:** no se agregó un menú "⋯ más acciones" (`DropdownMenu` de shadcn) para las 6 acciones por fila, ni se rediseñó la paleta de color — la paleta neutra de WED-79 sigue siendo la decisión correcta, el problema era que no cargaba.
+
+**Verificación.** No se pudo iniciar sesión real en `/admin` para probar los diálogos en un navegador (sin credenciales de Firebase Auth en este entorno, y sin herramienta de navegador disponible en esta sesión); la verificación quedó en el nivel de build (CSS generado, confirmado arriba) y de test (324 tests, 99.3 % de cobertura, sin modificar el comportamiento de los tests existentes de Dialog/Select). **Pendiente honesto:** confirmar visualmente en un navegador real con sesión iniciada que los diálogos, el `Select` de filtros y los toasts se ven como se espera.
+
+---
+
 ### EPIC E9 — Calidad
 
 #### WED-90 — Accesibilidad

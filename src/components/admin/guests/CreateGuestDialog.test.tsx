@@ -14,7 +14,7 @@ import {
 const { toastSuccessMock } = vi.hoisted(() => ({ toastSuccessMock: vi.fn() }));
 
 vi.mock('@/components/admin/auth/fetchAdminApi', () => ({ fetchAdminApi: vi.fn() }));
-vi.mock('sonner', () => ({ toast: { success: toastSuccessMock } }));
+vi.mock('sonner', () => ({ toast: { success: toastSuccessMock, error: vi.fn() } }));
 
 const fetchAdminApiMock = vi.mocked(fetchAdminApi);
 
