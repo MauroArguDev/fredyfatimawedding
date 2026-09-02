@@ -1094,6 +1094,26 @@ Juntos explican el reporte exacto del usuario: "Agregar invitado" sí abría el 
 
 ---
 
+### Incidente de producción — `GET /api/admin/guests` (y potencialmente cualquier endpoint de invitados) devolvía `FUNCTION_INVOCATION_FAILED` (2026-09-02)
+
+**Reportado por el usuario tras mergear el PR anterior a `master`.** Repetición exacta del bug de WED-12 (`TS2835`), reintroducida por el propio PR de arriba: `api/_lib/guests.ts` empezó a importar `scripts/lib/guestImport.ts` por primera vez (para `partitionNewGuests`, parte de `importGuests()`), y ese archivo tiene imports relativos **sin extensión `.js`** (`from '../../src/schemas/guest'` en vez de `.../guest.js'`). `package.json` tiene `"type": "module"`, así que Node en modo ESM estricto —el runtime real de una Vercel Function— **no resuelve imports relativos sin extensión explícita**: es un `ERR_MODULE_NOT_FOUND` en tiempo de ejecución (no un fallo de build), por eso el deploy se completó normal y la función crasheaba recién al invocarse.
+
+**Por qué mi verificación local no lo detectó antes de pushear.** Probé el código en vivo contra Firestore real con `node --env-file=.env.local --import tsx script.ts` — pero `tsx` usa su propio resolvedor de módulos, que sí tolera imports sin extensión. `npm run build` (`tsc -b`) tampoco lo agarra porque usa la resolución permisiva (`moduleResolution: "bundler"`) de `tsconfig.app.json`. Ninguna de las dos formas de probar localmente replica la resolución ESM estricta que usa el runtime real de Vercel.
+
+**Diagnóstico, reproducido antes de tocar nada:**
+
+1. Confirmé con un script de solo lectura contra Firestore de producción que el único documento de `guests` sí pasa `guestSchema.parse()` — descartado dato corrupto.
+2. El usuario aclaró que el problema empezó con el último PR mergeado, no antes — mi rama local de `master` estaba desactualizada (el usuario ya había mergeado los PRs #16 y #17 sin avisar, mismo patrón ya documentado arriba de "confiar en `git log origin/master`, no en la memoria ni en lo que uno cree que está pendiente").
+3. Reproducido el error letra por letra con `npx tsc --moduleResolution nodenext --module nodenext ...` sobre los archivos tocados por el PR — exactamente el mismo `TS2835` de WED-12.
+
+**Corrección.** Agregado `.js` a los 4 imports de `scripts/lib/guestImport.ts` (2 value imports + 2 type imports). **Verificado contra los 8 entry points reales de `api/`** (`export`, `admin/guests` list/create, `admin/guests/[id]`, `rotate-token`, `admin/guests/import`, `health`, `invitation/[token]`, `rsvp`) con el mismo chequeo estricto — los 8 limpios, no quedó ningún otro archivo con el mismo gap. `npm run verify` y `npm run build` en verde, 347 tests sin tocar ninguno.
+
+**Alcance real del bug mientras estuvo desplegado:** no solo el listado de invitados — `api/_lib/guests.ts` es el módulo que usan `api/invitation/[token].ts` y `api/rsvp.ts` también, así que cualquier invitado real abriendo su enlace o confirmando asistencia durante esa ventana pudo haber recibido el mismo error. No hay forma de saber cuánto tiempo estuvo así sin revisar los logs de Vercel.
+
+**Patrón a repetir, ampliando la lección de WED-12:** cada vez que un archivo de `api/` (directo o transitivamente, vía `api/_lib/` o `scripts/lib/`) empiece a importar un módulo que **antes nunca vivía en ese árbol de dependencias**, correr `npx tsc --moduleResolution nodenext --module nodenext --strict --skipLibCheck <cada entry point de api/>` antes de pushear — ni `tsc -b` ni ejecutar el código con `tsx` lo detectan, solo esta verificación puntual replica la resolución ESM real de Vercel.
+
+---
+
 ### EPIC E9 — Calidad
 
 #### WED-90 — Accesibilidad
