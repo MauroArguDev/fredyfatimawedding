@@ -1,7 +1,7 @@
-import { createGuestSchema } from '../../src/schemas/guest';
-import type { CreateGuestInput } from '../../src/schemas/guest';
-import { validateExactHeader } from './rowValidation';
-import type { RowError } from './rowValidation';
+import { createGuestSchema } from '../../src/schemas/guest.js';
+import type { CreateGuestInput } from '../../src/schemas/guest.js';
+import { validateExactHeader } from './rowValidation.js';
+import type { RowError } from './rowValidation.js';
 
 export const REQUIRED_CSV_HEADER = [
   'firstName',
