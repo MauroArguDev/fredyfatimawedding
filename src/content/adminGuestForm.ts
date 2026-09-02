@@ -29,6 +29,7 @@ export const adminGuestToastCopy = {
   updated: 'Invitado actualizado.',
   deleted: 'Invitado eliminado.',
   released: 'Confirmación liberada.',
+  tokenRotated: 'Token regenerado. El enlace anterior ya no funciona.',
   sessionExpired: 'Tu sesión expiró. Inicia sesión de nuevo.',
 } as const;
 

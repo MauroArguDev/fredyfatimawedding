@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import {
   Table,
   TableHeader,
@@ -12,7 +12,11 @@ import { Button } from '@/components/admin/primitives/button';
 import { GuestInviteActions } from '@/components/admin/guests/GuestInviteActions';
 import { adminGuestsTableCopy } from '@/content/adminGuests';
 import { editGuestDialogCopy } from '@/content/adminGuestForm';
-import { deleteGuestDialogCopy, releaseConfirmationDialogCopy } from '@/content/adminGuestActions';
+import {
+  deleteGuestDialogCopy,
+  releaseConfirmationDialogCopy,
+  rotateTokenDialogCopy,
+} from '@/content/adminGuestActions';
 import { adminGuestInviteCopy } from '@/content/adminGuestInvite';
 import type { AdminGuest } from '@/schemas/guest';
 import type { GuestSortState } from '@/components/admin/guests/filterAndSortGuests';
@@ -24,6 +28,7 @@ interface AdminGuestsTableProps {
   onEdit: (guest: AdminGuest) => void;
   onDelete: (guest: AdminGuest) => void;
   onReleaseConfirmation: (guest: AdminGuest) => void;
+  onRotateToken: (guest: AdminGuest) => void;
 }
 
 const dateFormatter = new Intl.DateTimeFormat('es-SV', {
@@ -93,48 +98,60 @@ interface AdminGuestRowProps {
   onEdit: (guest: AdminGuest) => void;
   onDelete: (guest: AdminGuest) => void;
   onReleaseConfirmation: (guest: AdminGuest) => void;
+  onRotateToken: (guest: AdminGuest) => void;
 }
+
+interface RowActionButtonProps {
+  label: string;
+  variant: NonNullable<ComponentProps<typeof Button>['variant']>;
+  onClick: () => void;
+}
+
+const RowActionButton = ({ label, variant, onClick }: RowActionButtonProps): ReactNode => (
+  <Button type="button" variant={variant} size="sm" onClick={onClick}>
+    {label}
+  </Button>
+);
 
 const AdminGuestRowActions = ({
   guest,
   onEdit,
   onDelete,
   onReleaseConfirmation,
+  onRotateToken,
 }: AdminGuestRowProps): ReactNode => (
   <div className="flex flex-wrap gap-2">
     <GuestInviteActions guest={guest} />
-    <Button
-      type="button"
+    <RowActionButton
+      label={editGuestDialogCopy.trigger}
       variant="outline"
-      size="sm"
       onClick={() => {
         onEdit(guest);
       }}
-    >
-      {editGuestDialogCopy.trigger}
-    </Button>
+    />
     {guest.confirmed && (
-      <Button
-        type="button"
+      <RowActionButton
+        label={releaseConfirmationDialogCopy.trigger}
         variant="outline"
-        size="sm"
         onClick={() => {
           onReleaseConfirmation(guest);
         }}
-      >
-        {releaseConfirmationDialogCopy.trigger}
-      </Button>
+      />
     )}
-    <Button
-      type="button"
+    <RowActionButton
+      label={rotateTokenDialogCopy.trigger}
+      variant="outline"
+      onClick={() => {
+        onRotateToken(guest);
+      }}
+    />
+    <RowActionButton
+      label={deleteGuestDialogCopy.trigger}
       variant="destructive"
-      size="sm"
       onClick={() => {
         onDelete(guest);
       }}
-    >
-      {deleteGuestDialogCopy.trigger}
-    </Button>
+    />
   </div>
 );
 
@@ -143,6 +160,7 @@ const AdminGuestRow = ({
   onEdit,
   onDelete,
   onReleaseConfirmation,
+  onRotateToken,
 }: AdminGuestRowProps): ReactNode => (
   <TableRow>
     <TableCell>{guest.titleLabel ?? adminGuestsTableCopy.never}</TableCell>
@@ -172,6 +190,7 @@ const AdminGuestRow = ({
         onEdit={onEdit}
         onDelete={onDelete}
         onReleaseConfirmation={onReleaseConfirmation}
+        onRotateToken={onRotateToken}
       />
     </TableCell>
   </TableRow>
@@ -184,6 +203,7 @@ export const AdminGuestsTable = ({
   onEdit,
   onDelete,
   onReleaseConfirmation,
+  onRotateToken,
 }: AdminGuestsTableProps): ReactNode => {
   return (
     <Table>
@@ -198,6 +218,7 @@ export const AdminGuestsTable = ({
             onEdit={onEdit}
             onDelete={onDelete}
             onReleaseConfirmation={onReleaseConfirmation}
+            onRotateToken={onRotateToken}
           />
         ))}
       </TableBody>

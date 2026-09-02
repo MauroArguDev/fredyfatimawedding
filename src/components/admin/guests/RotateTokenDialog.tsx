@@ -1,32 +1,28 @@
 import type { ReactNode } from 'react';
 import { ConfirmGuestActionDialog } from '@/components/admin/guests/ConfirmGuestActionDialog';
-import { useUpdateGuestMutation } from '@/components/admin/guests/useUpdateGuestMutation';
+import { useRotateTokenMutation } from '@/components/admin/guests/useRotateTokenMutation';
 import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
 import { notifyOnSuccess } from '@/components/admin/guests/closeAndNotify';
-import { releaseConfirmationDialogCopy } from '@/content/adminGuestActions';
+import { rotateTokenDialogCopy } from '@/content/adminGuestActions';
 import { adminGuestToastCopy } from '@/content/adminGuestForm';
 import { resolveDisplayName, type AdminGuest } from '@/schemas/guest';
 
-interface ReleaseConfirmationDialogProps {
+interface RotateTokenDialogProps {
   guest: AdminGuest | null;
   onClose: () => void;
 }
 
-export const ReleaseConfirmationDialog = ({
-  guest,
-  onClose,
-}: ReleaseConfirmationDialogProps): ReactNode => {
-  const mutation = useUpdateGuestMutation();
+export const RotateTokenDialog = ({ guest, onClose }: RotateTokenDialogProps): ReactNode => {
+  const mutation = useRotateTokenMutation();
 
   const handleConfirm = (): void => {
     if (guest === null) {
       return;
     }
 
-    mutation.mutate(
-      { id: guest.id, patch: { confirmed: false } },
-      { onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.released) },
-    );
+    mutation.mutate(guest.id, {
+      onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.tokenRotated),
+    });
   };
 
   return (
@@ -37,15 +33,15 @@ export const ReleaseConfirmationDialog = ({
           onClose();
         }
       }}
-      title={releaseConfirmationDialogCopy.title}
+      title={rotateTokenDialogCopy.title}
       body={
         guest !== null && (
-          <p>{releaseConfirmationDialogCopy.body.replace('{name}', resolveDisplayName(guest))}</p>
+          <p>{rotateTokenDialogCopy.body.replace('{name}', resolveDisplayName(guest))}</p>
         )
       }
       errorMessage={resolveAdminApiErrorMessage(mutation.error)}
-      confirmLabel={releaseConfirmationDialogCopy.confirm}
-      confirmingLabel={releaseConfirmationDialogCopy.confirming}
+      confirmLabel={rotateTokenDialogCopy.confirm}
+      confirmingLabel={rotateTokenDialogCopy.confirming}
       isPending={mutation.isPending}
       onConfirm={handleConfirm}
     />

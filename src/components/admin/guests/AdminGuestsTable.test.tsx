@@ -5,7 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminGuestsTable } from '@/components/admin/guests/AdminGuestsTable';
 import { adminGuestsTableCopy } from '@/content/adminGuests';
 import { editGuestDialogCopy } from '@/content/adminGuestForm';
-import { deleteGuestDialogCopy, releaseConfirmationDialogCopy } from '@/content/adminGuestActions';
+import {
+  deleteGuestDialogCopy,
+  releaseConfirmationDialogCopy,
+  rotateTokenDialogCopy,
+} from '@/content/adminGuestActions';
 import { adminGuestInviteCopy } from '@/content/adminGuestInvite';
 import type { AdminGuest } from '@/schemas/guest';
 
@@ -55,6 +59,7 @@ function renderTable(
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onReleaseConfirmation={vi.fn()}
+        onRotateToken={vi.fn()}
         {...overrides}
       />
     </QueryClientProvider>,
@@ -162,5 +167,20 @@ describe('AdminGuestsTable', () => {
     );
 
     expect(onReleaseConfirmation).toHaveBeenCalledWith(fatima);
+  });
+
+  it('showsARotateTokenButtonForEveryGuestRegardlessOfStatus', () => {
+    renderTable([orlando, fatima]);
+
+    expect(screen.getAllByRole('button', { name: rotateTokenDialogCopy.trigger })).toHaveLength(2);
+  });
+
+  it('callsOnRotateTokenWithTheGuestWhenRotateTokenIsClicked', async () => {
+    const onRotateToken = vi.fn();
+    renderTable([orlando], { onRotateToken });
+
+    await userEvent.click(screen.getByRole('button', { name: rotateTokenDialogCopy.trigger }));
+
+    expect(onRotateToken).toHaveBeenCalledWith(orlando);
   });
 });

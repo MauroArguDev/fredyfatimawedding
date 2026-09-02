@@ -3,7 +3,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AdminGuestsBrowser } from '@/components/admin/guests/AdminGuestsBrowser';
-import { adminGuestsTableCopy } from '@/content/adminGuests';
+import { adminGuestsExportCopy, adminGuestsTableCopy } from '@/content/adminGuests';
+import { rotateTokenDialogCopy } from '@/content/adminGuestActions';
 import type { AdminGuest } from '@/schemas/guest';
 
 vi.mock('@/components/admin/auth/firebaseClient', () => ({ auth: {} }));
@@ -76,5 +77,19 @@ describe('AdminGuestsBrowser', () => {
     await userEvent.click(screen.getByRole('button', { name: adminGuestsTableCopy.status }));
 
     expect(firstBodyRowName()).toBe('Orlando');
+  });
+
+  it('rendersAnExportButtonAlongsideTheCreateButton', () => {
+    renderBrowser([orlando]);
+
+    expect(screen.getByRole('button', { name: adminGuestsExportCopy.trigger })).toBeInTheDocument();
+  });
+
+  it('opensTheRotateTokenDialogForTheClickedGuest', async () => {
+    renderBrowser([orlando]);
+
+    await userEvent.click(screen.getByRole('button', { name: rotateTokenDialogCopy.trigger }));
+
+    expect(screen.getByRole('dialog')).toHaveTextContent(orlando.firstName);
   });
 });

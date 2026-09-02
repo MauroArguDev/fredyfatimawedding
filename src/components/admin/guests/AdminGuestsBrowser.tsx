@@ -6,6 +6,8 @@ import { CreateGuestDialog } from '@/components/admin/guests/CreateGuestDialog';
 import { EditGuestDialog } from '@/components/admin/guests/EditGuestDialog';
 import { DeleteGuestDialog } from '@/components/admin/guests/DeleteGuestDialog';
 import { ReleaseConfirmationDialog } from '@/components/admin/guests/ReleaseConfirmationDialog';
+import { RotateTokenDialog } from '@/components/admin/guests/RotateTokenDialog';
+import { ExportGuestsButton } from '@/components/admin/guests/ExportGuestsButton';
 import {
   filterGuests,
   sortGuests,
@@ -40,24 +42,56 @@ interface AdminGuestsCrudDialogsProps {
   guestToEdit: AdminGuest | null;
   guestToDelete: AdminGuest | null;
   guestToRelease: AdminGuest | null;
+  guestToRotateToken: AdminGuest | null;
   onCloseEdit: () => void;
   onCloseDelete: () => void;
   onCloseRelease: () => void;
+  onCloseRotateToken: () => void;
 }
 
 const AdminGuestsCrudDialogs = ({
   guestToEdit,
   guestToDelete,
   guestToRelease,
+  guestToRotateToken,
   onCloseEdit,
   onCloseDelete,
   onCloseRelease,
+  onCloseRotateToken,
 }: AdminGuestsCrudDialogsProps): ReactNode => (
   <>
     <EditGuestDialog guest={guestToEdit} onClose={onCloseEdit} />
     <DeleteGuestDialog guest={guestToDelete} onClose={onCloseDelete} />
     <ReleaseConfirmationDialog guest={guestToRelease} onClose={onCloseRelease} />
+    <RotateTokenDialog guest={guestToRotateToken} onClose={onCloseRotateToken} />
   </>
+);
+
+interface AdminGuestsToolbarProps {
+  search: string;
+  onSearchChange: (value: string) => void;
+  status: GuestStatusFilter;
+  onStatusChange: (value: GuestStatusFilter) => void;
+}
+
+const AdminGuestsToolbar = ({
+  search,
+  onSearchChange,
+  status,
+  onStatusChange,
+}: AdminGuestsToolbarProps): ReactNode => (
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <AdminGuestsFilters
+      search={search}
+      onSearchChange={onSearchChange}
+      status={status}
+      onStatusChange={onStatusChange}
+    />
+    <div className="flex gap-2">
+      <ExportGuestsButton />
+      <CreateGuestDialog />
+    </div>
+  </div>
 );
 
 interface AdminGuestsResultsProps {
@@ -68,6 +102,7 @@ interface AdminGuestsResultsProps {
   onEdit: (guest: AdminGuest) => void;
   onDelete: (guest: AdminGuest) => void;
   onReleaseConfirmation: (guest: AdminGuest) => void;
+  onRotateToken: (guest: AdminGuest) => void;
 }
 
 const AdminGuestsResults = ({
@@ -78,6 +113,7 @@ const AdminGuestsResults = ({
   onEdit,
   onDelete,
   onReleaseConfirmation,
+  onRotateToken,
 }: AdminGuestsResultsProps): ReactNode => {
   if (guests.length === 0) {
     return <p className="text-sm text-muted-foreground">{adminGuestsPageCopy.emptyList}</p>;
@@ -95,6 +131,7 @@ const AdminGuestsResults = ({
       onEdit={onEdit}
       onDelete={onDelete}
       onReleaseConfirmation={onReleaseConfirmation}
+      onRotateToken={onRotateToken}
     />
   );
 };
@@ -106,6 +143,7 @@ export const AdminGuestsBrowser = ({ guests, stats }: AdminGuestsBrowserProps): 
   const [guestToEdit, setGuestToEdit] = useState<AdminGuest | null>(null);
   const [guestToDelete, setGuestToDelete] = useState<AdminGuest | null>(null);
   const [guestToRelease, setGuestToRelease] = useState<AdminGuest | null>(null);
+  const [guestToRotateToken, setGuestToRotateToken] = useState<AdminGuest | null>(null);
 
   const visibleGuests = useMemo(
     () => sortGuests(filterGuests(guests, search, status), sort),
@@ -115,15 +153,12 @@ export const AdminGuestsBrowser = ({ guests, stats }: AdminGuestsBrowserProps): 
   return (
     <div className="flex flex-col gap-4">
       <AdminGuestsStats stats={stats} />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <AdminGuestsFilters
-          search={search}
-          onSearchChange={setSearch}
-          status={status}
-          onStatusChange={setStatus}
-        />
-        <CreateGuestDialog />
-      </div>
+      <AdminGuestsToolbar
+        search={search}
+        onSearchChange={setSearch}
+        status={status}
+        onStatusChange={setStatus}
+      />
       <AdminGuestsResults
         guests={guests}
         visibleGuests={visibleGuests}
@@ -134,14 +169,17 @@ export const AdminGuestsBrowser = ({ guests, stats }: AdminGuestsBrowserProps): 
         onEdit={setGuestToEdit}
         onDelete={setGuestToDelete}
         onReleaseConfirmation={setGuestToRelease}
+        onRotateToken={setGuestToRotateToken}
       />
       <AdminGuestsCrudDialogs
         guestToEdit={guestToEdit}
         guestToDelete={guestToDelete}
         guestToRelease={guestToRelease}
+        guestToRotateToken={guestToRotateToken}
         onCloseEdit={clearSelection(setGuestToEdit)}
         onCloseDelete={clearSelection(setGuestToDelete)}
         onCloseRelease={clearSelection(setGuestToRelease)}
+        onCloseRotateToken={clearSelection(setGuestToRotateToken)}
       />
     </div>
   );

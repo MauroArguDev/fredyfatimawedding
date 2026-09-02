@@ -39,3 +39,9 @@ export const adminGuestsPageCopy = {
   emptyList: 'Todavía no hay invitados cargados.',
   emptyFiltered: 'Ningún invitado coincide con la búsqueda o el filtro.',
 } as const;
+
+export const adminGuestsExportCopy = {
+  trigger: 'Exportar CSV',
+  downloading: 'Exportando…',
+  error: 'No pudimos exportar la lista de invitados.',
+} as const;
