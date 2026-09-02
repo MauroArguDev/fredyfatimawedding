@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Button } from '@/components/admin/primitives/button';
+import { PendingButtonLabel } from '@/components/admin/PendingButtonLabel';
 import { FieldError } from '@/components/admin/primitives/field';
 import {
   Dialog,
@@ -41,7 +42,11 @@ export const ConfirmGuestActionDialog = ({
       {errorMessage !== null && <FieldError>{errorMessage}</FieldError>}
       <DialogFooter>
         <Button type="button" variant="destructive" disabled={isPending} onClick={onConfirm}>
-          {isPending ? confirmingLabel : confirmLabel}
+          <PendingButtonLabel
+            isPending={isPending}
+            pendingLabel={confirmingLabel}
+            label={confirmLabel}
+          />
         </Button>
       </DialogFooter>
     </DialogContent>

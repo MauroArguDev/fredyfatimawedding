@@ -2,7 +2,11 @@ import type { ReactNode } from 'react';
 import { ConfirmGuestActionDialog } from '@/components/admin/guests/ConfirmGuestActionDialog';
 import { useUpdateGuestMutation } from '@/components/admin/guests/useUpdateGuestMutation';
 import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
-import { notifyOnSuccess } from '@/components/admin/guests/closeAndNotify';
+import {
+  closeWhenClosed,
+  notifyOnError,
+  notifyOnSuccess,
+} from '@/components/admin/guests/closeAndNotify';
 import { releaseConfirmationDialogCopy } from '@/content/adminGuestActions';
 import { adminGuestToastCopy } from '@/content/adminGuestForm';
 import { resolveDisplayName, type AdminGuest } from '@/schemas/guest';
@@ -25,18 +29,17 @@ export const ReleaseConfirmationDialog = ({
 
     mutation.mutate(
       { id: guest.id, patch: { confirmed: false } },
-      { onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.released) },
+      {
+        onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.released),
+        onError: notifyOnError(),
+      },
     );
   };
 
   return (
     <ConfirmGuestActionDialog
       open={guest !== null}
-      onOpenChange={(next) => {
-        if (!next) {
-          onClose();
-        }
-      }}
+      onOpenChange={closeWhenClosed(onClose)}
       title={releaseConfirmationDialogCopy.title}
       body={
         guest !== null && (

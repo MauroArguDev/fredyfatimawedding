@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/admin/primitives/button';
+import { PendingButtonLabel } from '@/components/admin/PendingButtonLabel';
 import { downloadGuestsExport } from '@/components/admin/guests/exportGuestsCsv';
 import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
 import { adminGuestsExportCopy } from '@/content/adminGuests';
@@ -29,7 +30,11 @@ export const ExportGuestsButton = (): ReactNode => {
         void handleClick();
       }}
     >
-      {isDownloading ? adminGuestsExportCopy.downloading : adminGuestsExportCopy.trigger}
+      <PendingButtonLabel
+        isPending={isDownloading}
+        pendingLabel={adminGuestsExportCopy.downloading}
+        label={adminGuestsExportCopy.trigger}
+      />
     </Button>
   );
 };

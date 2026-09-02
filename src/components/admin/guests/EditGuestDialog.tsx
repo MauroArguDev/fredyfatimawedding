@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/admin/primitives/dialog';
+import { PendingButtonLabel } from '@/components/admin/PendingButtonLabel';
 import { GuestFormFields } from '@/components/admin/guests/GuestFormFields';
 import { useUpdateGuestMutation } from '@/components/admin/guests/useUpdateGuestMutation';
 import {
@@ -18,7 +19,11 @@ import {
   type EditGuestFormValues,
 } from '@/components/admin/guests/guestFormSchema';
 import { resolveAdminApiErrorMessage } from '@/components/admin/guests/resolveAdminApiErrorMessage';
-import { notifyOnSuccess } from '@/components/admin/guests/closeAndNotify';
+import {
+  closeWhenClosed,
+  notifyOnError,
+  notifyOnSuccess,
+} from '@/components/admin/guests/closeAndNotify';
 import { editGuestDialogCopy, adminGuestToastCopy } from '@/content/adminGuestForm';
 import type { AdminGuest } from '@/schemas/guest';
 
@@ -59,7 +64,11 @@ const EditGuestForm = ({
     {serverErrorMessage !== null && <FieldError>{serverErrorMessage}</FieldError>}
     <DialogFooter>
       <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? editGuestDialogCopy.submitting : editGuestDialogCopy.submit}
+        <PendingButtonLabel
+          isPending={isSubmitting}
+          pendingLabel={editGuestDialogCopy.submitting}
+          label={editGuestDialogCopy.submit}
+        />
       </Button>
     </DialogFooter>
   </form>
@@ -87,19 +96,15 @@ export const EditGuestDialog = ({ guest, onClose }: EditGuestDialogProps): React
 
     mutation.mutate(
       { id: guest.id, patch: toUpdateGuestInput(values) },
-      { onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.updated) },
+      {
+        onSuccess: notifyOnSuccess(onClose, adminGuestToastCopy.updated),
+        onError: notifyOnError(),
+      },
     );
   });
 
   return (
-    <Dialog
-      open={guest !== null}
-      onOpenChange={(next) => {
-        if (!next) {
-          onClose();
-        }
-      }}
-    >
+    <Dialog open={guest !== null} onOpenChange={closeWhenClosed(onClose)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{editGuestDialogCopy.title}</DialogTitle>
