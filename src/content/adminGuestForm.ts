@@ -1,7 +1,7 @@
 export const guestFormFieldsCopy = {
   firstName: 'Nombre',
   lastName: 'Apellido',
-  titleLabel: 'Trato para el sobre',
+  titleLabel: 'Texto en sobre',
   guestLimit: 'Cupo de invitados',
   phone: 'Teléfono',
   notes: 'Notas',

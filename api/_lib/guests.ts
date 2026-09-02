@@ -6,6 +6,7 @@ import {
   guestLimitCoversConfirmedCount,
   guestSchema,
 } from '../../src/schemas/guest.js';
+import { partitionNewGuests } from '../../scripts/lib/guestImport.js';
 import type { DocumentReference, DocumentSnapshot } from 'firebase-admin/firestore';
 import type { CreateGuestInput, Guest, UpdateGuestInput } from '../../src/schemas/guest.js';
 
@@ -109,9 +110,10 @@ export async function listGuests(): Promise<GuestListItem[]> {
   return snapshot.docs.map((doc) => ({ id: doc.id, data: parseGuestSnapshot(doc) }));
 }
 
-export async function createGuest(input: CreateGuestInput): Promise<GuestListItem> {
+function buildNewGuestDocument(input: CreateGuestInput): Guest {
   const now = new Date();
-  const document: Guest = {
+
+  return {
     ...input,
     token: nanoid(TOKEN_LENGTH),
     confirmed: false,
@@ -122,11 +124,45 @@ export async function createGuest(input: CreateGuestInput): Promise<GuestListIte
     createdAt: now,
     updatedAt: now,
   };
+}
+
+export async function createGuest(input: CreateGuestInput): Promise<GuestListItem> {
+  const document = buildNewGuestDocument(input);
   const ref = firestore().collection(GUESTS_COLLECTION).doc();
 
   await ref.set(document);
 
   return { id: ref.id, data: document };
+}
+
+export interface ImportGuestsResult {
+  imported: number;
+  skipped: number;
+}
+
+async function fetchExistingPhones(): Promise<Set<string>> {
+  const snapshot = await firestore().collection(GUESTS_COLLECTION).select('phone').get();
+
+  return new Set(snapshot.docs.map((doc) => String(doc.get('phone'))));
+}
+
+export async function importGuests(
+  guests: readonly CreateGuestInput[],
+): Promise<ImportGuestsResult> {
+  const existingPhones = await fetchExistingPhones();
+  const { toCreate, alreadyPresent } = partitionNewGuests([...guests], existingPhones);
+  const collection = firestore().collection(GUESTS_COLLECTION);
+  const batch = firestore().batch();
+
+  for (const guest of toCreate) {
+    batch.set(collection.doc(), buildNewGuestDocument(guest));
+  }
+
+  if (toCreate.length > 0) {
+    await batch.commit();
+  }
+
+  return { imported: toCreate.length, skipped: alreadyPresent.length };
 }
 
 export type UpdateGuestOutcome =

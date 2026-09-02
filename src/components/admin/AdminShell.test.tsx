@@ -1,7 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AdminShell } from '@/components/admin/AdminShell';
+import { adminShellCopy } from '@/content/appShell';
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
 
 describe('AdminShell', () => {
   it('rendersTheTitleAndChildren', () => {
@@ -28,5 +33,23 @@ describe('AdminShell', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
 
     expect(onLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it('togglesDarkModeAndUpdatesTheButtonLabelWhenClicked', async () => {
+    const { container } = render(
+      <AdminShell title="Panel de administración" logoutLabel="Cerrar sesión" onLogout={vi.fn()}>
+        <p>Contenido</p>
+      </AdminShell>,
+    );
+    const root = container.querySelector('.admin-shell');
+    expect(root).not.toBeNull();
+    expect(root).not.toHaveClass('dark');
+
+    await userEvent.click(screen.getByRole('button', { name: adminShellCopy.switchToDarkTheme }));
+
+    expect(root).toHaveClass('dark');
+    expect(
+      screen.getByRole('button', { name: adminShellCopy.switchToLightTheme }),
+    ).toBeInTheDocument();
   });
 });

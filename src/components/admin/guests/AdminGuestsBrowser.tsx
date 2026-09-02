@@ -8,6 +8,7 @@ import { DeleteGuestDialog } from '@/components/admin/guests/DeleteGuestDialog';
 import { ReleaseConfirmationDialog } from '@/components/admin/guests/ReleaseConfirmationDialog';
 import { RotateTokenDialog } from '@/components/admin/guests/RotateTokenDialog';
 import { ExportGuestsButton } from '@/components/admin/guests/ExportGuestsButton';
+import { ImportGuestsDialog } from '@/components/admin/guests/ImportGuestsDialog';
 import {
   filterGuests,
   sortGuests,
@@ -89,6 +90,7 @@ const AdminGuestsToolbar = ({
     />
     <div className="flex gap-2">
       <ExportGuestsButton />
+      <ImportGuestsDialog />
       <CreateGuestDialog />
     </div>
   </div>
