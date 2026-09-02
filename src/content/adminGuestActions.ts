@@ -15,3 +15,11 @@ export const releaseConfirmationDialogCopy = {
   confirming: 'Liberando…',
   cancel: 'Cancelar',
 } as const;
+
+export const rotateTokenDialogCopy = {
+  trigger: 'Rotar token',
+  title: 'Rotar token',
+  body: 'Vas a generar un enlace nuevo para {name}. El enlace anterior deja de funcionar de inmediato, aunque ya se lo hayas compartido.',
+  confirm: 'Rotar token',
+  confirming: 'Rotando…',
+} as const;

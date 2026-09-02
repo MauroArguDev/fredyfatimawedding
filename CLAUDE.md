@@ -1016,11 +1016,17 @@ La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una b
 
 #### WED-84 — Exportación y utilidades
 
-**Feature · 2 · WED-81 · vía A**
+**Feature · 2 · WED-81 — cerrado en código · vía A**
 
-- [ ] Exportar a CSV con encabezados en español.
-- [ ] **El CSV abre correctamente en Excel con acentos** (BOM UTF-8).
-- [ ] Rotar token, con advertencia de que invalida el enlace anterior.
+- [x] Exportar a CSV con encabezados en español. `ExportGuestsButton` llama `GET /api/admin/export` (ya existente desde WED-43) vía `fetchAdminApi`, arma un blob URL con `exportGuestsCsv.ts` (`downloadGuestsExport`) y dispara la descarga con un `<a download>` temporal — sin endpoint nuevo, el ticket era puramente de UI.
+- [x] **El CSV abre correctamente en Excel con acentos** (BOM UTF-8). Ya lo garantiza `api/admin/export.ts` desde WED-43 (`UTF8_BOM_CODE_POINT` antepuesto); este ticket solo agrega el botón que lo descarga desde la consola.
+- [x] Rotar token, con advertencia de que invalida el enlace anterior. `RotateTokenDialog` (nuevo) llama `POST /api/admin/guests/[id]/rotate-token` (ya existente desde WED-43) vía `useRotateTokenMutation`; el texto de advertencia (`rotateTokenDialogCopy.body`) deja explícito que el enlace anterior deja de funcionar de inmediato, aunque ya se haya compartido — mismo criterio de irreversibilidad que ADR-006. Botón "Rotar token" visible en cada fila de `AdminGuestsTable`, sin condición (a diferencia de "Liberar confirmación", que solo aplica a invitados confirmados).
+
+**Limpieza previa al cierre.** Con `RotateTokenDialog` la consola llegó a **tres** diálogos de confirmación casi idénticos (`DeleteGuestDialog`, `ReleaseConfirmationDialog`, el nuevo `RotateTokenDialog`): mismo `Dialog`/`DialogHeader`/`DialogFooter`, mismo botón `destructive` con estado `isPending`/`FieldError`. Se extrajo `ConfirmGuestActionDialog.tsx` (componente de presentación puro: `open`, `onOpenChange`, `title`, `body`, `errorMessage`, `confirmLabel`/`confirmingLabel`, `isPending`, `onConfirm`) y los tres diálogos ahora lo consumen; cada uno conserva su propio hook de mutación y su `handleConfirm`, que es lo único que realmente difiere entre ellos. Refactor puramente de presentación — verificado que los 319 tests del repo (incluidos los de Delete/Release, sin tocar) siguen en verde sin modificarlos, confirmando que el HTML resultante no cambió.
+
+**Implementación.** `useRotateTokenMutation` sigue el mismo patrón que `useUpdateGuestMutation`/`useDeleteGuestMutation` (`fetchAdminApi` + `adminGuestSchema.parse`), pero sin actualización optimista previa a la respuesta — no hay nada que adivinar del lado del cliente porque el token nuevo lo genera el servidor; en su lugar, `onSuccess` parchea el invitado en caché con `withPatchedGuest` (reutilizado de `adminGuestsOptimisticUpdate.ts`) para que "Enviar"/"Copiar enlace" (WED-83) usen el token nuevo sin esperar el refetch, seguido de `invalidateQueries` en `onSettled` como red de seguridad. `exportGuestsCsv.ts` reutiliza `GUEST_EXPORT_FILENAME` de `src/content/guestExport.ts` (ya existía para el header `Content-Disposition` del servidor) en vez de duplicar el nombre del archivo en el cliente.
+
+**Cobertura.** 319 tests en el repo (antes 304), 98.53 % de cobertura global. `npm run verify` y `npm run build` en verde; el chunk de la invitación no cambió (259.36 kB), todo el peso nuevo (export + rotar token) fue al chunk de `/admin` (403.52 kB, antes 362.51 kB).
 
 ---
 
