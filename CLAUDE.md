@@ -1132,6 +1132,18 @@ Juntos explican el reporte exacto del usuario: "Agregar invitado" sí abría el 
 
 ---
 
+### Corrección fuera de ticket — encabezado legado "Trato para el sobre" seguía rechazándose tras el rename (2026-09-16)
+
+**Reportado por el usuario al intentar importar su lista real de invitados.** El rename de `titleLabel` (`"Trato para el sobre"` → `"Texto en sobre"`, ver corrección anterior) cambió el encabezado que exige `normalizeHumanGuestSheet` (`scripts/lib/humanGuestSheet.ts`), pero el `.xlsx`/CSV que los novios mantienen en su escritorio se creó antes del rename y nunca se actualizó — encabezado real: `Nombre;Apellido;Trato para el sobre;Cupo de invitados;Teléfono`. `validateExactHeader` compara la fila completa contra `HUMAN_SHEET_HEADER` letra por letra, así que el archivo real del usuario quedaba rechazado con `Expected header "...Texto en sobre...", got "...Trato para el sobre..."`. No es un bug de lógica — es la consecuencia esperada de un rename de contenido sin ruta de compatibilidad para archivos existentes.
+
+**Corrección.** `normalizeHumanGuestSheet` ahora acepta **ambos** encabezados: el vigente (`HUMAN_SHEET_HEADER`) y una constante nueva, `LEGACY_HUMAN_SHEET_HEADER`, idéntica salvo por esa única columna. Un archivo con cualquiera de los dos encabezados se normaliza igual; solo un tercer encabezado distinto sigue produciendo el error. Alcance acotado a propósito: `REQUIRED_CSV_HEADER` (el formato de máquina en inglés de `npm run import:guests`) no se tocó, porque nunca tuvo el nombre viejo. Test que documenta la regla (ADR-007): `acceptsTheLegacyTratoParaElSobreHeaderFromFilesCreatedBeforeTheRename` en `scripts/lib/humanGuestSheet.test.ts`.
+
+**Por qué no se corrigió solo editando el archivo del usuario.** Se editó igual como solución inmediata (una sola celda), pero el archivo real de los novios en su escritorio es un `.xlsx` que van a seguir editando y volviendo a exportar — el mismo error iba a repetirse en cada exportación futura mientras esa copia de trabajo no se actualice. La corrección de código es la que hace que no vuelva a pasar, sin depender de que alguien recuerde renombrar la columna cada vez.
+
+`npm run verify` (lint, typecheck, tests de `scripts/lib/` y `api/admin/guests/import.test.ts`) en verde.
+
+---
+
 ### EPIC E9 — Calidad
 
 #### WED-90 — Accesibilidad

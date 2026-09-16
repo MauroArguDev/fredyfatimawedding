@@ -9,6 +9,14 @@ export const HUMAN_SHEET_HEADER = [
   'Teléfono',
 ] as const;
 
+const LEGACY_HUMAN_SHEET_HEADER = [
+  'Nombre',
+  'Apellido',
+  'Trato para el sobre',
+  'Cupo de invitados',
+  'Teléfono',
+] as const;
+
 const EL_SALVADOR_COUNTRY_CODE = '+503';
 const LOCAL_PHONE_DIGIT_COUNT = 8;
 const INTERNATIONAL_TRUNK_PREFIX = '00';
@@ -55,8 +63,9 @@ export function normalizeHumanGuestSheet(rows: string[][]): NormalizeResult {
 
   const [header, ...dataRows] = rows;
   const headerError = validateExactHeader(header, HUMAN_SHEET_HEADER);
+  const matchesLegacyHeader = validateExactHeader(header, LEGACY_HUMAN_SHEET_HEADER) === null;
 
-  if (headerError !== null) {
+  if (headerError !== null && !matchesLegacyHeader) {
     return { rows: [], errors: [{ row: 1, message: headerError }] };
   }
 
