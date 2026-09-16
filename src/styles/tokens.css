@@ -3,20 +3,25 @@
 @source not '../pages/admin';
 
 @theme {
-  --color-bg-base: #f7dbb4;
+  --color-bg-base: #f6d5a9;
+  --color-bg-hero: #f6d5a9;
   --color-envelope-text: #465641;
   --color-surface-dark: #48553f;
   --color-surface-sage: #97a98f;
   --color-surface-muted: #ebc9a0;
-  --color-accent-coral: #e9a98c;
-  --color-accent-terracotta: #e0855f;
+  --color-accent-coral: #e5ab84;
+  --color-accent-terracotta: #20431e;
   --color-text-heading: #4a5a46;
-  --color-text-body: #7c8a78;
+  --color-text-body: #454f42;
   --color-text-on-dark: #f6d5a9;
   --color-text-on-sage: #454f42;
   --color-text-hero: #ffffff;
 
   --spacing-invitation: 432px;
+
+  --radius-invitation-sm: 5px;
+
+  --shadow-invitation-badge: 2px 2px 1px rgba(0, 0, 0, 0.25);
 
   --font-sans: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
 }
