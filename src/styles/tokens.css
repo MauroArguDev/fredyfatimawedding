@@ -36,3 +36,25 @@ body {
   color: var(--color-text-body);
   font-family: var(--font-sans);
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-base: #f6d5a9;
+    --color-bg-hero: #f6d5a9;
+    --color-envelope-text: #465641;
+    --color-surface-dark: #48553f;
+    --color-surface-sage: #97a98f;
+    --color-surface-muted: #ebc9a0;
+    --color-accent-coral: #e5ab84;
+    --color-accent-terracotta: #20431e;
+    --color-text-heading: #4a5a46;
+    --color-text-body: #454f42;
+    --color-text-on-dark: #f6d5a9;
+    --color-text-on-sage: #454f42;
+    --color-text-hero: #ffffff;
+  }
+
+  img {
+    filter: none;
+  }
+}
