@@ -1144,6 +1144,16 @@ Juntos explican el reporte exacto del usuario: "Agregar invitado" sí abría el 
 
 ---
 
+### Corrección fuera de ticket — `normalizePhone` no reconocía números norteamericanos (2026-09-16)
+
+**Reportado por el usuario al importar su lista real, mismo archivo que las dos correcciones anteriores.** Tres filas (varios invitados con número de EE. UU., prefijo de área `571`, formato `15712773066`) fallaban `createGuestSchema` con `Phone must be E.164, for example +50370000000`. `normalizePhone` (`scripts/lib/humanGuestSheet.ts`) solo sabía anteponer `+503` a números locales de 8 dígitos; un número de 11 dígitos que ya trae el `1` de país (NANP: EE. UU./Canadá) no encajaba en ningún caso y se devolvía tal cual, sin `+` — de ahí el rechazo de `phoneSchema` (E.164 exige el prefijo).
+
+**Corrección.** `normalizePhone` gana un tercer caso: un valor de exactamente 11 dígitos que empieza en `1` se interpreta como NANP y se le antepone `+` sin más (`digitsAndPlus.length === NANP_DIGIT_COUNT && digitsAndPlus.startsWith(NANP_TRUNK_DIGIT)`). Es autodetección por forma del número, igual que el caso de El Salvador (8 dígitos → local), no requiere que el novio indique el país. Un número que ya trae `+` o el prefijo internacional `00` sigue resolviéndose antes, sin cambios. Tests: `prependsAPlusToAnElevenDigitNumberStartingWithOneAsANorthAmericanNumber`, `stripsSpacesFromANorthAmericanNumberBeforeDetectingIt`.
+
+`npm run verify` en verde.
+
+---
+
 ### EPIC E9 — Calidad
 
 #### WED-90 — Accesibilidad

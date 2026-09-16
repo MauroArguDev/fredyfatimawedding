@@ -18,6 +18,14 @@ describe('normalizePhone', () => {
     expect(normalizePhone('00503 7000 0000')).toBe('+50370000000');
   });
 
+  it('prependsAPlusToAnElevenDigitNumberStartingWithOneAsANorthAmericanNumber', () => {
+    expect(normalizePhone('15712773066')).toBe('+15712773066');
+  });
+
+  it('stripsSpacesFromANorthAmericanNumberBeforeDetectingIt', () => {
+    expect(normalizePhone('1 571 277 3066')).toBe('+15712773066');
+  });
+
   it('passesThroughAnUnrecognizableNumberUnchangedForDownstreamValidationToCatch', () => {
     expect(normalizePhone('abc')).toBe('');
     expect(normalizePhone('123')).toBe('123');

@@ -20,6 +20,8 @@ const LEGACY_HUMAN_SHEET_HEADER = [
 const EL_SALVADOR_COUNTRY_CODE = '+503';
 const LOCAL_PHONE_DIGIT_COUNT = 8;
 const INTERNATIONAL_TRUNK_PREFIX = '00';
+const NANP_TRUNK_DIGIT = '1';
+const NANP_DIGIT_COUNT = 11;
 
 export interface NormalizeResult {
   rows: string[][];
@@ -39,6 +41,10 @@ export function normalizePhone(rawValue: string): string {
 
   if (digitsAndPlus.length === LOCAL_PHONE_DIGIT_COUNT) {
     return `${EL_SALVADOR_COUNTRY_CODE}${digitsAndPlus}`;
+  }
+
+  if (digitsAndPlus.length === NANP_DIGIT_COUNT && digitsAndPlus.startsWith(NANP_TRUNK_DIGIT)) {
+    return `+${digitsAndPlus}`;
   }
 
   return digitsAndPlus;
