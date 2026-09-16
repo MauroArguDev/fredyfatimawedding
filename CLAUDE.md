@@ -643,14 +643,18 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-32 — Componentes base
 
-**Feature · 3 · WED-30, WED-31**
+**Feature · 3 · WED-30, WED-31 — código implementado 2026-09-16**
 
-- [ ] `Button` (default/hover/focus/active/disabled/loading), `Select`, `Card`, `Section`, `Divider`, `FloralOrnament`, `Modal`.
-- [ ] Todos operables por teclado con `focus-visible` visible.
-- [ ] `Select` es un `<select>` nativo estilizado, no un div con listeners.
-- [ ] `Modal` atrapa el foco, cierra con `Esc` y devuelve el foco al disparador.
-- [ ] Todas las variantes en `/styleguide`.
-- [ ] Props tipadas, sin `any`, con nombres en inglés.
+- [x] `Button` (variant `primary`/`secondary`, `disabled`, `isLoading` + `loadingLabel`), `Select` (nativo, con chevron SVG per la excepción de ADR-008), `Card` (variantes `dark`/`sage`/`muted`), `Section` (wrapper semántico con `id` para anclas), `Divider`, `FloralOrnament` (decorativo, `alt=""`, `aria-hidden`, `loading="lazy"` con opt-out `isPriority`), `Modal` (sobre `<dialog>` nativo). Todos en `src/components/ui/`, uno por archivo, con test propio.
+- [x] Todos operables por teclado con `focus-visible` visible — `Button`/`Select` llevan `focus-visible:outline` explícito; verificado con `@testing-library/user-event` (`tab()` + `keyboard('{Enter}')`).
+- [x] `Select` es un `<select>` nativo estilizado (`appearance-none` + chevron superpuesto), no un div con listeners.
+- [x] `Modal` sobre `<dialog>` + `showModal()`: cierra con `Esc` (manejador explícito, no solo el comportamiento nativo) y devuelve el foco al disparador (guardado en un ref al abrir, restaurado en el evento `close`). **Matiz real:** el atrapado de `Tab` dentro del modal se apoya en el comportamiento nativo de `<dialog>` (soportado en Chrome/Safari/Firefox reales), no se reimplementó a mano — y **no es verificable con Vitest** porque jsdom 25 no implementa `showModal()`/`close()` en absoluto. Se agregó un polyfill mínimo en `src/testSetup.ts` (mismo criterio que `hasPointerCapture`/`File.prototype.text` de WED-81/estabilización) que sí permite testear apertura, foco inicial, Esc, click en backdrop y retorno de foco — pero el ciclo de Tab en sí queda pendiente de verificación manual en un navegador real, junto con WED-90.
+- [x] Todas las variantes en `/styleguide`, sección "Components" nueva (botones, select, las 3 cards, divider, ornamento placeholder, modal de ejemplo funcional).
+- [x] Props tipadas, sin `any`, con nombres en inglés — verificado con `npm run lint`/`typecheck`.
+
+**Hallazgo real de testing (2026-09-16).** jsdom 25.0.1 no implementa `HTMLDialogElement.prototype.showModal`/`close` — `dialog.showModal()` lanza `TypeError`. Se agregó un polyfill mínimo (abre con `setAttribute('open', '')`, cierra quitando el atributo y disparando un evento `close` real) para poder testear el ciclo de vida del `Modal` sin reimplementar el comportamiento nativo completo.
+
+**Bug real encontrado y corregido antes de cerrar el ticket.** La primera versión de `useDialogController` volvía a suscribir el listener de `close` en cada render porque dependía de la identidad de `onClose` (`useEffect(..., [dialogRef, onClose])`) — con un `onClose` inline (`() => setIsOpen(false)`, el caso normal en React), React desmonta y remonta ese listener en cada render. Al cerrar el modal, el ciclo cleanup-de-todos-los-efectos-antes-que-setup-de-todos-los-efectos hacía que el listener se quitara y se volviera a poner justo alrededor del momento en que se disparaba el evento `close`, perdiéndolo — el foco nunca volvía al disparador. Reproducido con un test real (`movesFocusInsideOnOpenAndReturnsItToTheTriggerOnClose`) antes del fix. Corregido con el patrón de "ref con el valor más reciente" (`onCloseRef`, actualizado en cada render, leído dentro del handler): el listener de `close` ahora se suscribe una sola vez, con dependencia solo en `dialogRef` (estable), y siempre llama a la versión más reciente de `onClose`.
 
 #### WED-33 — Iconos y ornamentos
 
