@@ -47,6 +47,18 @@ describe('normalizeHumanGuestSheet', () => {
     expect(result.rows[0]?.[1]).toBe('Peña');
   });
 
+  it('acceptsTheLegacyTratoParaElSobreHeaderFromFilesCreatedBeforeTheRename', () => {
+    const result = normalizeHumanGuestSheet([
+      ['Nombre', 'Apellido', 'Trato para el sobre', 'Cupo de invitados', 'Teléfono'],
+      ['Orlando', 'Martínez', 'Tío Orlando y Familia.', '3', '7000-0000'],
+    ]);
+
+    expect(result.errors).toEqual([]);
+    expect(result.rows).toEqual([
+      ['Orlando', 'Martínez', 'Tío Orlando y Familia.', '3', '+50370000000'],
+    ]);
+  });
+
   it('rejectsASheetWithTheWrongHeaderBeforeNormalizingAnyRow', () => {
     const result = normalizeHumanGuestSheet([
       ['Nombre', 'Teléfono'],
