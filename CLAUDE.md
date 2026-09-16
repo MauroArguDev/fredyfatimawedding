@@ -1170,6 +1170,22 @@ Juntos explican el reporte exacto del usuario: "Agregar invitado" sí abría el 
 
 ---
 
+### Corrección fuera de ticket — Android forzaba modo oscuro sobre la invitación y deformaba los colores reales (2026-09-16)
+
+**Reportado por el usuario probando en un teléfono real.** Con el sistema en modo oscuro, Chrome/Android (y varios WebViews, incluido probablemente el navegador interno de WhatsApp que WED-93 tiene que probar) aplican su propio "forced dark"/"simplified adaptive dark theme": repintan los colores de cualquier página que no declare explícitamente qué esquema soporta. Como ni `index.html` ni el CSS declaraban nada al respecto, el navegador adivinaba y desviaba los tonos reales verificados en WED-30 (`--bg-base`, `--envelope-text`, etc.) — el sitio no tiene (ni va a tener) un modo oscuro propio para la invitación, así que ese repintado automático es puro ruido, nunca una mejora.
+
+**Corrección.** Se declaró el esquema de color explícitamente en tres capas, mismo patrón que ya usa `admin.css` para el fondo (`body:has(.admin-shell)`/`body:has(.admin-shell.dark)`):
+
+- `index.html`: `<meta name="color-scheme" content="light" />` — señal más temprana posible, antes de que cargue cualquier CSS.
+- `src/styles/tokens.css`, regla `body`: `color-scheme: light;` — cubre la invitación y cualquier página pública, que es donde vive el problema reportado.
+- `src/styles/admin.css`: `color-scheme: light;` bajo `body:has(.admin-shell)` y `color-scheme: dark;` bajo `body:has(.admin-shell.dark)` — la consola sí tiene su propio selector de tema (corrección fuera de ticket del 2026-09-01), así que en vez de forzarla a claro también, se le hace declarar explícitamente el esquema que ya tiene activo en cada caso. Esto además corrige los controles nativos del navegador (scrollbars, checkboxes) en el admin oscuro, que antes se quedaban con apariencia clara por defecto.
+
+**Por qué no alcanza con arreglar solo la invitación.** El fix de `tokens.css` por sí solo ya resuelve el reporte del usuario (la invitación es lo único que un invitado ve). El ajuste en `admin.css` es preventivo: sin él, declarar `color-scheme: light` en el `body` global (vía `tokens.css`, que se importa para toda la app) se habría heredado también en el admin oscuro, dejando sus controles nativos con apariencia clara sobre un fondo oscuro.
+
+Verificado en el CSS/HTML de producción (`npm run build`): el meta tag aparece en `dist/index.html`, y las tres declaraciones de `color-scheme` aparecen en los chunks CSS correctos. `npm run verify` en verde (391 tests, sin cambios de comportamiento en JS/TS, esto es CSS/HTML puro). **Pendiente honesto:** no hay forma de confirmar visualmente en un teléfono real con modo oscuro activado desde este entorno — el usuario es quien lo reportó y quien puede confirmar que ya no ocurre.
+
+---
+
 ### EPIC E9 — Calidad
 
 #### WED-90 — Accesibilidad
