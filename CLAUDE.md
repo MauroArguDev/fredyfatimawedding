@@ -367,6 +367,8 @@ Los tamaños del archivo están a escala 1080. Para llevarlos al contenedor de 4
 
 > **Riesgo de licencias cerrado.** Ambas fuentes son libres, así que no hace falta buscar sustitutos ni negociar licencias comerciales.
 
+**Autohospedaje (WED-31, 2026-09-16).** Ambas ya viven en `public/fonts/` como WOFF2, subset `latin` únicamente (ver WED-31 — `latin-ext` no aplica al español). `--font-sans` y `--font-script` en `src/styles/tokens.css` apuntan a `'Inter'`/`'Great Vibes'` reales con fallback (`'Inter Fallback'` con métricas ajustadas para Inter; `cursive` genérico para Great Vibes). Los tamaños de la tabla de arriba siguen siendo los del v1 a escala 1080/2.5 — para el v2 (artboard 885, factor 432/885) cada sección de E5 mide sus propios tamaños reales al implementarse, según ADR-004.
+
 ### Estructura
 
 **Pantalla 0 — Sobre (gate).** Sobre vertical de papel texturizado, doblez a un tercio, sello de lacre color cobre con monograma "F&F" y corona floral, centrado. Abajo a la derecha: "Para:" y el `titleLabel` del invitado, en script.
@@ -631,24 +633,28 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-31 — Tipografías
 
-**Feature · 2 · WED-30**
+**Feature · 2 · WED-30 — en progreso, código implementado 2026-09-16**
 
-- [ ] Great Vibes e Inter autohospedadas en `public/fonts/` en WOFF2; sin CDN externo.
-- [ ] Solo los pesos en uso: Great Vibes Regular, Inter Regular y Bold.
-- [ ] Subset `latin` + `latin-ext` (hay acentos y `ñ`); Great Vibes subsetteada a los glifos que realmente aparecen.
-- [ ] `font-display: swap` con fallback métricamente compatible.
-- [ ] **Great Vibes verificada en iOS Safari**, donde las caligráficas suelen romperse.
+- [x] Great Vibes e Inter autohospedadas en `public/fonts/` (`inter-latin.woff2` 48 KB, `great-vibes-latin.woff2` 42 KB) en WOFF2; sin CDN externo — descargadas una sola vez desde `fonts.gstatic.com` y committeadas, `@font-face` en `src/styles/fonts.css` apunta a `/fonts/...` local, no a Google.
+- [x] Solo los pesos en uso: Inter se sirve hoy como **un solo archivo variable** que cubre el rango declarado `font-weight: 400 700`, más liviano que dos estáticos separados (verificado: Google ya no distribuye Inter estático por peso vía su API — un `family=Inter:400,700` clásico devuelve el mismo binario variable para ambos pesos). Great Vibes es estático, Regular único.
+- [x] **Corrección al criterio original:** se descartó `latin-ext`. Verificado que todos los acentos y la `ñ` del español (á é í ó ú ñ ü ¡ ¿, mayúsculas incluidas) caen dentro del bloque Unicode `U+0000–00FF` que Google llama subset **`latin`** — `latin-ext` (`U+0100–02BA`) cubre otros idiomas latinos (checo, polaco, vietnamita), no el español. Se autohospedó solo el subset `latin` para ambas familias, la mitad del peso de incluir los dos. Sin corrección de contenido pendiente: `latin` ya cubre cualquier `titleLabel`/nombre real que se cargue en WED-101.
+- [x] `font-display: swap` con fallback métricamente compatible **para Inter**: `'Inter Fallback'` (`local('Arial')` con `ascent-override`/`descent-override`/`size-adjust` reales, calculados con las métricas publicadas de Capsize para Inter Regular/Bold vs. Arial — no inventados). **Sin ese ajuste para Great Vibes**: no existe una fuente cursiva de sistema estable entre Windows/macOS/Android/iOS contra la cual calcular un fallback confiable, así que se dejó `cursive` genérico con `font-display: swap` a secas — decisión documentada, no un olvido.
+- [ ] **Great Vibes verificada en iOS Safari**, donde las caligráficas suelen romperse. No verificable: no hay dispositivo ni navegador disponible en este entorno, mismo criterio que el resto de los "probado en un teléfono real" del backlog. Único punto que mantiene abierto este ticket.
 
 #### WED-32 — Componentes base
 
-**Feature · 3 · WED-30, WED-31**
+**Feature · 3 · WED-30, WED-31 — código implementado 2026-09-16**
 
-- [ ] `Button` (default/hover/focus/active/disabled/loading), `Select`, `Card`, `Section`, `Divider`, `FloralOrnament`, `Modal`.
-- [ ] Todos operables por teclado con `focus-visible` visible.
-- [ ] `Select` es un `<select>` nativo estilizado, no un div con listeners.
-- [ ] `Modal` atrapa el foco, cierra con `Esc` y devuelve el foco al disparador.
-- [ ] Todas las variantes en `/styleguide`.
-- [ ] Props tipadas, sin `any`, con nombres en inglés.
+- [x] `Button` (variant `primary`/`secondary`, `disabled`, `isLoading` + `loadingLabel`), `Select` (nativo, con chevron SVG per la excepción de ADR-008), `Card` (variantes `dark`/`sage`/`muted`), `Section` (wrapper semántico con `id` para anclas), `Divider`, `FloralOrnament` (decorativo, `alt=""`, `aria-hidden`, `loading="lazy"` con opt-out `isPriority`), `Modal` (sobre `<dialog>` nativo). Todos en `src/components/ui/`, uno por archivo, con test propio.
+- [x] Todos operables por teclado con `focus-visible` visible — `Button`/`Select` llevan `focus-visible:outline` explícito; verificado con `@testing-library/user-event` (`tab()` + `keyboard('{Enter}')`).
+- [x] `Select` es un `<select>` nativo estilizado (`appearance-none` + chevron superpuesto), no un div con listeners.
+- [x] `Modal` sobre `<dialog>` + `showModal()`: cierra con `Esc` (manejador explícito, no solo el comportamiento nativo) y devuelve el foco al disparador (guardado en un ref al abrir, restaurado en el evento `close`). **Matiz real:** el atrapado de `Tab` dentro del modal se apoya en el comportamiento nativo de `<dialog>` (soportado en Chrome/Safari/Firefox reales), no se reimplementó a mano — y **no es verificable con Vitest** porque jsdom 25 no implementa `showModal()`/`close()` en absoluto. Se agregó un polyfill mínimo en `src/testSetup.ts` (mismo criterio que `hasPointerCapture`/`File.prototype.text` de WED-81/estabilización) que sí permite testear apertura, foco inicial, Esc, click en backdrop y retorno de foco — pero el ciclo de Tab en sí queda pendiente de verificación manual en un navegador real, junto con WED-90.
+- [x] Todas las variantes en `/styleguide`, sección "Components" nueva (botones, select, las 3 cards, divider, ornamento placeholder, modal de ejemplo funcional).
+- [x] Props tipadas, sin `any`, con nombres en inglés — verificado con `npm run lint`/`typecheck`.
+
+**Hallazgo real de testing (2026-09-16).** jsdom 25.0.1 no implementa `HTMLDialogElement.prototype.showModal`/`close` — `dialog.showModal()` lanza `TypeError`. Se agregó un polyfill mínimo (abre con `setAttribute('open', '')`, cierra quitando el atributo y disparando un evento `close` real) para poder testear el ciclo de vida del `Modal` sin reimplementar el comportamiento nativo completo.
+
+**Bug real encontrado y corregido antes de cerrar el ticket.** La primera versión de `useDialogController` volvía a suscribir el listener de `close` en cada render porque dependía de la identidad de `onClose` (`useEffect(..., [dialogRef, onClose])`) — con un `onClose` inline (`() => setIsOpen(false)`, el caso normal en React), React desmonta y remonta ese listener en cada render. Al cerrar el modal, el ciclo cleanup-de-todos-los-efectos-antes-que-setup-de-todos-los-efectos hacía que el listener se quitara y se volviera a poner justo alrededor del momento en que se disparaba el evento `close`, perdiéndolo — el foco nunca volvía al disparador. Reproducido con un test real (`movesFocusInsideOnOpenAndReturnsItToTheTriggerOnClose`) antes del fix. Corregido con el patrón de "ref con el valor más reciente" (`onCloseRef`, actualizado en cada render, leído dentro del handler): el listener de `close` ahora se suscribe una sola vez, con dependencia solo en `dialogRef` (estable), y siempre llama a la versión más reciente de `onClose`.
 
 #### WED-33 — Iconos y ornamentos
 

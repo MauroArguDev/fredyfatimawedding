@@ -32,4 +32,12 @@ describe('StyleguidePage', () => {
     expect(row).not.toBeNull();
     expect(row).toHaveTextContent('Passes AA');
   });
+
+  it('rendersASampleOfEachSelfHostedFont', () => {
+    render(<StyleguidePage />);
+
+    expect(screen.getByText(/Inter Regular/)).toBeInTheDocument();
+    expect(screen.getByText(/Inter Bold/)).toBeInTheDocument();
+    expect(screen.getByText(/Great Vibes — Fredy y Fátima/)).toBeInTheDocument();
+  });
 });
