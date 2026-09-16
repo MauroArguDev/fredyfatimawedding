@@ -79,7 +79,18 @@ const StyleguidePage = (): ReactNode => {
       </p>
 
       <h2 className="mt-6 text-xl font-semibold">Typography</h2>
-      <p>Pending WED-31: Great Vibes and Inter still need to be self-hosted as WOFF2.</p>
+      <p className="font-sans font-normal">
+        Inter Regular — Y será un placer que puedas acompañarnos.
+      </p>
+      <p className="font-sans font-bold">
+        Inter Bold — Confirma tu asistencia antes del 25 de octubre.
+      </p>
+      <p className="font-script text-3xl">Great Vibes — Fredy y Fátima</p>
+      <p className="text-sm">
+        Self-hosted from `public/fonts/`, latin subset only (covers every Spanish accent and ñ —
+        latin-ext is for other Latin-script languages, not needed here). Inter ships as a single
+        variable file spanning weights 400-700; Great Vibes is static Regular only.
+      </p>
     </main>
   );
 };

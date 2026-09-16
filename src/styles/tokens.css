@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './fonts.css';
 @source not '../components/admin';
 @source not '../pages/admin';
 
@@ -23,7 +24,9 @@
 
   --shadow-invitation-badge: 2px 2px 1px rgba(0, 0, 0, 0.25);
 
-  --font-sans: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans:
+    'Inter', 'Inter Fallback', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-script: 'Great Vibes', cursive;
 }
 
 body {

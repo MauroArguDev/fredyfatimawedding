@@ -367,6 +367,8 @@ Los tamaños del archivo están a escala 1080. Para llevarlos al contenedor de 4
 
 > **Riesgo de licencias cerrado.** Ambas fuentes son libres, así que no hace falta buscar sustitutos ni negociar licencias comerciales.
 
+**Autohospedaje (WED-31, 2026-09-16).** Ambas ya viven en `public/fonts/` como WOFF2, subset `latin` únicamente (ver WED-31 — `latin-ext` no aplica al español). `--font-sans` y `--font-script` en `src/styles/tokens.css` apuntan a `'Inter'`/`'Great Vibes'` reales con fallback (`'Inter Fallback'` con métricas ajustadas para Inter; `cursive` genérico para Great Vibes). Los tamaños de la tabla de arriba siguen siendo los del v1 a escala 1080/2.5 — para el v2 (artboard 885, factor 432/885) cada sección de E5 mide sus propios tamaños reales al implementarse, según ADR-004.
+
 ### Estructura
 
 **Pantalla 0 — Sobre (gate).** Sobre vertical de papel texturizado, doblez a un tercio, sello de lacre color cobre con monograma "F&F" y corona floral, centrado. Abajo a la derecha: "Para:" y el `titleLabel` del invitado, en script.
@@ -631,13 +633,13 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-31 — Tipografías
 
-**Feature · 2 · WED-30**
+**Feature · 2 · WED-30 — en progreso, código implementado 2026-09-16**
 
-- [ ] Great Vibes e Inter autohospedadas en `public/fonts/` en WOFF2; sin CDN externo.
-- [ ] Solo los pesos en uso: Great Vibes Regular, Inter Regular y Bold.
-- [ ] Subset `latin` + `latin-ext` (hay acentos y `ñ`); Great Vibes subsetteada a los glifos que realmente aparecen.
-- [ ] `font-display: swap` con fallback métricamente compatible.
-- [ ] **Great Vibes verificada en iOS Safari**, donde las caligráficas suelen romperse.
+- [x] Great Vibes e Inter autohospedadas en `public/fonts/` (`inter-latin.woff2` 48 KB, `great-vibes-latin.woff2` 42 KB) en WOFF2; sin CDN externo — descargadas una sola vez desde `fonts.gstatic.com` y committeadas, `@font-face` en `src/styles/fonts.css` apunta a `/fonts/...` local, no a Google.
+- [x] Solo los pesos en uso: Inter se sirve hoy como **un solo archivo variable** que cubre el rango declarado `font-weight: 400 700`, más liviano que dos estáticos separados (verificado: Google ya no distribuye Inter estático por peso vía su API — un `family=Inter:400,700` clásico devuelve el mismo binario variable para ambos pesos). Great Vibes es estático, Regular único.
+- [x] **Corrección al criterio original:** se descartó `latin-ext`. Verificado que todos los acentos y la `ñ` del español (á é í ó ú ñ ü ¡ ¿, mayúsculas incluidas) caen dentro del bloque Unicode `U+0000–00FF` que Google llama subset **`latin`** — `latin-ext` (`U+0100–02BA`) cubre otros idiomas latinos (checo, polaco, vietnamita), no el español. Se autohospedó solo el subset `latin` para ambas familias, la mitad del peso de incluir los dos. Sin corrección de contenido pendiente: `latin` ya cubre cualquier `titleLabel`/nombre real que se cargue en WED-101.
+- [x] `font-display: swap` con fallback métricamente compatible **para Inter**: `'Inter Fallback'` (`local('Arial')` con `ascent-override`/`descent-override`/`size-adjust` reales, calculados con las métricas publicadas de Capsize para Inter Regular/Bold vs. Arial — no inventados). **Sin ese ajuste para Great Vibes**: no existe una fuente cursiva de sistema estable entre Windows/macOS/Android/iOS contra la cual calcular un fallback confiable, así que se dejó `cursive` genérico con `font-display: swap` a secas — decisión documentada, no un olvido.
+- [ ] **Great Vibes verificada en iOS Safari**, donde las caligráficas suelen romperse. No verificable: no hay dispositivo ni navegador disponible en este entorno, mismo criterio que el resto de los "probado en un teléfono real" del backlog. Único punto que mantiene abierto este ticket.
 
 #### WED-32 — Componentes base
 
