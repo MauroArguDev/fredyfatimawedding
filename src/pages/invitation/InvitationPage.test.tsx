@@ -103,4 +103,31 @@ describe('InvitationPage', () => {
       expect(screen.getByText('Orlando')).toBeInTheDocument();
     });
   });
+
+  it('hidesTheEnvelopeAndFocusesTheContentOnceOpened', async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          titleLabel: 'Tío Orlando y Familia.',
+          firstName: 'Orlando',
+          guestLimit: 3,
+          confirmed: false,
+          confirmedCount: 0,
+          rsvpOpen: true,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    renderAtToken('a-valid-token');
+
+    const envelopeButton = await screen.findByRole('button', {
+      name: /Toca para abrir la invitación/,
+    });
+    await user.click(envelopeButton);
+
+    expect(envelopeButton).not.toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveFocus();
+  });
 });

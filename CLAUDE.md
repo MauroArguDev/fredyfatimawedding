@@ -785,18 +785,22 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-52 — Pantalla del sobre
 
-**Feature · 5 · WED-51**
+**Feature · 5 · WED-51 — código implementado 2026-09-16, faltan la animación (WED-60) y verificación en dispositivo real**
 
-- [ ] `EnvelopeGate` a pantalla completa: papel texturizado, doblez vertical, sello de lacre con monograma "F&F".
-- [ ] "Para:" seguido del `titleLabel`, en script, en la posición del mock-up.
-- [ ] **Es un `<button>` real** que cubre el área del sobre, con `aria-label` descriptivo.
-- [ ] Operable con Enter y Espacio, con `focus-visible` visible.
-- [ ] Affordance clara de que es tocable, sin romper la estética.
-- [ ] **Scroll bloqueado** mientras el sobre está visible; el contenido de abajo no es alcanzable ni por teclado (`inert` o equivalente).
-- [ ] Al abrirse, el foco se traslada al inicio de la invitación.
-- [ ] La foto de portada se precarga mientras el sobre está en pantalla, para que no haya destello al abrir.
-- [ ] **Se muestra en cada visita**, sin recordar el estado entre recargas.
-- [ ] **LCP del sobre < 2.5 s en 4G simulada.**
+- [x] `EnvelopeGate` (`src/components/ui/EnvelopeGate.tsx`) a pantalla completa (`h-dvh`): papel texturizado (dos mitades, mismo asset real exportado del Figma v2), sello de lacre con monograma "F&F" centrado sobre la costura. **Sin doblez vertical dibujado aparte** — no existe como elemento propio en el archivo v2 (la costura entre las dos mitades de papel ya cumple ese rol visual); si el diseñador diferencia "doblez" de "costura" más adelante, se ajusta.
+- [x] "Para:" seguido del `titleLabel`, en `font-script` (Great Vibes, WED-31), en la posición del mock-up (inferior derecha).
+- [x] **Es un `<button>` real** que cubre toda el área del sobre, con `aria-label` dinámico (`envelopeCopy.openButtonLabel(titleLabel)`, en `src/content/envelope.ts`).
+- [x] Operable con Enter y Espacio (nativo de `<button>`) y con `focus-visible` visible — verificado con `@testing-library/user-event`.
+- [x] Affordance: el texto del `aria-label` ya combina la instrucción ("Toca para abrir…") con el destino; sin elemento visual adicional para no competir con la estética del mock-up.
+- [x] **Scroll bloqueado** (`document.body.style.overflow = 'hidden'` mientras el sobre está visible, restaurado al desmontar) y contenido de abajo con `element.inert = true` (no alcanzable por teclado ni lectores de pantalla) hasta que se abre.
+- [x] Al abrirse, el foco se traslada al `<main>` de la invitación (`tabIndex={-1}` + `.focus()` explícito). Verificado con un test de integración en `InvitationPage.test.tsx`.
+- [ ] La foto de portada se precarga mientras el sobre está en pantalla. **No implementado**: la foto de portada es un asset de WED-53, todavía no descargado/optimizado. Queda para cuando se implemente esa sección.
+- [x] **Se muestra en cada visita**: no hay persistencia (`sessionStorage`/`localStorage`) de ningún tipo, es estado de componente puro que nace en `false` en cada montaje.
+- [ ] **LCP del sobre < 2.5 s en 4G simulada.** No medible en este entorno (sin navegador ni Lighthouse disponibles) — pendiente de WED-91.
+
+**Assets reales, no placeholders.** `public/assets/envelope/paper.webp` (45 KB) y `seal.webp` (32 KB) se exportaron del Figma v2 real (nodos `125:1784`/`125:1790`/`125:1796`) vía captura MCP a 2×, y se convirtieron de PNG a WebP con `sharp` (agregado como devDependency solo para el pipeline de assets, no viaja al bundle de runtime). **Hallazgo real:** el PNG original que expone `get_design_context` para estos nodos pesa 5.7 MB (papel) y 2 MB (sello) sin comprimir — habría reventado el presupuesto de 700 KB de WED-91 varias veces con una sola imagen. Se usó en su lugar `get_screenshot` con `maxDimension` ajustado a ~2× el tamaño real de render (439×1900 para el papel, ~2× el ancho de sello real de 350px) y luego `sharp` para la conversión a WebP (calidad 65 para el papel, 85 para el sello, que sí necesita más detalle por sus relieves). Verificado que el asset de `get_design_context` para el sello (`ae525.png`) sí tiene transparencia alfa real (`0,0,0,0` en las esquinas); el screenshot de un nodo aislado, en cambio, compone contra un fondo oscuro opaco — para el sello se usó el asset de `get_design_context` (redimensionado), no el screenshot aislado, precisamente por eso.
+
+**Corrección al AC original.** El ticket asumía que el papel tenía un borde "torn"/deckled recortado con máscara — verificado con `sharp` que el canal alfa de la exportación es 100% opaco en las esquinas: es un rectángulo simple, la "máscara" que aparece en el código nativo de Figma solo recorta la textura ancha en dos mitades con una línea recta, no un borde decorativo. Simplificado en el código: dos `<span>` con el mismo `background-image`, sin replicar la técnica de `mask-image` + rotación de Figma.
 
 #### WED-53 — `CoverSection`
 

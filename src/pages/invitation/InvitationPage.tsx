@@ -1,11 +1,12 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useInvitation, InvitationNotFoundError } from '@/hooks/useInvitation';
 import { InvitationProvider } from '@/hooks/InvitationProvider';
 import { toInvitationContextValue } from '@/hooks/invitationContext';
 import { useInvitationContext } from '@/hooks/useInvitationContext';
 import { PublicPageContainer } from '@/components/ui/PublicPageContainer';
-import { invitationStatusCopy } from '@/content/appShell';
+import { EnvelopeGate } from '@/components/ui/EnvelopeGate';
+import { invitationContentCopy, invitationStatusCopy } from '@/content/appShell';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 interface InvitationStatusScreenProps {
@@ -38,13 +39,51 @@ const InvitationStatusScreen = ({
   );
 };
 
+const useEnvelopeGate = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const contentRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? '' : 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content) {
+      return;
+    }
+
+    content.inert = !isOpen;
+    if (isOpen) {
+      content.focus();
+    }
+  }, [isOpen]);
+
+  const handleOpen = (): void => {
+    setIsOpen(true);
+  };
+
+  return { isOpen, contentRef, handleOpen };
+};
+
 const InvitationContent = (): ReactNode => {
   const invitation = useInvitationContext();
+  const { isOpen, contentRef, handleOpen } = useEnvelopeGate();
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-invitation bg-bg-base p-6 text-text-body">
-      <h1 className="text-2xl font-semibold text-text-heading">{invitation.displayName}</h1>
-    </main>
+    <>
+      {!isOpen && <EnvelopeGate titleLabel={invitation.displayName} onOpen={handleOpen} />}
+      <main
+        ref={contentRef}
+        tabIndex={-1}
+        className="mx-auto min-h-dvh w-full max-w-invitation bg-bg-base p-6 text-text-body"
+      >
+        <p>{invitationContentCopy.placeholder}</p>
+      </main>
+    </>
   );
 };
 

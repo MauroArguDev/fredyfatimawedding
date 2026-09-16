@@ -15,6 +15,10 @@ export const invitationStatusCopy = {
   retry: 'Reintentar',
 } as const;
 
+export const invitationContentCopy = {
+  placeholder: 'El resto de la invitación llega con E5.',
+} as const;
+
 export const adminShellCopy = {
   loading: 'Cargando panel…',
   title: 'Panel de administración',
