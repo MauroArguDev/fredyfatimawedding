@@ -29,9 +29,13 @@
   --font-script: 'Great Vibes', cursive;
 }
 
+html {
+  color-scheme: light only;
+}
+
 body {
   margin: 0;
-  color-scheme: light;
+  color-scheme: light only;
   background-color: var(--color-bg-base);
   color: var(--color-text-body);
   font-family: var(--font-sans);

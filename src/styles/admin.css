@@ -114,12 +114,12 @@
 }
 
 body:has(.admin-shell) {
-  color-scheme: light;
+  color-scheme: light only;
   background-color: oklch(1 0 0);
 }
 
 body:has(.admin-shell.dark) {
-  color-scheme: dark;
+  color-scheme: dark only;
   background-color: oklch(0.145 0 0);
 }
 
