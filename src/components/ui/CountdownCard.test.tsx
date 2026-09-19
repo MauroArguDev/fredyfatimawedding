@@ -31,4 +31,18 @@ describe('CountdownCard', () => {
 
     expect(screen.getByText(dateSectionCopy.countdownClosedMessage)).toBeInTheDocument();
   });
+
+  it('rendersTwoDecorativeFloralCornersOnTheSageCard', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-12-17T10:20:15-06:00'));
+    const target = new Date('2026-12-20T16:30:00-06:00');
+
+    const { container } = render(<CountdownCard target={target} />);
+
+    const ornaments = container.querySelectorAll('img[aria-hidden="true"]');
+    expect(ornaments).toHaveLength(2);
+    for (const ornament of ornaments) {
+      expect(ornament).toHaveAttribute('alt', '');
+    }
+  });
 });
