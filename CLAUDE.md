@@ -1,231 +1,118 @@
 # Invitación de boda — Fredy & Fátima
 
-> **Versión:** 6.0
-> **Lanzamiento objetivo revisado:** 10 de octubre de 2026
+> **Versión:** 7.0 (recortada — ver nota abajo)
 > **Fecha del evento:** 20 de diciembre de 2026, 4:30 p.m. (`America/El_Salvador`, UTC−6, sin horario de verano)
 > **Cierre de confirmaciones:** 25 de octubre de 2026, 23:59:59 (hora local)
 > **URL de producción:** `fredyfatimawedding.vercel.app`
 > **Equipo:** 2 personas
 
+> **Nota sobre esta versión.** Este documento se recortó a propósito (2026-09-19) para que contenga solo reglas y estado vigentes, no historia. El detalle de cómo se llegó a cada decisión, los bugs encontrados y corregidos, y las notas de verificación en vivo de sesiones pasadas ya no viven aquí — están en el historial de git (`git log`), que es la fuente correcta para eso. Si necesitas esa narrativa, búscala ahí antes de asumir que no existe.
+
 ---
 
 ## 0. Cómo usar este documento
 
-Este archivo es la **fuente de verdad** del proyecto. Si el código y este documento se contradicen, el documento gana; si el documento está equivocado, se corrige en el mismo PR que corrige el código.
+Fuente de verdad del proyecto. Si el código y este documento se contradicen, el documento gana; si el documento está equivocado, se corrige en el mismo PR que corrige el código.
 
-### Estado actual del proyecto
+El diseño se está rehaciendo. El backlog está partido en dos vías (§6): **vía A**, no depende del diseño; **vía B**, espera el Figma v2 (ya recibido el 2026-09-16). Antes de tomar un ticket, verificar a qué vía pertenece.
 
-El diseño se está rehaciendo. El backlog está partido en dos vías (§6): la **vía A** no depende del diseño y es la que se ejecuta ahora; la **vía B** espera el Figma v2. Antes de tomar un ticket, verificar a qué vía pertenece — un ticket de vía B no se empieza aunque parezca desbloqueado.
-
-### Antes de escribir código
-
-1. Leer **§10 (Convenciones de código)**. Son obligatorias y el CI las verifica.
-2. Leer **§3 (Modelo de datos)** y **§4 (Contratos de API)**. Los nombres de campos, rutas y códigos de error son los que están ahí, textualmente.
-3. Localizar el ticket en **§6** y tratar sus criterios de aceptación como la definición de "terminado". Un ticket no se cierra con criterios sin marcar.
+**Antes de escribir código:** leer §9 (Convenciones de código, obligatorias, CI las verifica), §3 (Modelo de datos) y §4 (Contratos de API) — nombres de campos, rutas y códigos de error son los que están ahí, textualmente. Localizar el ticket en §6 y tratar sus criterios de aceptación como la definición de "terminado".
 
 ### Reglas que no se negocian
 
 - **Todo el código en inglés.** Identificadores, archivos, rutas, campos de Firestore, tokens CSS, anclas del DOM, variables de entorno, commits, nombres de tests y de ramas. El español solo aparece como valor dentro de `src/content/`.
-- **Sin comentarios en el código** (ADR-007). Única excepción: JSDoc sobre declaraciones exportadas de `api/_lib/`.
-- **Nunca importar `firebase/firestore` fuera de `api/`** (ADR-001). El navegador no habla con la base de datos.
+- **Sin comentarios en el código.** Única excepción: JSDoc sobre declaraciones exportadas de `api/_lib/`.
+- **Nunca importar `firebase/firestore` fuera de `api/`.** El navegador no habla con la base de datos.
 - **Nunca poner un secreto en una variable `VITE_`.** Se compilan en el bundle y son públicas.
 - **Toda validación de negocio vive en el servidor.** El cliente valida para dar buena experiencia, no para proteger.
-- **Antes de cada commit, analizar y limpiar el código que se va a commitear.** Que pase lint/typecheck/test no es suficiente. Revisar explícitamente: duplicación evitable (DRY), funciones o archivos de un solo uso que no aportan nada recurrente (como un generador que corre una vez y se descarta), nombres, complejidad y superficie de seguridad (validación de entradas, manejo de errores explícito, sin secretos en logs). Esta limpieza es parte del trabajo, no un paso opcional al final.
+- **Antes de cada commit, analizar y limpiar el código que se va a commitear.** Revisar duplicación evitable, funciones/archivos de un solo uso, nombres, complejidad y superficie de seguridad. No es un paso opcional.
 
 ### Si algo falta o no encaja
 
-No inventar campos, endpoints ni comportamientos que no estén en §3, §4 o §6. Proponer el cambio a este documento primero, y una vez acordado, implementarlo. Las decisiones arquitectónicas ya tomadas están en los ADR de §2 con su justificación: leerlas antes de contradecirlas.
-
-### Idioma del documento
-
-Este documento está en español; el código, en inglés. Las secciones §3, §4, §5 y §10 contienen los identificadores exactos a usar.
+No inventar campos, endpoints ni comportamientos que no estén en §3, §4 o §6. Proponer el cambio a este documento primero.
 
 ---
 
 ## 1. Resumen
 
-Sitio web de invitación de boda con confirmación de asistencia (RSVP) mediante enlace personalizado, más una consola de administración con CRUD completo de invitados.
-
-Cada invitado recibe por WhatsApp un enlace único con un token opaco. Al abrirlo ve un **sobre cerrado** con su nombre escrito ("Para: Tío Orlando y Familia."); al tocarlo, una animación de apertura da paso a la invitación y arranca la música de fondo. Al final puede confirmar cuántas personas asistirán, hasta el límite que los novios le asignaron. La confirmación se guarda en Firestore y luego se le ofrece un botón que abre WhatsApp con un mensaje prellenado dirigido a la novia.
+Sitio de invitación de boda con RSVP por enlace personalizado (token opaco), más una consola de administración con CRUD de invitados. Cada invitado recibe por WhatsApp un enlace único; al abrirlo ve un sobre cerrado que anima al tocarlo y da paso a la invitación con música de fondo. Confirma cuántas personas asistirán, hasta `guestLimit`.
 
 ### Reglas de negocio
 
-**R1 — El que calla, otorga.** Un invitado que no confirma antes del 25 de octubre se considera ausente. No existe opción explícita de declinar.
-
-**R2 — La confirmación es irreversible para el invitado.** Quien ya confirmó no puede volver a hacerlo. Si lo intenta, ve el mensaje:
-
-> Ya confirmaste tu asistencia, en caso de querer hacer un cambio ponte en contacto con los novios por medio de Whatsapp
-
-Solo la consola puede modificar una confirmación existente.
-
-**R3 — El límite manda.** La cantidad confirmada nunca puede exceder `guestLimit`, y esa validación vive en el servidor.
+- **R1 — El que calla, otorga.** Quien no confirma antes del 25 de octubre se considera ausente. No hay opción explícita de declinar.
+- **R2 — La confirmación es irreversible para el invitado.** Un segundo intento de confirmar muestra: _"Ya confirmaste tu asistencia, en caso de querer hacer un cambio ponte en contacto con los novios por medio de Whatsapp"_. Solo la consola puede modificar una confirmación existente.
+- **R3 — El límite manda.** La cantidad confirmada nunca excede `guestLimit`, validado en servidor.
 
 ### Fuera de alcance
 
-- Dominio propio (se usará el subdominio `*.vercel.app`).
-- Notificación automatizada vía WhatsApp Business API.
-- Diseño responsive de la invitación (ver ADR-004).
-- Internacionalización.
-- Nombres de acompañantes, restricciones alimentarias, mensajes libres.
-- Correos transaccionales al invitado.
-- Autogestión de cambios por parte del invitado (ver R2).
+Dominio propio · notificación automatizada vía WhatsApp Business API · diseño responsive de la invitación (ADR-004) · internacionalización · nombres de acompañantes/restricciones alimentarias/mensajes libres · correos transaccionales · autogestión de cambios por el invitado (R2).
 
 ---
 
 ## 2. Decisiones de arquitectura
 
-| Área            | Decisión                                                 |
-| --------------- | -------------------------------------------------------- |
-| Frontend        | React 18 + Vite + TypeScript (`strict`)                  |
-| Estilos         | Tailwind CSS + variables CSS                             |
-| Router          | React Router v6 (history API)                            |
-| Estado servidor | TanStack Query                                           |
-| Formularios     | React Hook Form + Zod                                    |
-| Animaciones     | Framer Motion (`LazyMotion` + `m`)                       |
-| Audio           | HTML5 `<audio>` nativo, sin librería                     |
-| Backend         | Vercel Serverless Functions (`/api/*.ts`)                |
-| Base de datos   | Firebase Firestore (plan Spark)                          |
-| Auth            | Firebase Auth, email + contraseña, 1 usuario             |
-| Hosting         | Vercel (Hobby)                                           |
-| Notificación    | Enlace `wa.me` generado en servidor                      |
-| Testing         | Vitest + Testing Library. Sin e2e automatizado (ADR-011) |
+| Área            | Decisión                                                     |
+| --------------- | ------------------------------------------------------------ |
+| Frontend        | React 18 + Vite + TypeScript (`strict`)                      |
+| Estilos         | Tailwind CSS + variables CSS                                 |
+| Router          | React Router v6                                              |
+| Estado servidor | TanStack Query                                               |
+| Formularios     | React Hook Form + Zod                                        |
+| Animaciones     | Framer Motion (`LazyMotion` + `m`)                           |
+| Audio           | HTML5 `<audio>` nativo, sin librería                         |
+| Backend         | Vercel Serverless Functions (`/api/*.ts`)                    |
+| Base de datos   | Firebase Firestore (plan Spark)                              |
+| Auth            | Firebase Auth, email + contraseña, 1 usuario                 |
+| Hosting         | Vercel (Hobby)                                               |
+| Testing         | Vitest + Testing Library. Sin e2e automatizado (ver ADR-011) |
 
-### ADR-001 — El navegador nunca habla directo con Firestore
+**ADR-001 — El navegador nunca habla directo con Firestore.** Todo acceso a datos pasa por funciones serverless con `firebase-admin`. Security Rules deniegan todo (`allow read, write: if false`); son red de seguridad, no defensa principal. Excepción: el SDK de Firebase Auth vive en el cliente, solo en el chunk de `/admin`.
 
-**Decisión.** El cliente **no** incluye el SDK de Firestore. Todo acceso a datos pasa por funciones serverless de Vercel que usan `firebase-admin` con una service account en variables de entorno del servidor.
+**ADR-002 — Token opaco, no payload firmado.** `/i/{token}` con `nanoid(21)`. La URL no transporta `guestLimit`; eso se lee de Firestore. Token alterado → 404. La protección real del límite es `count <= guestLimit` en servidor.
 
-**Razón.** Con acceso directo, la protección de los ~500 nombres y teléfonos dependería de escribir Security Rules perfectas. Con este diseño, la lista simplemente no es alcanzable desde el navegador.
+**ADR-003 — Guardar primero, notificar después.** `POST /api/rsvp` → Firestore → pantalla de éxito → **botón** (no redirección automática) que abre `wa.me`. iOS Safari bloquea `window.open` tras un `await` fuera del gesto directo del usuario.
 
-**Consecuencia.** Las Security Rules se configuran para denegar todo (`allow read, write: if false`). La service account las omite por diseño, así que quedan como red de seguridad, no como defensa principal.
+**ADR-004 — Diseño de ancho fijo, no responsive.** La invitación se renderiza en una columna fluida hasta 432 px, con tope a partir de ahí (`width: 100%` + `max-width: 432px`, nunca un px duro). El color base se extiende a los lados en desktop. Aplica solo a la invitación; `/admin` sí es responsive. **Factor de escala del Figma v2:** artboard 885 px → 432 px reales, factor `432/885 ≈ 0.4878` (verificado con el tamaño de fuente del cuerpo). Usar este factor, no 2.5 (ese era del v1, descartado).
 
-**Excepción.** El SDK de Firebase **Auth** sí vive en el cliente, pero solo dentro del chunk de `/admin`. Emite un ID token que las funciones `/api/admin/*` verifican con `firebase-admin`.
+**ADR-005 — El sobre es la puerta de entrada.** Es el elemento LCP. El tap es el gesto de usuario legítimo para iniciar el audio (las políticas de autoplay bloquean cualquier otro momento). Debe ser un `<button>` real, no un `div` con listeners — si no es operable por teclado/lector de pantalla, el sitio entero queda inaccesible.
 
-### ADR-002 — Token opaco, no payload firmado
+**ADR-006 — La confirmación no es idempotente.** `POST /api/rsvp` rechaza con `409 ALREADY_CONFIRMED` cualquier envío de un invitado con `confirmed === true` (R2). Por eso el formulario exige un paso de confirmación explícito antes del envío, advirtiendo que la acción no se puede deshacer — es la única defensa del usuario contra su propio mis-tap. La única vía de escape es `PATCH /api/admin/guests/[id]`.
 
-El enlace es `/i/{token}` con un `nanoid` de 21 caracteres. La URL **no transporta** el límite de invitados: ese dato se lee de Firestore. Un token alterado no existe y devuelve 404.
+**ADR-007 — El "porqué" vive en tests, no en comentarios.** Reglas de comportamiento no evidentes se documentan en el nombre de los tests (ej. `rejectsConcurrentConfirmationsSoOnlyOneSucceeds`). Único comentario permitido: JSDoc `/** … */` sobre declaraciones exportadas de `api/_lib/`.
 
-La protección real del límite es la validación en servidor (`count <= guestLimit`) en `POST /api/rsvp`, que se ejecuta sin importar lo que envíe el cliente.
+**ADR-008 — El Figma v2 (recibido 2026-09-16).** `Invitación Responsive` (`fileKey` `3EAiInlH81ry1gAoHABKC4`, nodo raíz `1:62`). Tiene componentes reales con variantes y el sobre ya construido en dos hojas + sello. **La mayoría de los bloques de contenido** (calendario, contador, collage, itinerario, código de vestimenta, recordatorios) están pegados como **una sola imagen PNG plana por bloque**, sin estructura editable — sirven como maqueta de referencia pixel-a-pixel, no como fuente de datos de color/espaciado. Los tickets de E5 que cubren esas secciones se construyen en HTML/CSS real usando la imagen como referencia. Solo texto, colores y componentes de botón que SÍ son nodos nativos se verificaron con exactitud (ver §5). **Excepción explícita — WED-54 (calendario y contador).** El bloque `calendario-con-fecha` no tiene estructura editable que reconstruir (nodo `59:5`, sin hijos) y muestra contenido que no va a cambiar antes del evento, así que a pedido directo del usuario `CalendarCard` renderiza la imagen extraída tal cual en vez de recodificar la grilla en HTML — es la única sección de E5 que rompe la regla general de este ADR, y solo para esa imagen. El contador sí sigue mixto: `marco-de-contador` (nodo `59:6`) se usa como fondo porque es solo el marco decorativo, pero los cuatro números siguen siendo HTML real calculado en cada segundo (`useCountdown`), porque eso sí cambia. **Decisión sobre ornamentos:** WebP con transparencia a 2×, no SVG (son ilustraciones decorativas/fotográficas, un SVG de 80 paths pesa más). Excepción: iconos funcionales (Waze, Google Maps, itinerario, chevron del select) sí van en SVG.
 
-### ADR-003 — Guardar primero, notificar después
+**ADR-009 — El sobre ya está construido en dos hojas.** `Capa 1`/`Group 2`, cada uno con su textura, sello centrado sobre la costura. Es la estructura que necesita la animación de apertura (WED-60): dos hojas que rotan hacia afuera, sello partiéndose en la unión — no hay que rehacer la geometría. **Falta la especificación de la animación** (duración, easing, orden): no está en Figma, es decisión nuestra o del diseñador.
 
-Flujo: `POST /api/rsvp` → persistencia en Firestore → pantalla de éxito → **botón** que abre `wa.me`.
+**ADR-011 — Un solo ambiente: todo corre en producción.** No hay proyecto Firebase de pruebas; Preview y Production de Vercel apuntan al mismo proyecto. **Consecuencia:** WED-94 (e2e con Playwright) queda eliminado del backlog — automatizarlo contra producción arriesgaría quemar la confirmación real de un invitado (R2) o alterar datos reales. La red de seguridad del flujo de RSVP son los tests unitarios de WED-41 y el ensayo manual de WED-102. **Al probar en un Preview deploy:** nunca usar tokens de invitados reales (se quema su única confirmación) ni hacer CRUD real irreversible contra un invitado real. Crear un invitado de prueba marcado en `titleLabel` (ej. `"TEST - borrar antes del lanzamiento"`) y borrarlo después.
 
-La consola es la fuente de verdad. El mensaje de WhatsApp es cortesía y puede no enviarse o ser editado; ese riesgo está aceptado.
+**Nota permanente de UI (no ADR, pero es regla activa):** la invitación fuerza `color-scheme: light only` en todas las capas (meta tag, `tokens.css`, reafirmación bajo `prefers-color-scheme: dark`) porque no tiene ni tendrá modo oscuro propio — Android/Samsung Internet repintan colores no declarados. El admin conserva su propio selector claro/oscuro independiente.
 
-Debe ser un botón, no una redirección automática: iOS Safari bloquea `window.open` cuando se invoca después de un `await`, fuera del gesto directo del usuario.
+---
 
-### ADR-004 — Diseño de ancho fijo, no responsive
-
-**Decisión.** La invitación se renderiza en una columna de **432 px de ancho máximo**, centrada, con el color base extendiéndose a los lados en pantallas anchas. No hay layouts alternativos por breakpoint.
-
-**Confirmado en WED-02.** El artboard de Figma mide 1080 px de ancho. A escala 1:2.5 da exactamente 432 px, así que toda medida del archivo se divide entre 2.5. La invitación completa mide 12.335 px de alto en Figma, es decir **~4.934 px** en el contenedor real.
-
-**Matiz importante.** "No responsive" no significa "ancho fijo en píxeles". Por debajo de 432 px el contenedor debe ser fluido (`width: 100%`), porque existen teléfonos de 360 px y menos. Un `width: 430px` duro produciría scroll horizontal en esos dispositivos. La regla es: fluido hasta 432 px, tope a partir de ahí.
-
-**Alcance.** Aplica a la invitación. La consola (`/admin`) **sí** debe adaptarse, porque la novia la abrirá tanto desde el teléfono como desde una laptop.
-
-**Nota sobre el archivo de Figma v2 (2026-09-16).** El archivo real (`Invitación Responsive`, ver ADR-008 actualizado) tiene un artboard llamado "Android Expanded" de 885 px de ancho — un nombre confuso puesto por el diseñador, que **no** implica que esta decisión se reabra. Confirmado explícitamente por el usuario: esta decisión se mantiene sin cambios, el nombre del artboard no cuenta. La relación de escala real es **885 → 432**, factor `432/885 ≈ 0.4878`, distinta del 1:2.5 del v1. Verificada cruzando el tamaño de fuente del cuerpo: 25 px Inter en el archivo → 25 × 0.4878 ≈ 12.2 px reales, prácticamente idéntico al cuerpo de 12 px que el v1 ya había fijado de forma independiente (§5). Usar este factor (no 2.5) al convertir cualquier medida del archivo v2 a CSS.
-
-### ADR-005 — El sobre es la puerta de entrada
-
-La invitación no se muestra hasta que el usuario toca el sobre. Esto tiene tres consecuencias técnicas:
-
-1. **El sobre es el elemento LCP**, no la foto de portada. Las métricas de rendimiento se miden contra él.
-2. **El tap es un gesto de usuario legítimo**, así que es el momento correcto para iniciar el audio. Sin él, las políticas de autoplay bloquearían la música.
-3. **Es un gate de accesibilidad.** Si no es operable por teclado y por lector de pantalla, el sitio entero queda inaccesible. Se implementa como un `<button>` real, no como un `div` con listeners.
-
-### ADR-006 — La confirmación no es idempotente
-
-**Decisión.** `POST /api/rsvp` rechaza con `409 ALREADY_CONFIRMED` cualquier envío de un invitado cuyo `confirmed` ya sea `true`. La operación tiene éxito exactamente una vez por token.
-
-**Razón.** Regla de negocio R2: los novios quieren enterarse de cualquier cambio, no descubrirlo en un export.
-
-**Consecuencia sobre la interfaz.** Como el invitado no puede corregirse solo, un error de dedo se vuelve una llamada telefónica. Por eso WED-70 exige un **paso de confirmación explícito** antes del envío, que advierta que la acción no se puede deshacer. Es la única defensa del usuario contra su propio mis-tap.
-
-**Vía de escape.** La modificación existe, pero solo por `PATCH /api/admin/guests/[id]`, es decir, desde la consola.
-
-### ADR-007 — El "porqué" vive en tests y ADR, no en comentarios
-
-**Decisión.** El código no lleva comentarios (§10). Las reglas de negocio no evidentes se documentan en dos lugares: los ADR de este archivo para las decisiones arquitectónicas, y **los nombres de los tests** para las reglas de comportamiento.
-
-**Ejemplo.** En lugar de un comentario explicando por qué `POST /api/rsvp` relee `confirmed` dentro de una transacción, existe el test `rejectsConcurrentConfirmationsSoOnlyOneSucceeds`.
-
-**Razón.** Un comentario puede quedar desactualizado sin que nada falle; un test desactualizado rompe el CI.
-
-**Excepción única: JSDoc en `api/_lib/`.** Las funciones exportadas de ese directorio se consumen desde varios handlers sin que el llamante vea la implementación, así que admiten JSDoc. La excepción está acotada por tres condiciones simultáneas, y el linter las verifica:
-
-1. Solo en archivos bajo `api/_lib/`.
-2. Solo bloques `/** … */`, nunca `//` ni `/* … */`.
-3. Solo sobre declaraciones exportadas.
-
-Sin esas tres condiciones, JSDoc se convierte en una puerta trasera para comentar cualquier cosa en cualquier lado.
-
-### ADR-008 — El primer Figma era una ilustración importada; se está rehaciendo
-
-> **Estado: superado, v2 ya recibido (2026-09-16).** El archivo v2 es `Invitación Responsive` (`fileKey` `3EAiInlH81ry1gAoHABKC4`, nodo raíz `1:62`). No es el mismo archivo que se auditó en WED-02 originalmente (ese era, en efecto, el v1 de abajo, confirmado con el mismo `titleLabel` de ejemplo "Tío Orlando y Familia." y la misma altura de 12335 px). El diseñador sí lo rehizo con componentes reales con variantes (`Botón hotel`, `Ubicación Waze`, `Ubicación Google`, cada uno con `Property 1=Default`/`Variant2`) y el sobre reconstruido en dos hojas + sello, tal como predecía ADR-009. **Hallazgo nuevo del v2, no anticipado por este ADR:** la mayoría de los bloques de contenido (calendario, contador, collage, itinerario completo, imágenes de código de vestimenta, "niño durmiendo", "regalo de sobre", el marco floral del formulario RSVP) están pegados como una **sola imagen PNG plana** por bloque (`rounded-rectangle` sin hijos), no como estructura nativa editable — visualmente fieles y útiles como referencia pixel-a-pixel, pero sin datos de color/espaciado extraíbles del archivo para esas zonas. Los tickets de E5 que cubren esas secciones (WED-54, WED-57, WED-58, etc.) siguen aplicando tal cual: se construyen en HTML/CSS real según sus propios criterios de aceptación, usando la imagen plana como maqueta de referencia, igual que ya se hacía por muestreo con el v1. Solo el texto, los colores y los componentes de botón que SÍ son nodos nativos (portada, "será un placer", "caminar juntos", dirección, botones) se pudieron verificar con exactitud contra el archivo — ver §5.
-
-**Hallazgo original (WED-02, 28 de agosto).** El archivo no era un diseño nativo de Figma. Toda la invitación vive dentro de un frame llamado `Capa 2` compuesto por cientos de nodos `<vector>` sueltos: es un `.ai` o `.svg` importado desde Illustrator. Consecuencias verificadas:
-
-- **No hay componentes, variables ni estilos de Figma.** No existe un design system que importar; hay que construirlo desde cero, que es exactamente lo que hacen WED-30 a WED-32.
-- **Los ornamentos florales son grupos de 50 a 100 paths cada uno.** Exportarlos como SVG produce archivos pesados y con geometría redundante.
-- **El calendario son ~40 nodos de texto sueltos**, no una grilla ni un componente. Confirma la decisión de WED-54 de renderizarlo en HTML: no hay estructura que extraer, hay que reconstruirla.
-- **El sobre y el sello son imágenes rasterizadas**, no vectores. El sello es un render fotográfico de lacre real.
-
-**Decisión sobre los ornamentos.** No se exportan como SVG. Se exportan como **WebP con transparencia a 2×**, porque son ilustraciones decorativas y fotográficas en espíritu, no iconos. Un SVG de 80 paths pesa más que su equivalente WebP y no gana nada en nitidez a los tamaños en que se muestran.
-
-**Excepción.** Los iconos funcionales (Waze, Google Maps, los 7 del itinerario, el chevron del select) sí van en SVG: son formas simples y deben heredar color.
-
-**Qué verificar en el archivo nuevo.** Que existan estilos o variables de color reutilizables; que los ornamentos vengan ya como PNG exportables en una sola pieza y no como grupos de paths; que los componentes repetidos sean componentes de Figma reales. Si esas tres cosas se cumplen, WED-02 pasa de 3 puntos a 1.
-
-### ADR-009 — El sobre ya está construido en dos hojas
-
-**Hallazgo (WED-02).** El frame `sobre` está compuesto por dos paneles independientes, `Capa 1` (x 0–540) y `Group 2` (x 540–1080), cada uno con su propia textura de papel enmascarada, más el sello centrado sobre la costura y los dos textos encima.
-
-**Consecuencia.** La estructura ya es la que necesita la animación de apertura de WED-60: dos hojas que rotan hacia afuera desde el centro, con el sello partiéndose en la unión. No hay que rehacer la geometría, solo animarla.
-
-**Lo que sigue faltando.** El archivo **no contiene especificación de animación**. Duración, easing y orden de la secuencia no están definidos en Figma y son una decisión nuestra o del diseñador. WED-02 no puede cerrarse en ese punto.
-
-### ADR-011 — Un solo ambiente: todo corre en producción
-
-**Decisión.** No existe un segundo proyecto Firebase de pruebas ni ningún otro ambiente aislado. Hay un único proyecto Firebase (producción) y las variables de entorno de Vercel para Preview y Production apuntan a ese mismo proyecto.
-
-**Razón.** Excepción explícita por tiempo y presupuesto para un proyecto de este tamaño (2 personas, sin equipo de QA dedicado). Mantener un segundo proyecto Firebase con su propio ciclo de datos no se justifica frente al beneficio.
-
-**Consecuencia sobre WED-94.** El ticket original de e2e con Playwright pedía correr "en CI contra un proyecto Firebase de prueba, no producción". Sin ese proyecto, esa condición no se puede cumplir de forma segura: un e2e automatizado contra producción podría quemar la confirmación real de un invitado (ADR-006) o alterar datos reales del CRUD. **WED-94 queda eliminado del backlog.** La única red de seguridad para el flujo de RSVP son los tests unitarios de `POST /api/rsvp` (WED-41, cobertura ≥90 %) y el ensayo manual de WED-102.
-
-**Consecuencia sobre los Preview deploys de Vercel.** Cada preview de un PR habla con la base de datos real. Al probar un PR manualmente en su preview:
-
-- No usar tokens de invitados reales para probar el RSVP: se quema su única confirmación (R2/ADR-006) sin forma de deshacerlo salvo por la consola.
-- Cualquier prueba de CRUD del admin (editar, eliminar, rotar token) contra un invitado real es irreversible en los mismos términos que en producción, porque _es_ producción.
-- Para probar sin ese riesgo, crear un invitado de prueba explícito en Firestore (marcado en `titleLabel`, ej. `"TEST - borrar antes del lanzamiento"`) y borrarlo después. WED-101 y WED-102 ya piden verificar que no queden datos de prueba antes del envío real.
+## 3. Modelo de datos
 
 ### Colección `guests/{guestId}`
 
-| Campo            | Tipo              | Obligatorio | Default | Notas                                                                                     |
-| ---------------- | ----------------- | ----------- | ------- | ----------------------------------------------------------------------------------------- |
-| `token`          | string            | sí          | —       | `nanoid(21)`, generado en servidor                                                        |
-| `firstName`      | string            | sí          | —       | 1–60 caracteres                                                                           |
-| `lastName`       | string \| null    | no          | `null`  | 0–60 caracteres                                                                           |
-| `titleLabel`     | string \| null    | no          | `null`  | Texto del sobre, ej. `"Tío Orlando y Familia."` Si es `null`, se usa `firstName lastName` |
-| `guestLimit`     | number            | sí          | —       | Entero, 1–20                                                                              |
-| `phone`          | string            | sí          | —       | E.164, ej. `+50370000000`                                                                 |
-| `confirmed`      | boolean           | sí          | `false` | Una vez `true`, el invitado no puede volver a enviar (R2)                                 |
-| `confirmedCount` | number            | sí          | `0`     | Entero, 0 ≤ n ≤ `guestLimit`                                                              |
-| `confirmedAt`    | Timestamp \| null | no          | `null`  |                                                                                           |
-| `firstOpenedAt`  | Timestamp \| null | no          | `null`  | Se llena en el primer `GET` del enlace                                                    |
-| `invitedAt`      | Timestamp \| null | no          | `null`  | Se llena cuando la consola marca el envío por WhatsApp (WED-83)                           |
-| `createdAt`      | Timestamp         | sí          | —       |                                                                                           |
-| `updatedAt`      | Timestamp         | sí          | —       |                                                                                           |
+| Campo            | Tipo              | Obligatorio | Default | Notas                                                                            |
+| ---------------- | ----------------- | ----------- | ------- | -------------------------------------------------------------------------------- |
+| `token`          | string            | sí          | —       | `nanoid(21)`, generado en servidor                                               |
+| `firstName`      | string            | sí          | —       | 1–60 caracteres                                                                  |
+| `lastName`       | string \| null    | no          | `null`  | 0–60 caracteres                                                                  |
+| `titleLabel`     | string \| null    | no          | `null`  | Texto del sobre, ej. `"Tío Orlando y Familia."` Si es `null`, se usa `firstName` |
+| `guestLimit`     | number            | sí          | —       | Entero, 1–20                                                                     |
+| `phone`          | string            | sí          | —       | E.164, ej. `+50370000000`                                                        |
+| `confirmed`      | boolean           | sí          | `false` | Una vez `true`, el invitado no puede volver a enviar (R2)                        |
+| `confirmedCount` | number            | sí          | `0`     | Entero, 0 ≤ n ≤ `guestLimit`                                                     |
+| `confirmedAt`    | Timestamp \| null | no          | `null`  |                                                                                  |
+| `firstOpenedAt`  | Timestamp \| null | no          | `null`  | Se llena en el primer `GET` del enlace                                           |
+| `invitedAt`      | Timestamp \| null | no          | `null`  | Se llena cuando la consola marca el envío por WhatsApp                           |
+| `createdAt`      | Timestamp         | sí          | —       |                                                                                  |
+| `updatedAt`      | Timestamp         | sí          | —       |                                                                                  |
 
-**Sobre `titleLabel`.** El sobre muestra tratamientos como "Tío Orlando y Familia.", que no se derivan de `firstName` + `lastName`. Se necesita un campo aparte porque esos dos siguen siendo indispensables para el mensaje de WhatsApp a la novia y para buscar y ordenar en la consola.
+`titleLabel` existe aparte de `firstName`/`lastName` porque el sobre muestra tratamientos ("Tío Orlando y Familia.") que no se derivan de esos campos, que siguen siendo indispensables para el mensaje de WhatsApp y para buscar/ordenar en la consola. `confirmed` es booleano porque bajo R1 no hace falta distinguir "declinó" de "no respondió". No existe campo `notes` (se eliminó del modelo — usar `titleLabel` para marcar invitados de prueba, ver ADR-011).
 
-**Sobre `confirmed` como booleano.** Bajo R1, no hace falta distinguir "declinó" de "no respondió": ambos cuentan como ausentes y ambos reciben recordatorio antes del cierre.
-
-**Sobre `firstOpenedAt`.** Cuesta una escritura por invitado y separa dos poblaciones con seguimiento distinto: quien abrió la invitación y no confirmó (hay que insistirle) frente a quien nunca la abrió (probablemente no le llegó el mensaje).
-
-**`notes` eliminado (2026-09-02).** Existía como campo de uso interno libre, sin ningún flujo real que lo necesitara — a pedido del usuario se quitó del modelo, del formulario de la consola, del CSV exportado y de `createGuestSchema`/`updateGuestSchema`. Firestore puede seguir teniendo el campo en documentos viejos (zod lo descarta en modo `strip` al leer, no hace falta migrar datos). **Consecuencia para ADR-011:** la convención de marcar invitados de prueba ya no puede usar `notes` — se marca en `titleLabel` (ej. `"TEST - borrar antes del lanzamiento"`), que es lo que varias verificaciones en vivo de esta sesión ya venían haciendo de todas formas.
-
-### Reglas de seguridad de Firestore
+### Security Rules
 
 ```
 rules_version = '2';
@@ -271,7 +158,7 @@ service cloud.firestore {
 // 404 { "code": "TOKEN_NOT_FOUND" }
 ```
 
-Nunca devuelve `phone` ni `token`. Efecto colateral: si `firstOpenedAt` es `null`, la escribe.
+Nunca devuelve `phone` ni `token`. Escribe `firstOpenedAt` solo si estaba en `null`.
 
 **`POST /api/rsvp`**
 
@@ -289,17 +176,11 @@ Nunca devuelve `phone` ni `token`. Efecto colateral: si `firstOpenedAt` es `null
 // 429 { "code": "RATE_LIMITED" }
 ```
 
-Validaciones en servidor, no negociables:
-
-- `count` entero, `1 <= count <= guestLimit`.
-- `Date.now() <= RSVP_DEADLINE`.
-- **`confirmed === false`** (R2). La operación tiene éxito exactamente una vez por token.
-
-Los dos casos de 409 se distinguen por `code`, porque la interfaz muestra mensajes distintos.
+Validaciones en servidor: `count` entero, `1 <= count <= guestLimit`; `Date.now() <= RSVP_DEADLINE`; `confirmed === false` (R2). Anti-bot: 429 si `firstOpenedAt` es `null` o pasaron menos de 3s desde esa apertura. Rate limit: >5 envíos por IP/minuto → 429.
 
 ### Administración
 
-Requieren `Authorization: Bearer <firebase-id-token>`, verificado con `admin.auth().verifyIdToken()`. Sin token válido → `401 { "code": "UNAUTHORIZED" }`.
+Requieren `Authorization: Bearer <firebase-id-token>` (`admin.auth().verifyIdToken()`). Sin token válido → `401 { "code": "UNAUTHORIZED" }`.
 
 | Método   | Ruta                                  | Descripción                                           |
 | -------- | ------------------------------------- | ----------------------------------------------------- |
@@ -311,91 +192,62 @@ Requieren `Authorization: Bearer <firebase-id-token>`, verificado con `admin.aut
 | `GET`    | `/api/admin/export`                   | CSV completo                                          |
 | `POST`   | `/api/admin/guests/import`            | Importa invitados desde CSV                           |
 
-**`POST /api/admin/guests/import`.** **Encabezado humano, no el de `npm run import:guests`.** El CSV esperado es el mismo formato que llenan los novios en Excel (`HUMAN_SHEET_HEADER` de `scripts/lib/humanGuestSheet.ts`: `Nombre,Apellido,Texto en sobre,Cupo de invitados,Teléfono`, en ese orden) — no el header en inglés (`firstName,lastName,...`) que sí exige el script de CLI. Internamente reutiliza `normalizeHumanGuestSheet` (normaliza teléfono, igual que `npm run normalize:guests`) y luego valida contra `createGuestSchema`, vía `mapHumanCsvToGuestInputs` (`scripts/lib/guestImport.ts`). `parseCsv` detecta automáticamente si el archivo viene delimitado por coma o por punto y coma — Excel en configuración regional en español suele exportar CSV con `;`, no con `,`. Todo-o-nada: si una sola fila falla la validación, no se escribe nada. Detecta duplicados por `phone` contra los invitados ya existentes y los omite (no los sobreescribe).
+`PATCH` edita `firstName`, `lastName`, `titleLabel`, `guestLimit`, `phone`, `confirmed`, `confirmedCount`; `token`/`createdAt` se descartan silenciosamente (Zod `strip`). Reducir `guestLimit` por debajo de `confirmedCount` → 400 `GUEST_LIMIT_BELOW_CONFIRMED_COUNT`. Rotar token invalida el enlace anterior (pasa a 404). Export CSV: encabezados en español, BOM UTF-8, `Content-Disposition: attachment; filename="invitados.csv"`.
+
+**`POST /api/admin/guests/import`.** Encabezado **humano** (`HUMAN_SHEET_HEADER` de `scripts/lib/humanGuestSheet.ts`): `Nombre,Apellido,Texto en sobre,Cupo de invitados,Teléfono` — no el header en inglés que exige el script de CLI. `parseCsv` detecta automáticamente `,` vs `;` (Excel en español exporta con `;`). Todo-o-nada. Duplicados por `phone` se omiten, no se sobreescriben.
 
 ```jsonc
 // Request
 { "csv": "Nombre;Apellido;Texto en sobre;Cupo de invitados;Teléfono\nOrlando;;Tío Orlando y Familia.;3;7000-0000\n" }
-
 // 200
 { "imported": 3, "skipped": 1 }
-
-// 400 { "code": "INVALID_PAYLOAD" }                                   // el body no es { csv: string }
-// 400 { "code": "INVALID_CSV", "errors": [{ "row": 3, "message": "..." }] }  // nada se escribió, encabezado no coincide o alguna fila no valida
+// 400 { "code": "INVALID_PAYLOAD" }
+// 400 { "code": "INVALID_CSV", "errors": [{ "row": 3, "message": "..." }] }
 ```
 
 ---
 
 ## 5. Design system
 
-> Valores aproximados por muestreo de las capturas. **Deben verificarse contra Figma** en WED-02.
-
 ### Color
 
-> Los marcados **(verificado)** salen de nodos nativos (texto/fills reales) del Figma v2. El resto sigue viviendo dentro de los bloques flattened (ver nota de ADR-008 sobre el v2) y se confirma al implementar cada sección, por muestreo visual igual que con el v1.
+`--bg-base`/`--bg-hero` `#F6D5A9` · `--envelope-text` `#465641` · `--surface-dark` `#48553F` · `--surface-sage` `#97A98F` · `--surface-muted` `#EBC9A0` · `--accent-coral` `#E5AB84` · `--accent-terracotta` `#20431E` · `--text-heading` `#4A5A46` · `--text-body` `#454F42` · `--text-on-dark` `#F6D5A9` · `--text-on-sage` `#454F42` · `--text-hero` `#FFFFFF`.
 
-| Token                 | Valor                      | Uso                                                                              |
-| --------------------- | -------------------------- | -------------------------------------------------------------------------------- |
-| `--bg-base`           | `#F6D5A9` **(verificado)** | Fondo general y márgenes laterales en desktop                                    |
-| `--bg-hero`           | `#F6D5A9` **(verificado)** | Portada — fundido sólido a transparente, no degradado de dos tonos como se creía |
-| `--envelope-text`     | `#465641` **(verificado)** | "Para:" y `titleLabel` en el sobre                                               |
-| `--surface-dark`      | `#48553F`                  | Tarjeta de calendario, select                                                    |
-| `--surface-sage`      | `#97A98F`                  | Tarjeta de countdown, botón Enviar                                               |
-| `--surface-muted`     | `#EBC9A0`                  | Panel del bloque de RSVP                                                         |
-| `--accent-coral`      | `#E5AB84` **(verificado)** | Marcos de fotos, etiqueta de hora — corregido desde `#E9A98C`                    |
-| `--accent-terracotta` | `#20431E` **(verificado)** | Texto destacado — corregido desde `#E0855F` (naranja) a este verde oscuro        |
-| `--text-heading`      | `#4A5A46`                  | Títulos en script (viven en imágenes flattened en el v2, sin verificar aún)      |
-| `--text-body`         | `#454F42` **(verificado)** | Párrafos — corregido desde `#7C8A78`                                             |
-| `--text-on-dark`      | `#F6D5A9` **(verificado)** | Texto sobre `--surface-dark`, ej. el select                                      |
-| `--text-on-sage`      | `#454F42` **(verificado)** | Texto sobre `--surface-sage`, ej. "Enviar"                                       |
-| `--text-hero`         | `#FFFFFF` **(verificado)** | Nombres en la portada                                                            |
+El papel del sobre y el sello no son colores sino imágenes (ADR-008). `--surface-dark`/`--surface-sage`/`--surface-muted`/`--text-heading` siguen aproximados (sus únicas apariciones en el v2 están dentro de bloques flattened); se verifican por muestreo al implementar cada sección de E5. El resto está verificado contra nodos nativos del Figma v2.
 
-El papel del sobre y el sello de lacre **no son colores sino imágenes**: ver ADR-008.
+**Contraste WCAG AA** (`src/lib/color.ts`, expuesto en `/styleguide`): `--text-body` sobre `--bg-base` da 6.13:1, pasa AA. **`--text-on-sage` sobre `--surface-sage` da 3.42:1 — no alcanza AA para texto normal** (mínimo 4.5:1; sí alcanza el piso de texto grande, 3:1). Pendiente de decisión de diseño antes de cerrar WED-70 (botón "Enviar").
 
-**Contraste WCAG AA (WED-30, verificado con `src/lib/color.ts` y expuesto en `/styleguide`).** `--text-body` sobre `--bg-base` con los valores reales del v2 da **6.13:1** — pasa AA con margen; la sospecha original sobre el salvia-sobre-durazno del v1 queda resuelta porque el v2 usa un tono de texto más oscuro. Hallazgo nuevo: `--text-on-sage` sobre `--surface-sage` da **3.42:1** — **no alcanza AA para texto normal** (mínimo 4.5:1), aunque sí alcanza el mínimo de texto grande (3:1). Aplica directo al botón "Enviar" (WED-70): si su texto es de cuerpo normal (no ≥14pt en negrita ni ≥18pt), hace falta un tono más oscuro que `#454F42` sobre `--surface-sage`, o agrandar/engrosar el texto del botón. Pendiente de decisión de diseño antes de cerrar WED-30 y WED-70.
+Radio/sombra reales: `--radius-invitation-sm: 5px`, `--shadow-invitation-badge: 2px 2px 1px rgba(0,0,0,0.25)`.
 
 ### Tipografía
 
-**Verificado en Figma (WED-02).** Dos familias, ambas de Google Fonts con licencia SIL Open Font License, autohospedables sin restricción:
-
-| Familia                  | Uso                               | Ejemplos medidos (a escala 1080)           |
-| ------------------------ | --------------------------------- | ------------------------------------------ |
-| **Great Vibes** Regular  | Títulos en script                 | "Para:" 100 px · `titleLabel` 75 px        |
-| **Inter** Regular / Bold | Cuerpo, horas, etiquetas, botones | Select 30 px Regular · "Enviar" 30 px Bold |
-
-Los tamaños del archivo están a escala 1080. Para llevarlos al contenedor de 432 px se dividen entre 2.5: "Para:" son 40 px reales, el `titleLabel` 30 px, el cuerpo 12 px.
-
-> **Riesgo de licencias cerrado.** Ambas fuentes son libres, así que no hace falta buscar sustitutos ni negociar licencias comerciales.
-
-**Autohospedaje (WED-31, 2026-09-16).** Ambas ya viven en `public/fonts/` como WOFF2, subset `latin` únicamente (ver WED-31 — `latin-ext` no aplica al español). `--font-sans` y `--font-script` en `src/styles/tokens.css` apuntan a `'Inter'`/`'Great Vibes'` reales con fallback (`'Inter Fallback'` con métricas ajustadas para Inter; `cursive` genérico para Great Vibes). Los tamaños de la tabla de arriba siguen siendo los del v1 a escala 1080/2.5 — para el v2 (artboard 885, factor 432/885) cada sección de E5 mide sus propios tamaños reales al implementarse, según ADR-004.
+**Great Vibes** (script, títulos) y **Inter** (Regular/Bold, cuerpo/botones) — ambas Google Fonts SIL OFL, autohospedadas en `public/fonts/` como WOFF2, subset `latin` únicamente (cubre acentos y `ñ`; `latin-ext` no aplica al español). `--font-sans`/`--font-script` en `src/styles/tokens.css`. Tamaños del archivo a escala 885 → dividir por el factor de ADR-004 (0.4878), no por 2.5.
 
 ### Estructura
 
-**Pantalla 0 — Sobre (gate).** Sobre vertical de papel texturizado, doblez a un tercio, sello de lacre color cobre con monograma "F&F" y corona floral, centrado. Abajo a la derecha: "Para:" y el `titleLabel` del invitado, en script.
+**Pantalla 0 — Sobre (gate).** Sobre vertical, dos hojas, sello de lacre "F&F". "Para:" + `titleLabel` en script, inferior derecha.
 
 **Página (tras la apertura), ancho 432 px máx.:**
 
-| #   | Sección                                                                                                                                  | Ancla         | Componente         |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------ |
-| 1   | Portada — foto vertical, "Fredy y Fátima" en script blanco (texto nativo verificado en el Figma v2, WED-53), borde floral inferior       | `#cover`      | `CoverSection`     |
-| 2   | "¡Nos vamos a casar!" — calendario de diciembre 2026 con el 20 marcado, etiqueta "4:30 p.m.", cuenta regresiva                           | `#date`       | `DateSection`      |
-| 3   | Collage de 5 polaroids en abanico + frase "Hemos elegido caminar juntos para siempre…"                                                   | `#about-us`   | `AboutUsSection`   |
-| 4   | "Ceremonia y Recepción." — foto del venue, dirección, botones de Waze y Google Maps                                                      | `#venue`      | `VenueSection`     |
-| 5   | "Itinerario." — timeline en zigzag, 7 hitos                                                                                              | `#timeline`   | `TimelineSection`  |
-| 6   | "Código de Vestimenta" — ilustración, nota, colores a evitar por género, **más un componente nuevo pendiente de definir en el Figma v2** | `#dress-code` | `DressCodeSection` |
-| 7   | "-Recuerda-" — solo adultos, regalo de sobre, fecha límite, selector y botón Enviar                                                      | `#rsvp`       | `RsvpSection`      |
+| #   | Sección                                                                            | Ancla         | Componente         |
+| --- | ---------------------------------------------------------------------------------- | ------------- | ------------------ |
+| 1   | Portada — foto vertical, "Fredy y Fátima" en script blanco, borde floral           | `#cover`      | `CoverSection`     |
+| 2   | "¡Nos vamos a casar!" — calendario diciembre 2026, "4:30 p.m.", cuenta regresiva   | `#date`       | `DateSection`      |
+| 3   | Collage de 5 polaroids + "Hemos elegido caminar juntos para siempre…"              | `#about-us`   | `AboutUsSection`   |
+| 4   | "Ceremonia y Recepción." — foto venue, dirección, botones Waze/Google Maps         | `#venue`      | `VenueSection`     |
+| 5   | "Itinerario." — timeline zigzag, 7 hitos                                           | `#timeline`   | `TimelineSection`  |
+| 6   | "Código de Vestimenta" — ilustración, nota, colores a evitar por género            | `#dress-code` | `DressCodeSection` |
+| 7   | "-Recuerda-" — solo adultos, regalo de sobre, fecha límite, selector, botón Enviar | `#rsvp`       | `RsvpSection`      |
 
-> El nombre del invitado aparece **solo en el sobre**, no en la portada.
-
-**Elemento flotante.** `MusicToggle`: disco giratorio en la esquina inferior izquierda, fijo sobre el scroll, que **se oculta al entrar `#rsvp` en viewport**.
+El nombre del invitado aparece solo en el sobre, no en la portada. **Elemento flotante:** `MusicToggle`, disco giratorio inferior izquierdo, fijo, se oculta al entrar `#rsvp` en viewport.
 
 ### Contenido fijo
 
-**Lugar (ceremonia y recepción en el mismo sitio):** Hotel Álamo Internacional — Lomas de San Francisco, final calle 3, No 7, Antiguo Cuscatlán. Cerca de la UCA y el Estadio Cuscatlán.
+**Lugar:** Hotel Álamo Internacional — Lomas de San Francisco, final calle 3, No 7, Antiguo Cuscatlán (cerca de la UCA y el Estadio Cuscatlán).
 
 **Itinerario:** 4:30 Ceremonia Religiosa · 5:30 Fotos · 6:00 Primer Baile de Esposos · 6:30 Cena · 7:30 Pastel · 8:00 Fiesta/Baile · 9:00 Despedida y recuerdos.
 
-**Vestimenta:** formal. Mujeres evitan blanco y tonos marfil; hombres evitan verdes menta, militar y variaciones.
+**Vestimenta:** formal. Mujeres evitan blanco/marfil; hombres evitan verde menta/militar.
 
 **Recordatorios:** evento exclusivo para adultos; regalo de sobre; confirmar antes del 25 de octubre.
 
@@ -403,1018 +255,100 @@ Los tamaños del archivo están a escala 1080. Para llevarlos al contenedor de 4
 
 ## 6. Backlog
 
-### Dos vías de trabajo
+**Vía A** (no depende del diseño): E1, E2, E4, E8, WED-03, WED-04, WED-101. **Vía B** (bloqueada hasta Figma v2 — ya desbloqueada desde 2026-09-16): E0, E3, E5, E6, E7. Puente único: WED-70 consume `POST /api/rsvp`, que la vía A ya dejó terminado. Los contratos de §4 no cambian salvo que el diseño obligue — en ese caso se cambia el contrato primero.
 
-El diseño se está rehaciendo, así que el backlog se ejecuta en dos vías paralelas con una única dependencia entre ellas.
+Estimación: 1 = <1h · 2 = medio día · 3 = 1 día · 5 = 2–3 días · 8 = 1 semana. **DoD global:** compila sin errores, pasa `lint`/`typecheck`/`test`, cumple §9, revisado en preview deploy, probado en iOS Safari y Android Chrome reales, sin errores en consola.
 
-**Vía A — no depende del diseño. Empieza ya.**
-E1 Fundamentos · E2 Firebase y datos · E4 API · E8 Consola · WED-03 · WED-04 · WED-101
+### Cerrados (referencia rápida, sin detalle)
 
-Es el 45 % del esfuerzo total y contiene toda la lógica de negocio, las invariantes de seguridad y los tests. Nada de esto cambia cuando llegue el Figma nuevo.
+E1 completa (WED-10 a WED-15, salvo la protección de rama de WED-13, no verificable desde el repo). WED-12, WED-14 (parcial: falta `noindex` permanente en `/i/*`/`/admin` una vez existan esas rutas, y el mecanismo que distinga preview de producción lanzada). E2 completa (WED-20 a WED-23). E4 completa (WED-40 a WED-43). E8: WED-79 a WED-84 completas en código, pendiente verificación visual en navegador real con sesión iniciada. WED-50/51 (E5, vía A) completas; el overflow horizontal en viewports angostos que quedaba pendiente de verificar era un bug real (`CoverSection`: `flex-1` sin `min-w-0` en los ornamentos florales, corregido). WED-52 completa en código, pendiente animación (WED-60) y medición de LCP real. WED-53 completa (con corrección: el texto real del Figma dice "Fredy y Fátima", no "Fredy & Fátima"). WED-30/31/32 completas en código; WED-31 pendiente de verificar Great Vibes en iOS Safari real. WED-33 parcial: Waze/Google Maps resueltos; los 7 iconos del itinerario y el disco de música siguen bloqueados (sin fuente vectorial extraíble / sección aún no construida). WED-54 completa: calendario y contador usan las imágenes reales extraídas de Figma en vez de HTML codificado (excepción explícita de ADR-008, ver esa nota) — nota abierta: el encabezado "¡Nos vamos a casar!" es un outline sin fuente identificable, implementado como imagen SVG exportada, pendiente confirmar con el diseñador si es una fuente a licenciar. WED-58 completa: título/ilustración/ornamentos extraídos de Figma, colores nombrados en texto junto a un swatch (no como texto coloreado, evita el chequeo de contraste por color) — corregido un bug real del archivo de Figma donde el texto "evitar blanco" estaba duplicado por copiar/pegar bajo la sección Hombres (debía decir verde menta/militar); las capas de paleta también están nombradas al revés en Figma (`colores-para-hombre` es la de Mujeres y viceversa), usado el contenido real de cada una, no el nombre de capa. WED-59 completa: título e ilustraciones extraídos de Figma en WebP (no SVG — ver desviación documentada), los tres bloques resultaron ser solo dos con ilustración más el texto de fecha límite, que en el Figma real vive después del marco del formulario (WED-70), no junto a estos.
 
-**Vía B — bloqueada hasta que exista el Figma v2.**
-E0 (WED-01, WED-02) · E3 Design System · E5 Invitación · E6 Animaciones · WED-70, WED-71
+### Abiertos
 
-**El único puente entre ambas:** WED-70 consume `POST /api/rsvp`, que la vía A deja terminado y probado. Cuando el diseño llegue, la lógica ya funciona y solo falta vestirla.
+#### E0 — Descubrimiento
 
-**Regla de oro mientras dure la separación.** La vía A no debe tomar ninguna decisión que el diseño pueda invalidar. Los contratos de §4 son el punto de encuentro: si algo del diseño nuevo obliga a cambiarlos, se cambia el contrato primero y el resto después.
+- **WED-01** Activos finales (fotos, texturas, ornamentos, iconos) aprobados por los novios.
+- **WED-02** Auditoría de Figma — solo queda pendiente la especificación de la animación de apertura del sobre (no está en el archivo).
+- **WED-03** Verificar enlaces de Google Maps/Waze y `wa.me/50376982534` desde un teléfono.
+- **WED-04** Pista musical: elegida, aprobada, derechos documentados, MP3 <3MB recortado en bucle, no en la carga inicial.
 
----
+#### E3 — Design System
 
-**Estimación:** 1 = <1 h · 2 = medio día · 3 = 1 día · 5 = 2–3 días · 8 = 1 semana.
+- **WED-33** (resto) 7 iconos de itinerario y disco de música en SVG cuando exista fuente vectorial/sección construida; `aria-label` de iconos de ubicación (responsabilidad de WED-56).
+- **WED-34** Contenido desacoplado a `src/content/`: textos, itinerario, dirección, URLs de mapas, fecha, mensajes de error del RSVP (con el texto literal de R2) — claves en inglés, valores en español. Build falla si falta un campo obligatorio.
 
-**DoD global:** compila sin errores, pasa `lint`, `typecheck` y `test`, cumple §10, revisado en preview deploy, probado en iOS Safari y Android Chrome reales, sin errores en consola.
+#### E5 — Invitación (criterios compartidos: fiel al mock-up a 432px con el factor de ADR-004; textos desde `src/content/`; `alt` descriptivo; sin errores de consola)
 
----
+- **WED-55** `AboutUsSection`: collage de 5 polaroids en abanico, marcos coral, lazy-load sin competir con el LCP, frase con "juntos para siempre" en terracota.
+- **WED-56** `VenueSection`: título en script, foto, dirección, nota cursiva, botones Waze/Google Maps con `rel="noopener noreferrer"` y pestaña nueva, probado en Android/iPhone reales.
+- **WED-57** `TimelineSection`: zigzag con 7 hitos alternando lados, `<ol>` semántico, hito nuevo en `src/content/` sin tocar código, ornamentos sin tapar texto.
 
-### EPIC E0 — Descubrimiento · _vía B, bloqueada_
+#### E6 — Animaciones y audio
 
-> Toda esta épica salvo WED-03 espera el Figma v2. WED-03 y WED-04 no dependen del diseño y pueden hacerse en cualquier momento.
+- **WED-60** Animación de apertura del sobre: según especificación de WED-02, Framer Motion, 1.2–2s, fundido simple bajo `prefers-reduced-motion`, camino de escape si falla el JS, solo `transform`/`opacity`, medido sin caída de frames en Android gama media, sin doble disparo por doble tap.
+- **WED-61** `MusicToggle`: disco fijo, gira mientras suena, arranca en el mismo handler del tap del sobre (no en `useEffect`), `<button>` con `aria-label`/`aria-pressed`, `preload="none"`, persiste en `sessionStorage`, bucle sin corte, se oculta con fundido en `#rsvp` sin detener el audio, degrada bien si el navegador bloquea la reproducción, probado en iOS Safari.
+- **WED-62** Animaciones de entrada por sección vía IntersectionObserver, visibles y estáticas bajo `prefers-reduced-motion`, contenido visible si falla el JS, solo `transform`/`opacity`.
+- **WED-63** Animaciones de detalle (abanico del collage, latido del corazón del calendario, dibujado del timeline, transición de dígitos), desactivadas bajo `prefers-reduced-motion`, Framer Motion ≤50KB gzip o `LazyMotion`+`m`. **Nota:** el corazón del calendario ya no es un elemento del DOM (WED-54 lo dejó horneado en la imagen extraída de Figma) — este ítem necesita revisarse cuando se implemente: superponer un corazón animado aparte sobre la imagen, o soltar esta animación puntual.
 
-#### WED-01 — Activos finales
+#### E7 — RSVP
 
-**Chore · 2**
+- **WED-70** `RsvpForm`: selector 1..`guestLimit`, sin opción de declinar (R1), modal de confirmación previo al envío (ADR-006) con texto editable en `src/content/`, RHF+Zod con el mismo esquema del servidor, botón deshabilitado durante envío, error de red conservando selección, estado "ya confirmado" con el texto literal de R2 + enlace `wa.me` a la novia, estado "cerrado" si `rsvpOpen === false`, los tres estados visualmente distintos, operable completo con teclado incluido el modal.
+- **WED-71** Éxito: resumen ("Confirmaste 3 personas"), botón que abre `waLink` en pestaña nueva con gesto directo (no bloqueado por iOS Safari), mensaje `Hola, soy {firstName} {lastName}. Confirmo mi asistencia a la boda con {count} personas.`, probado end-to-end en teléfono real, enlace para volver sin opción de modificar, recarga tras confirmar muestra "ya confirmado".
 
-- [ ] Foto de portada en resolución original, apta para recorte vertical.
-- [ ] Las 5 fotos del collage en resolución original.
-- [ ] Foto del Hotel Álamo Internacional.
-- [ ] Textura del papel del sobre y sello de lacre exportados **en PNG o WebP con transparencia a 2×**. No son vectores: el sello es un render fotográfico de lacre real (ADR-008).
-- [ ] Ilustraciones y ornamentos florales exportados en **WebP con transparencia a 2×**, no SVG (ADR-008).
-- [ ] Iconos funcionales en SVG: los 7 del itinerario, Waze, Google Maps, chevron del select, disco de música.
-- [ ] Iconos del itinerario (7) y de ubicación (Waze, Google Maps) en SVG.
-- [ ] Selección aprobada por escrito por los novios.
+#### E9 — Calidad
 
-#### WED-02 — Auditoría de Figma y tokens
+- **WED-90** Accesibilidad: axe DevTools sin violaciones críticas/serias, sobre alcanzable solo con teclado, modal atrapa foco y cierra con Esc, un solo `h1` por página, `alt` correcto, flujo completo con VoiceOver/TalkBack, contraste AA en el sitio real.
+- **WED-91** Rendimiento: Lighthouse móvil ≥90/95/95, LCP<2.5s/CLS<0.1/INP<200ms, imágenes AVIF/WebP con dimensiones, primera carga <700KB, mp3 no descarga hasta el tap, bundle analizado, sobre visible en <3s en 4G simulada.
+- **WED-92** Metadatos: `title`/`meta description`, favicon/`apple-touch-icon`, `manifest.json`, Open Graph genérico (sin nombre de invitado, 1200×630 <300KB).
+- **WED-93** Matriz cross-browser: iOS Safari, Android Chrome, Chrome/Safari/Firefox desktop, navegador interno de WhatsApp (animación+audio probados ahí específicamente), 320/360/432/1920px, landscape, fuente al 200%, bugs registrados con severidad.
 
-**Spike · 3**
+> ~~WED-94~~ eliminado — ver ADR-011.
 
-- [~] Tokens de color: 9 de 13 verificados contra nodos nativos del Figma v2 (`--envelope-text`, `--text-on-dark`, `--text-on-sage`, `--bg-base`, `--bg-hero`, `--text-body`, `--accent-coral`, `--accent-terracotta`, `--text-hero`; ver tabla en §5). Quedan `--surface-dark`, `--surface-sage`, `--surface-muted`, `--text-heading` — sus únicas apariciones en el v2 están dentro de bloques flattened (ver ADR-008), se verifican por muestreo visual al implementar cada sección de E5.
-- [x] **Familias identificadas: Great Vibes (script) e Inter (Regular/Bold).**
-- [x] **Licencias verificadas: ambas son Google Fonts bajo SIL OFL, autohospedables sin restricción.**
-- [~] Escala de espaciado y radios documentados. Radio (`5px`) y sombra (`2px 2px 1px rgba(0,0,0,0.25)`) reales encontrados en componentes nativos del v2 (botón, insignias de ubicación) y agregados como tokens en WED-30. No se documentó una escala de espaciado propia — el proyecto usa la escala por defecto de Tailwind v4, suficiente para lo construido hasta ahora.
-- [x] **Ancho de referencia confirmado (v1): artboard de 1080 px, escala 1:2.5, contenedor de 432 px.** **Actualizado para el v2 (2026-09-16):** el archivo real ahora es "Invitación Responsive" con artboard de 885 px; factor de escala 432/885 ≈ 0.4878, verificado cruzando el tamaño real de fuente del cuerpo (25px→12.2px, coincide con el cuerpo de 12px ya fijado). Ver ADR-004.
-- [ ] **Especificación de la animación de apertura del sobre.** Sigue sin estar en el archivo v2 (ADR-009): hay que definirla con el diseñador o decidirla nosotros. Es lo único que mantiene abierto este ticket sobre el sobre — el sobre en sí (dos hojas, sello, "Para:" + `titleLabel`) ya está confirmado en el v2.
-- [x] Cambios de diseño pendientes registrados con su impacto: ver la nota del v2 en ADR-008 (mayoría del contenido entregado como imágenes flattened, no estructura nativa) y la tabla de colores corregida en §5 (accent-coral, accent-terracotta y text-body cambiaron de valor real respecto al v1).
+#### E10 — Lanzamiento
 
-#### WED-03 — Verificar enlaces externos y número de la novia
+- **WED-100** Contenido final: cero placeholders, revisión ortográfica por segunda persona, corregir `-Recuarda-`→`-Recuerda-` y el espacio faltante en "caminarjuntos", fecha/hora/dirección aprobadas por escrito.
+- **WED-101** Carga de la lista real: importada, conteo validado, cero duplicados, cada `titleLabel` revisado uno por uno, suma de `guestLimit` contra el aforo del Hotel Álamo, todos los `phone` en E.164, 5 enlaces de muestra verificados.
+- **WED-102** Ensayo general: 3 personas ajenas recorren el flujo completo desde su celular, respuestas visibles en consola, `wa.me` llega a la novia con el texto correcto, se observa si el sobre es intuitivo sin explicación y si el modal comunica bien la irreversibilidad, fricciones registradas, datos de prueba eliminados antes del envío real.
+- **WED-103** Go-live: `robots.txt`/`noindex` retirados de páginas públicas (mantenidos en `/i/*` y `/admin`), Vercel Analytics activo, monitoreo de errores con alerta, export manual de Firestore como respaldo, tag de release, envío por lotes (10 primero, luego el resto).
 
-**Chore · 1 · vía A, sin dependencias**
+#### E11 — Post-lanzamiento
 
-- [ ] URL de Google Maps del Hotel Álamo verificada desde un teléfono.
-- [ ] URL de Waze verificada del mismo modo.
-- [ ] `wa.me/50376982534` probado manualmente: abre el chat correcto.
-
-#### WED-04 — Preparar la pista musical
-
-**Chore · 2 · vía A, sin dependencias**
-
-- [ ] Pista elegida y aprobada por los novios.
-- [ ] **Decisión sobre derechos documentada.** La pista es comercial y se alojará en el proyecto; los novios asumen el riesgo de forma explícita, o se sustituye por una pista con licencia. La decisión queda escrita, no implícita.
-- [ ] Archivo en MP3 (128 kbps mono o 160 kbps estéreo), **menor a 3 MB**. Un MP3 comercial sin comprimir suele pesar 8–10 MB y es inaceptable en móvil.
-- [ ] Fragmento recortado con un corte que no suene abrupto al repetir en bucle.
-- [ ] El archivo no se sirve desde la carga inicial (ver WED-61).
+- **WED-110** Seguimiento: filtro de pendientes con reenvío por `wa.me`, distinción entre "abrió sin confirmar" y "nunca abrió", plantilla de recordatorio.
+- **WED-111** Cierre: pasado el 25/oct el formulario muestra cierre y `/api/rsvp` da 409 `RSVP_CLOSED`, export final entregado, documentado cuándo se apaga el sitio y se borran datos personales.
 
 ---
 
-### EPIC E1 — Fundamentos · _vía A_
-
-#### WED-10 — Repositorio y proyecto Vite
-
-**Setup · 2 · sin dependencias — cerrado**
-
-- [x] Repositorio Git privado con `README.md` que explica cómo levantar el proyecto en ≤3 comandos.
-- [x] Vite + React + TypeScript `strict`; `npm run dev` sin errores.
-- [x] `.gitignore` cubre `node_modules`, `.env*`, `dist`, `.vercel`.
-- [x] `.env.example` versionado con las variables de §3, sin valores reales.
-- [x] Estructura real: `src/components/ui/`, `src/components/admin/`, `src/pages/`, `src/hooks/`, `src/lib/`, `src/content/`, `src/schemas/`, `api/`, `public/assets/`, `public/audio/`. **Nota:** el ticket decía `src/components/sections/`; ADR-010 (posterior) lo reemplazó por el split `ui/`/`admin/` que sí existe. El texto de este ticket quedó desactualizado, no el código.
-- [x] Alias `@/` configurado en Vite y `tsconfig.json`.
-- [x] `src/schemas/` importable desde `api/`, con imports reales (`api/_lib/guests.ts`, `api/rsvp.ts`, etc.). **Aún no ejercitado desde `src/`** porque no hay componentes que consuman esquemas todavía (llega con WED-51/WED-70).
-- [x] Todo identificador y nombre de archivo del scaffold inicial en inglés (§10).
-
-#### WED-11 — Linting, formato y pre-commit
-
-**Setup · 2 · WED-10 — cerrado, con 3 gaps reales encontrados y corregidos el 2026-08-31**
-
-- [x] ESLint + Prettier sin conflictos (`eslint-config-prettier` aplicado al final de la config).
-- [~] Scripts `lint`, `typecheck`, `test` pasan en limpio. **`format` no** — `npm run format:check` falla en 31 archivos porque no hay `.gitattributes` que fije el line-ending y este entorno Windows tiene `core.autocrlf=true` (CRLF en disco vs LF que espera Prettier por defecto). No afecta a `lint` ni a CI (corre en `ubuntu-latest`, LF nativo), pero el checkbox no es honesto si se marca sin más. **Queda pendiente como fix aparte** (agregar `.gitattributes` con `eol=lf` normalizaría todo el repo de una vez, pero es un diff grande que merece su propio commit, no colarlo en esta verificación).
-- [x] **Husky + lint-staged; un commit con error de tipo es rechazado localmente.** Encontrados y corregidos dos problemas reales, verificados en vivo con un commit real que se intentó y se deshizo:
-  1. `core.hooksPath` **no estaba configurado** en este clon — el `prepare` de `package.json` (`husky`) nunca se había ejecutado, así que ningún hook corría nunca, en ninguna de las sesiones anteriores. Corregido con `npm run prepare`. **Esto modificó `.git/config` local** (`core.hooksPath = .husky/_`), la única forma de que Husky funcione; es config local de esta máquina, no se versiona, y es exactamente lo que `npm install` está pensado para hacer solo. Avisado explícitamente porque toca git config.
-  2. `.husky/pre-commit` solo corría `lint-staged` (eslint+prettier por archivo), **nunca `tsc`** — un error de tipos real no se detectaba antes del commit. Se agregó `npm run typecheck` al hook.
-  - Verificado en vivo: un archivo con `const x: number = 'string'` fue rechazado por el hook (`husky - pre-commit script failed`); con el fix ya no llega a la base.
-- [x] **Regla de ESLint que prohíbe importar `firebase/firestore` fuera de `api/`** (ADR-001) — verificada en vivo con un fixture temporal (`import { getFirestore } from 'firebase/firestore'` en `src/`), falló el lint como se esperaba, fixture borrado después.
-- [x] **Regla que prohíbe imports cruzados entre `src/components/ui/` y `src/components/admin/`** (ADR-010) — **gap real encontrado y corregido.** Los patrones originales (`**/components/admin/**`, `@/components/admin/**`) solo atrapaban imports por alias `@/...`; un import relativo natural (`../admin/Foo`, el que realmente escribiría alguien parado en `src/components/ui/`) pasaba el lint sin error. Se agregaron los patrones `**/admin/**` y `**/ui/**` a cada override. Verificado en ambas direcciones y con ambos estilos de import (relativo y alias) tras el fix.
-- [x] Convención de ramas y commits (Conventional Commits, en inglés) documentada en el README.
-
-#### WED-15 — Enforcement de las convenciones de código
-
-**Setup · 3 · WED-11 — cerrado, con 1 gap real encontrado y corregido el 2026-08-31**
-
-Convierte §10 en reglas que fallan el CI. Sin este ticket, "clean code" es una intención y no una garantía.
-
-- [x] `tsconfig.json` con `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `exactOptionalPropertyTypes` (en `tsconfig.app.json`, referenciado desde la raíz en modo project references).
-- [x] `@typescript-eslint/no-explicit-any` en `error`.
-- [x] Límites activos y en `error`: `complexity` máx. 10, `max-lines-per-function` 50, `max-depth` 3, `max-params` 4.
-- [x] `no-magic-numbers` activo con excepciones acotadas (`0`, `1`, `-1`).
-- [x] `@typescript-eslint/naming-convention` fuerza camelCase para variables y funciones, PascalCase para tipos y componentes, UPPER_SNAKE_CASE para constantes de módulo.
-- [x] **Regla local que prohíbe todos los comentarios** salvo directivas `eslint-disable`, definida en `eslint.config.ts` con `sourceCode.getAllComments()`. Cero archivos `.js` en el repo (config cargada con `jiti`).
-- [x] **La regla acepta JSDoc bajo `api/_lib/`** (ADR-007), con `override` acotado a esa ruta y opción `allowJsDoc`.
-- [x] Verificado en vivo con fixtures temporales: un archivo con comentario + `any` + función de 61 líneas falló en los tres puntos exactos (`local/no-comments`, `@typescript-eslint/no-explicit-any`, `max-lines-per-function`); un JSDoc fuera de `api/_lib/` falló; un `//` dentro de `api/_lib/` también falló (solo JSDoc se acepta ahí). Fixtures borrados después.
-
-**Control de las supresiones.**
-
-- [x] `linterOptions.reportUnusedDisableDirectives: "error"`.
-- [x] `@eslint-community/eslint-plugin-eslint-comments` con `no-unlimited-disable`, `require-description`, `no-aggregating-enable`, `disable-enable-pair`, `no-unused-disable` en `error`.
-- [x] **Prohibido el `eslint-disable` de archivo o de bloque — gap real encontrado y corregido.** La config original solo bloqueaba un `/* eslint-disable */` _sin_ reglas nombradas (vía `no-unlimited-disable`) o sin descripción/sin `eslint-enable` pareado. Un bloque **correctamente** formado — `/* eslint-disable no-console -- motivo */ ... /* eslint-enable no-console -- motivo */`, con reglas nombradas, descripción y su enable — **pasaba el lint limpio**, contradiciendo directamente este punto y el ejemplo de §10. Se agregó una regla local nueva, `local/no-block-disable`, que prohíbe cualquier `eslint-disable`/`eslint-enable` que no sea `eslint-disable-next-line`, sin excepción. Verificado: el bloque bien formado ahora falla; un `eslint-disable-next-line` legítimo con descripción sigue pasando.
-- [x] **Toda directiva exige justificación en la misma línea** — verificado con fixture (`eslint-disable-next-line` sin `-- motivo` falla).
-- [x] `@typescript-eslint/ban-ts-comment` con `minimumDescriptionLength: 20`.
-- [x] **Tope global de supresiones verificado en CI** (`scripts/countEslintDisables.ts`, corre en `npm run lint:disables` y en `ci.yml`).
-- [x] El tope y su motivo están documentados en el README (sección "Rules the linter enforces").
-- [x] Verificado con fixtures: un `/* eslint-disable */` de archivo sin reglas, y una directiva sin descripción, fallan el lint.
-
-- [x] Cobertura mínima verificada en CI: **90 % en `api/` y `src/schemas/`**, 60 % global (`vitest.config.ts`, y `ci.yml` corre `test:coverage`).
-- [x] **`api/_lib/firestore.ts` excluido de cobertura**, única exclusión en `vitest.config.ts`.
-- [x] Las reglas están documentadas en el README, no solo en la configuración.
-
-**Nota sobre esta verificación (2026-08-31).** Ninguno de los tres gaps de arriba (hooks de Husky inactivos, cruce `ui`/`admin` por import relativo, `eslint-disable` de bloque bien formado) se detectaba con `npm run verify` normal — los tres necesitaron fixtures deliberadamente "maliciosos" para salir a la luz. `npm run verify` sigue siendo la puerta de CI, pero no prueba sus propias reglas de exclusión; vale la pena repetir este tipo de verificación activa si se toca `eslint.config.ts` de nuevo.
-
-**Bug encontrado y corregido (2026-08-31).** `npm run typecheck` era `tsc --noEmit` a secas. Con el `tsconfig.json` raíz en modo _project references_ (`"files": []`, sin `include`, solo `references`), eso es un no-op silencioso: `tsc --noEmit --listFiles` no listaba ni un archivo. `npm run typecheck` y por lo tanto `npm run verify` pasaban en verde sin revisar nada, mientras que `npm run build` (`tsc -b && vite build`) sí compilaba de verdad — por eso un PR pasó todas las verificaciones locales y falló recién en el build de Vercel, con dos errores de tipos reales que ya existían. Corregido a `tsc -b --noEmit`, que construye ambos proyectos referenciados (`tsconfig.app.json`, `tsconfig.node.json`) sin emitir JS — verificado que reproduce exactamente los errores que dio Vercel. Los `.tsbuildinfo` que genera se agregaron a `.gitignore`.
-
-#### WED-12 — Despliegue en Vercel con fallback SPA
-
-**Setup · 3 · WED-11**
-
-- [x] Proyecto creado como `fredyfatimawedding`; push a `master` despliega a producción.
-- [x] `vercel.json` con rewrite SPA que **excluye `/api`**: recargar `/i/abc123` sirve `index.html`, no un 404.
-- [x] `api/health.ts` responde 200 en el deploy.
-- [x] Cada PR genera preview funcional.
-- [x] Variables de entorno separadas en preview y producción.
-
-**Bug de build encontrado en un preview real y corregido (2026-08-31).** El deploy de Vercel falló el type-check de las funciones de `api/` con `TS2835: Relative import paths need explicit file extensions...`. Causa: `package.json` tiene `"type": "module"`, y Vercel tipa cada función de `api/` con resolución `node16`/`nodenext` (la correcta para validar ESM real de Node), mientras que `tsconfig.app.json` usa `moduleResolution: "bundler"` (más permisiva, pensada para Vite). `tsc -b` local no lo detectaba porque usa esa config permisiva; reproducido localmente forzando `--moduleResolution nodenext` sobre los mismos archivos, con el mismo error letra por letra. **Corregido** agregando la extensión `.js` a todos los imports relativos de los archivos de producción bajo `api/` (apunta al `.ts` real; es la convención estándar de TypeScript para Node16/NodeNext, y Vite/Vitest/`tsc -b` la resuelven igual que sin extensión, verificado). Los archivos `*.test.ts` se dejaron sin tocar porque además se agregó **`.vercelignore`** excluyendo `**/*.test.ts` y `**/*.test.tsx`: sin él, Vercel intentaba compilar `api/rsvp.test.ts` como si fuera una función deployable (apareció en el mismo log de error), algo que nunca debió pasar.
-
-#### WED-13 — CI en pull requests
-
-**Setup · 2 · WED-12, WED-15**
-
-- [x] `.github/workflows/ci.yml` ejecuta `lint`, `lint:disables`, `typecheck`, `test:coverage` (con umbral) y `build`, en cada PR y en push a `master`.
-- [ ] `master` protegida: sin push directo, requiere CI en verde. **No verificable desde el repo** — es configuración de GitHub (Settings → Branches), no código. Confirmar manualmente en GitHub.
-
-#### WED-14 — Bloqueo de indexación
-
-**Setup · 1 · WED-12**
-
-- [x] `public/robots.txt` con `Disallow: /`, y `index.html` con `<meta name="robots" content="noindex, nofollow">` mientras no se lance.
-- [ ] `/i/*` y `/admin` con `noindex` **permanente**. Todavía no aplica: esas rutas no existen en la SPA (llegan con WED-50). El `noindex` global de arriba las cubre por ahora.
-- [~] Previews nunca indexables. Hoy sí lo están, como efecto colateral del bloqueo global (nada está lanzado). Falta el mecanismo definitivo que distinga "producción ya lanzada" de "preview", para que cuando WED-103 levante el `noindex` global, las previews sigan bloqueadas.
-
----
-
-### EPIC E2 — Firebase y datos · _vía A_
-
-#### WED-20 — Configurar Firebase
-
-**Setup · 2 · WED-12**
-
-- [x] Proyecto en plan Spark; Firestore en modo producción, Auth con email/contraseña.
-- [x] Service account cargada en variables de entorno de Vercel.
-- [x] Security Rules desplegadas denegando todo.
-- [x] **Verificado que el SDK web no puede leer `guests`.** Un `getDocs` sin autenticación contra la colección real devuelve `permission-denied` ("Missing or insufficient permissions"), confirmando las Security Rules deny-all.
-- [x] Usuario administrador creado; login end-to-end verificado en producción con una página de prueba temporal (`public/test-admin-login.html`, PR #2). Esa página ya se eliminó del repo una vez confirmado el flujo.
-
-#### WED-21 — Esquemas Zod y capa de datos
-
-**Feature · 3 · WED-20, WED-15**
-
-- [x] `src/schemas/guest.ts` con el esquema completo de §3 y tipos inferidos.
-- [x] Esquemas separados: `createGuestSchema`, `updateGuestSchema`, `rsvpRequestSchema`.
-- [x] `api/_lib/firestore.ts` centraliza `firebase-admin` y reutiliza la instancia entre invocaciones.
-- [x] Sin `any` en la capa de datos.
-- [x] Tests: `guestLimit = 0` falla (`rejectsGuestLimitBelowOneBecauseAnInvitationWithoutSeatsIsMeaningless`), `count > guestLimit` falla (`rejectsACountAboveTheLimitEvenWhenTheClientAllowedIt`), `phone` malformado falla (`rejectsPhoneNumbersThatAreNotE164BecauseTheWaMeLinkWouldBreak`), `lastName` y `titleLabel` ausentes pasan (`acceptsAGuestWithoutLastNameOrTitleLabelBecauseBothAreOptional`).
-- [x] Cobertura ≥ 90 % en este módulo — 100 % líneas/ramas/funciones (`npm run test:coverage`).
-
-#### WED-22 — Script de importación
-
-**Chore · 2 · WED-21**
-
-- [x] CLI que lee CSV con `firstName,lastName,titleLabel,guestLimit,phone` y crea documentos con `token` (`scripts/importGuests.ts`, `npm run import:guests -- <path-to-csv>`).
-- [x] Una fila inválida aborta la importación completa **sin escribir nada**, reportando fila y error. Verificado tanto en tests (`scripts/lib/guestImport.test.ts`) como en una corrida real contra un CSV inválido: exit code 1, `Row 3: Number must be greater than or equal to 1`, sin tocar Firestore.
-- [x] Ejecutarlo dos veces no duplica (detección por `phone`). Verificado en vivo contra Firestore real (ADR-011): un invitado de prueba (`titleLabel: "TEST - borrar antes del lanzamiento"`, el CSV de importación no tiene columna `notes`) se creó en la primera corrida con token y defaults correctos; la segunda corrida reportó `Imported 0, skipped 1` y el documento (mismo `id`, mismo `token`) no cambió. Dato de prueba eliminado inmediatamente después.
-- [x] Acentos y `ñ` almacenados correctamente — cubierto en `scripts/lib/csv.test.ts` y `scripts/lib/guestImport.test.ts` (`Íñigo`, `Peña`).
-
-#### WED-23 — Normalizador para que los novios armen la lista en Excel
-
-**Chore · 2 · WED-22**
-
-WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLimit,phone`, encabezados en inglés, teléfono en E.164). Ese formato no es razonable para pedírselo directo a los novios: fallan el encabezado, el formato de teléfono, y sobre todo el encoding (Excel de Windows exporta CSV en ANSI por defecto, no UTF-8, y corrompe acentos y `ñ` silenciosamente). Este ticket resuelve eso con un normalizador que evita que los novios exporten nada — solo llenan un `.xlsx` con encabezados en español y lo devuelven tal cual.
-
-- [x] `npm run normalize:guests -- <xlsx-o-csv> [output-path]` lee el `.xlsx` que llenaron los novios (o un CSV), normaliza el teléfono (acepta `7000-0000`, `7000 0000`, `+503 7000 0000`, `00503...`; asume `+503` para números locales de 8 dígitos) y valida cada fila contra el mismo `createGuestSchema` de WED-21 antes de escribir nada — mismo criterio de "todo o nada" que WED-22.
-- [x] El header esperado (`Nombre, Apellido, Texto en sobre, Cupo de invitados, Teléfono`) es la constante `HUMAN_SHEET_HEADER` en `scripts/lib/humanGuestSheet.ts` — es la referencia si hay que rearmar el archivo a compartir con los novios a mano. **Nota (2026-09-01):** el header decía originalmente "Trato para el sobre"; se renombró a "Texto en sobre" a pedido del usuario, junto con el mismo término en la consola (`adminGuestsTableCopy.titleLabel`, `guestFormFieldsCopy.titleLabel`) y en el CSV exportado (`GUEST_EXPORT_HEADER`), para que los tres queden consistentes.
-- [x] El CSV que produce es exactamente el que espera `npm run import:guests`; el mensaje final imprime el comando siguiente.
-- [x] Acentos y `ñ` preservados de punta a punta porque nunca se pasa por una exportación CSV manual (`.xlsx` → lectura directa con `exceljs`).
-- [x] Probado en vivo: una hoja de ejemplo válida normalizó y produjo el CSV correcto; una segunda hoja con una fila inválida (`guestLimit: 0`) abortó sin escribir el archivo de salida.
-- [x] Lógica pura (`normalizePhone`, `normalizeHumanGuestSheet`, `stringifyCsv`) cubierta con tests unitarios; el wrapper que lee el `.xlsx` no tiene tests, mismo criterio que `api/_lib/firestore.ts`.
-
-**Limpieza previa al cierre.** `guestImport.ts` y `humanGuestSheet.ts` tenían un `validateHeader` casi idéntico duplicado, y dos interfaces de error estructuralmente iguales (`GuestImportRowError` / `NormalizeRowError`). `importGuests.ts` y `normalizeGuestSheet.ts` repetían el mismo patrón de "leer argv o mostrar uso" y "imprimir fila+error y salir". Se extrajeron a `scripts/lib/rowValidation.ts` (`RowError`, `validateExactHeader`, con tests propios) y `scripts/lib/cli.ts` (`requireArg`, `reportRowErrorsAndExit`). Ambos CLI ahora envuelven `main()` en `.catch` para no filtrar un stack trace crudo de Node cuando el archivo de entrada no existe — verificado en vivo (`ENOENT` legible, exit 1). Se generó y borró el archivo de un solo uso mencionado arriba (`generateGuestTemplate.ts`); no quedan otros scripts equivalentes en el repo.
-
-**Nota.** Hubo un `scripts/generateGuestTemplate.ts` que generaba el `.xlsx` inicial por código; se eliminó porque es de un solo uso — el archivo ya generado y compartido con los novios es el entregable real, y regenerarlo por código no aporta sobre editar ese mismo archivo a mano (sigue en el historial de git, commit `d75ab94`, si hiciera falta recuperarlo).
-
----
-
-### EPIC E3 — Design System · _vía B_
-
-#### WED-30 — Tokens
-
-**Feature · 3 · WED-02, WED-10 · vía B — desbloqueada 2026-09-16 (Figma v2 recibido), en progreso**
-
-- [x] Los 14 tokens como variables CSS con nombre en inglés, expuestos en `@theme` de Tailwind v4 (`src/styles/tokens.css`; este proyecto no usa `tailwind.config.*`, ver WED-79). Valores corregidos contra el Figma v2 donde había fill nativo: `--bg-base`, `--bg-hero`, `--text-body`, `--accent-coral`, `--accent-terracotta` (tabla de §5 actualizada). `--surface-dark`, `--surface-sage`, `--surface-muted`, `--text-heading` siguen aproximados porque sus únicas apariciones en el v2 están dentro de imágenes flattened (ver nota de ADR-008) — se verifican al implementar cada sección de E5, no aquí.
-- [x] Ningún hex hardcodeado en componentes — verificado con grep; los únicos hex del código están en el registro de tokens (`src/lib/designTokens.ts`) y en `tokens.css`, que es exactamente su función.
-- [x] Radio y sombra reales encontrados en nodos nativos del v2 y agregados como tokens: `--radius-invitation-sm: 5px` (botón "Hotel", caja de nota de vestimenta) y `--shadow-invitation-badge: 2px 2px 1px rgba(0,0,0,0.25)` (insignias de Waze/Google Maps). No se inventó una escala completa de espaciado paralela a la de Tailwind (ya cubre el proyecto vía sus utilidades por defecto); solo se documentó el factor de conversión 885→432 en ADR-004 para que cada ticket de E5 pueda derivar sus propios valores.
-- [x] `/styleguide` (no enlazada; cubierta por el `noindex` global de WED-14) renderiza la paleta completa (14 tokens, hex + uso + estado verificado/aproximado), la tabla de contraste AA y los tokens de radio/sombra. Tipografía queda como nota pendiente de WED-31 (no hay fuentes autohospedadas todavía). Cubierto con tests (`StyleguidePage.test.tsx`).
-- [x] **Contraste WCAG AA verificado en cada par texto/fondo**, con utilidades propias y testeadas (`src/lib/color.ts`, 100% cobertura). `--text-body` sobre `--bg-base` (valores reales del v2) da 6.13:1 — pasa AA; la sospecha original quedó resuelta por el cambio de paleta del v2, no por ajuste de diseño. **Nuevo hallazgo que si falla:** `--text-on-sage` sobre `--surface-sage` da 3.42:1, insuficiente para texto normal (necesita 4.5:1; alcanza el piso de texto grande, 3:1). Pendiente de ajuste de diseño antes de que WED-70 use esa combinación en el botón "Enviar".
-
-#### WED-31 — Tipografías
-
-**Feature · 2 · WED-30 — en progreso, código implementado 2026-09-16**
-
-- [x] Great Vibes e Inter autohospedadas en `public/fonts/` (`inter-latin.woff2` 48 KB, `great-vibes-latin.woff2` 42 KB) en WOFF2; sin CDN externo — descargadas una sola vez desde `fonts.gstatic.com` y committeadas, `@font-face` en `src/styles/fonts.css` apunta a `/fonts/...` local, no a Google.
-- [x] Solo los pesos en uso: Inter se sirve hoy como **un solo archivo variable** que cubre el rango declarado `font-weight: 400 700`, más liviano que dos estáticos separados (verificado: Google ya no distribuye Inter estático por peso vía su API — un `family=Inter:400,700` clásico devuelve el mismo binario variable para ambos pesos). Great Vibes es estático, Regular único.
-- [x] **Corrección al criterio original:** se descartó `latin-ext`. Verificado que todos los acentos y la `ñ` del español (á é í ó ú ñ ü ¡ ¿, mayúsculas incluidas) caen dentro del bloque Unicode `U+0000–00FF` que Google llama subset **`latin`** — `latin-ext` (`U+0100–02BA`) cubre otros idiomas latinos (checo, polaco, vietnamita), no el español. Se autohospedó solo el subset `latin` para ambas familias, la mitad del peso de incluir los dos. Sin corrección de contenido pendiente: `latin` ya cubre cualquier `titleLabel`/nombre real que se cargue en WED-101.
-- [x] `font-display: swap` con fallback métricamente compatible **para Inter**: `'Inter Fallback'` (`local('Arial')` con `ascent-override`/`descent-override`/`size-adjust` reales, calculados con las métricas publicadas de Capsize para Inter Regular/Bold vs. Arial — no inventados). **Sin ese ajuste para Great Vibes**: no existe una fuente cursiva de sistema estable entre Windows/macOS/Android/iOS contra la cual calcular un fallback confiable, así que se dejó `cursive` genérico con `font-display: swap` a secas — decisión documentada, no un olvido.
-- [ ] **Great Vibes verificada en iOS Safari**, donde las caligráficas suelen romperse. No verificable: no hay dispositivo ni navegador disponible en este entorno, mismo criterio que el resto de los "probado en un teléfono real" del backlog. Único punto que mantiene abierto este ticket.
-
-#### WED-32 — Componentes base
-
-**Feature · 3 · WED-30, WED-31 — código implementado 2026-09-16**
-
-- [x] `Button` (variant `primary`/`secondary`, `disabled`, `isLoading` + `loadingLabel`), `Select` (nativo, con chevron SVG per la excepción de ADR-008), `Card` (variantes `dark`/`sage`/`muted`), `Section` (wrapper semántico con `id` para anclas), `Divider`, `FloralOrnament` (decorativo, `alt=""`, `aria-hidden`, `loading="lazy"` con opt-out `isPriority`), `Modal` (sobre `<dialog>` nativo). Todos en `src/components/ui/`, uno por archivo, con test propio.
-- [x] Todos operables por teclado con `focus-visible` visible — `Button`/`Select` llevan `focus-visible:outline` explícito; verificado con `@testing-library/user-event` (`tab()` + `keyboard('{Enter}')`).
-- [x] `Select` es un `<select>` nativo estilizado (`appearance-none` + chevron superpuesto), no un div con listeners.
-- [x] `Modal` sobre `<dialog>` + `showModal()`: cierra con `Esc` (manejador explícito, no solo el comportamiento nativo) y devuelve el foco al disparador (guardado en un ref al abrir, restaurado en el evento `close`). **Matiz real:** el atrapado de `Tab` dentro del modal se apoya en el comportamiento nativo de `<dialog>` (soportado en Chrome/Safari/Firefox reales), no se reimplementó a mano — y **no es verificable con Vitest** porque jsdom 25 no implementa `showModal()`/`close()` en absoluto. Se agregó un polyfill mínimo en `src/testSetup.ts` (mismo criterio que `hasPointerCapture`/`File.prototype.text` de WED-81/estabilización) que sí permite testear apertura, foco inicial, Esc, click en backdrop y retorno de foco — pero el ciclo de Tab en sí queda pendiente de verificación manual en un navegador real, junto con WED-90.
-- [x] Todas las variantes en `/styleguide`, sección "Components" nueva (botones, select, las 3 cards, divider, ornamento placeholder, modal de ejemplo funcional).
-- [x] Props tipadas, sin `any`, con nombres en inglés — verificado con `npm run lint`/`typecheck`.
-
-**Hallazgo real de testing (2026-09-16).** jsdom 25.0.1 no implementa `HTMLDialogElement.prototype.showModal`/`close` — `dialog.showModal()` lanza `TypeError`. Se agregó un polyfill mínimo (abre con `setAttribute('open', '')`, cierra quitando el atributo y disparando un evento `close` real) para poder testear el ciclo de vida del `Modal` sin reimplementar el comportamiento nativo completo.
-
-**Bug real encontrado y corregido antes de cerrar el ticket.** La primera versión de `useDialogController` volvía a suscribir el listener de `close` en cada render porque dependía de la identidad de `onClose` (`useEffect(..., [dialogRef, onClose])`) — con un `onClose` inline (`() => setIsOpen(false)`, el caso normal en React), React desmonta y remonta ese listener en cada render. Al cerrar el modal, el ciclo cleanup-de-todos-los-efectos-antes-que-setup-de-todos-los-efectos hacía que el listener se quitara y se volviera a poner justo alrededor del momento en que se disparaba el evento `close`, perdiéndolo — el foco nunca volvía al disparador. Reproducido con un test real (`movesFocusInsideOnOpenAndReturnsItToTheTriggerOnClose`) antes del fix. Corregido con el patrón de "ref con el valor más reciente" (`onCloseRef`, actualizado en cada render, leído dentro del handler): el listener de `close` ahora se suscribe una sola vez, con dependencia solo en `dialogRef` (estable), y siempre llama a la versión más reciente de `onClose`.
-
-#### WED-33 — Iconos y ornamentos
-
-**Feature · 3 · WED-01 — parcial, código implementado 2026-09-18. Cubre Waze/Google Maps; los 7 iconos del itinerario y el disco de música quedan bloqueados (ver nota).**
-
-- [~] **Iconos funcionales en SVG optimizado con SVGO; heredan color con `currentColor` donde aplique.** Hecho para Waze y Google Maps (`public/assets/icons/waze.svg`, `google-maps.svg`); son marcas de marca multicolor (no monocromas), así que no heredan `currentColor` — no aplica, a diferencia del chevron del `Select` (ya en SVG inline desde WED-32, monocromo, sí hereda color). **Los 7 iconos del itinerario y el del disco de música siguen sin poder extraerse**: el "contenedor itinerario completo" (nodo `95:194`, sección WED-57) ya estaba documentado en ADR-008 como una sola imagen PNG plana en el v2, sin nodos de icono individuales que exportar — ese hallazgo es previo a esta sesión, no nuevo. El disco de música no aparece en ningún nodo del árbol auditado; depende de WED-60/61, todavía lejos en el backlog. Ambos quedan pendientes de este ticket hasta que haya una fuente vectorial real.
-- [x] **Ornamentos e ilustraciones en WebP con transparencia, no SVG (ADR-008).** El único ornamento genérico del archivo (`Flores Encabezado`, usado en la portada) ya se resolvió en WED-53 como WebP — ver esa sección para el detalle de la exportación. No se encontraron otros ornamentos reutilizables fuera de bloques específicos de una sola sección (esos se exportan al implementar cada sección de E5, por su propio AC).
-- [x] Ornamentos e ilustraciones decorativas con `aria-hidden="true"` — `FloralOrnament` (WED-32) ya lo aplica; `LocationIcon` (nuevo, `src/components/ui/LocationIcon.tsx`) también, porque el nombre accesible del botón de ubicación debe venir del enlace que lo envuelve (WED-56), no del icono.
-- [ ] **Iconos de ubicación con `aria-label` ("Abrir en Waze", "Abrir en Google Maps").** No aplica todavía a este ticket: el `aria-label` va en el `<a>`/botón que envuelve al icono, que es responsabilidad de WED-56 (`VenueSection`, sin empezar). `LocationIcon` ya se dejó deliberadamente `aria-hidden` para que ese enlace sea la única fuente del nombre accesible.
-- [x] **Peso total de iconos SVG < 40 KB.** `waze.svg` (3.9 KB) + `google-maps.svg` (1.2 KB) = 5.1 KB tras optimizar con `svgo --multipass` (agregado como devDependency, mismo criterio que `sharp` en WED-52: solo pipeline de build, no viaja al bundle de runtime).
-- [x] **Peso total de ornamentos WebP < 400 KB.** El único ornamento de este alcance (`flores-encabezado.webp`, WED-53) pesa 12 KB. Los assets del sobre (`paper.webp`/`seal.webp`, WED-52) no se cuentan aquí porque son textura/sello, no "ornamento decorativo" en el sentido de este ticket — de todos modos, sumados (45+32 KB) siguen muy por debajo del presupuesto.
-- [x] **Comparado el peso SVG vs WebP de un ornamento representativo, y la decisión documentada con el número real.** Ya se hizo en la práctica al construir WED-53: el SVG que exporta Figma para un solo clúster floral (`Flores Encabezado`, un lado) pesa 74 KB sin optimizar; el mismo asset convertido a WebP pesa 12 KB. Confirma la decisión de ADR-008 con un número real de este archivo v2 (no solo del v1).
-
-**Implementación.** `LocationIcon` (`src/components/ui/LocationIcon.tsx`) mapea `brand: 'waze' | 'google-maps'` a su asset — mismo patrón plano que `FloralOrnament`. Los dos SVG se construyeron componiendo las capas vectoriales reales del archivo (nodos `86:102`/`93:180`, "Ubicación Waze"/"Ubicación Google"), usando las posiciones `x`/`y` exactas de `get_metadata` para los `transform="translate(...)"` de cada grupo — no son un trazado a mano ni una recomposición aproximada, cada `path` es el `d` que expone Figma tal cual. Se excluyó a propósito el círculo de fondo (`Ellipse 1`) y el texto "Ubicación" del SVG: el círculo se reconstruye con un token de color (`bg-hero`) y el texto es contenido editable, ninguno de los dos pertenece al icono en sí — eso es responsabilidad de armar el botón completo en WED-56.
-
-Verificados visualmente renderizando ambos SVG a PNG con `sharp` antes y después de `svgo`, sin diferencias.
-
-#### WED-34 — Contenido desacoplado
-
-**Chore · 2 · WED-10**
-
-- [ ] Textos, itinerario, dirección, URLs de mapas y fecha en `src/content/`, tipados, **con claves en inglés y valores en español**.
-- [ ] Cambiar la fecha en un archivo actualiza calendario, cuenta regresiva y sección de fecha.
-- [ ] Agregar un hito al itinerario no requiere tocar componentes.
-- [ ] Los mensajes de error del RSVP viven aquí, mapeados por `code`, y son editables sin tocar código. Incluye el texto literal de R2.
-- [ ] Falta un campo obligatorio → falla el build.
-
----
-
-### EPIC E4 — Capa de API · _vía A_
-
-#### WED-40 — `GET /api/invitation/[token]`
-
-**Feature · 3 · WED-21 — cerrado**
-
-- [x] Devuelve el shape de §4 para un token válido.
-- [x] **Nunca devuelve `phone`, `notes` ni `token`** (verificado con test).
-- [x] Escribe `firstOpenedAt` solo si estaba en `null`; una segunda visita no la sobrescribe.
-- [x] Token inexistente → 404 con cuerpo JSON, sin stack trace.
-- [x] `rsvpOpen` calculado contra `RSVP_DEADLINE` en `America/El_Salvador`.
-- [x] `Cache-Control: private, no-store`: la respuesta de un invitado jamás se sirve a otro. Ya cubierto por el header global de `vercel.json` (WED-12) sobre `/api/(.*)`; no hizo falta código adicional.
-- [x] Tests: válido, inexistente, malformado, pasada la fecha límite, segunda apertura, invitado ya confirmado.
-
-**Implementación.** `api/invitation/[token].ts` delega en dos helpers de `api/_lib/` reutilizables por WED-41: `guests.ts` (`findGuestByToken`, que también convierte los `Timestamp` de Firestore a `Date` contra `guestSchema`) y `rsvpDeadline.ts` (`isRsvpOpen`, comparación de `Date` contra `RSVP_DEADLINE`, válida porque El Salvador no tiene horario de verano). Un token malformado o ausente en la query nunca llega a consultar Firestore: se resuelve a `TOKEN_NOT_FOUND` directamente. 100% de cobertura en los tres archivos nuevos (verificado con `npm run verify`, incluye el chequeo de `tsc -b --noEmit` post-fix del bug de WED-15).
-
-**Verificado en vivo contra Firestore real (ADR-011).** Se llamó al handler directamente (sin `vercel dev`, que requiere link/login interactivo no disponible en este entorno) contra un invitado de prueba (`titleLabel`/`notes`: `"TEST - borrar antes del lanzamiento"`), vía un script temporal fuera del repo. Confirmado: 200 con el shape público exacto (sin `phone`/`notes`/`token`), `firstOpenedAt` se escribe una sola vez (releído de Firestore tras dos llamadas, un único `Timestamp`), 404 `TOKEN_NOT_FOUND` para token inexistente. Invitado de prueba borrado inmediatamente después; no quedó rastro en git ni en Firestore.
-
-#### WED-41 — `POST /api/rsvp`
-
-**Feature · 5 · WED-40 — cerrado**
-
-- [x] Valida con el esquema Zod compartido; inválido → 400 `INVALID_PAYLOAD`.
-- [x] **`count > guestLimit` → 400 `COUNT_OUT_OF_RANGE`, probado con curl directo al endpoint.** Verificado en vivo (ver nota abajo).
-- [x] `count < 1` → 400 (lo rechaza `rsvpRequestSchema` a nivel de esquema, mismo código `INVALID_PAYLOAD`).
-- [x] **`confirmed === true` → 409 `ALREADY_CONFIRMED` sin escribir en la base** (R2, ADR-006).
-- [x] Pasada la fecha límite → 409 `RSVP_CLOSED` **sin escribir en la base**.
-- [x] Los dos 409 se distinguen por `code`.
-- [x] La escritura ocurre dentro de una **transacción** que relee `confirmed`: dos envíos simultáneos del mismo token producen exactamente una confirmación. Test: `rejectsConcurrentConfirmationsSoOnlyOneSucceeds` (en `api/_lib/guests.test.ts`, junto a la implementación de la transacción).
-- [x] Escribe `confirmed`, `confirmedCount`, `confirmedAt`, `updatedAt` en una sola operación.
-- [x] Devuelve `waLink` ya construido y URL-encoded por el servidor.
-- [x] Rate limit: >5 envíos por IP por minuto → 429 `RATE_LIMITED`.
-- [x] Honeypot o tiempo mínimo de llenado; un POST plano con curl es rechazado. **Decisión de implementación (acordada antes de escribir código):** en vez de agregar un campo nuevo al body (lo que habría cambiado el contrato de §4), se reutiliza `firstOpenedAt` de WED-40. `POST /api/rsvp` responde `429 RATE_LIMITED` si `firstOpenedAt` es `null` (nunca pasó por el `GET`, típico de un bot que ataca el endpoint directo) o si pasaron menos de 3 s desde esa apertura. El body de la request sigue siendo exactamente `{ token, count }`, sin cambios a §4.
-- [x] Cobertura ≥ 90 %; los nombres de los tests documentan cada regla (ADR-007).
-
-**Implementación.** `api/rsvp.ts` orquesta: rate limit por IP (`api/_lib/rateLimit.ts`, ventana deslizante en memoria, mismo patrón de instancia reutilizada entre invocaciones que `firestore()`) → validación de esquema → `findGuestByToken` → `isRsvpOpen` → chequeo anti-bot vía `firstOpenedAt` → `fitsWithinGuestLimit` → `confirmGuest` (transacción en `api/_lib/guests.ts`) → `waLink`. El mensaje de WhatsApp vive en `src/content/whatsapp.ts` (único lugar permitido para el literal en español, per §10); `api/_lib/whatsapp.ts` solo arma la URL `wa.me` con `encodeURIComponent`. Se extrajo `readRequiredEnv` (antes duplicado en `firestore.ts`) a `api/_lib/env.ts` para no triplicarlo con `BRIDE_WHATSAPP`.
-
-**Verificado en vivo contra Firestore real (ADR-011).** Con dos invitados de prueba marcados y borrados después: `count > guestLimit` → 400 `COUNT_OUT_OF_RANGE`; confirmación válida tras esperar el tiempo mínimo → 200 con `waLink` correcto (`https://wa.me/...?text=Hola%2C%20soy%20Test...`); segundo intento sobre el mismo token → 409 `ALREADY_CONFIRMED`; un POST directo a un token que nunca pasó por `GET /api/invitation/[token]` → 429 `RATE_LIMITED`.
-
-#### WED-42 — Middleware de auth admin
-
-**Feature · 3 · WED-20 — cerrado**
-
-- [x] `requireAuth(request)` verifica el ID token con `verifyIdToken()`.
-- [x] Sin cabecera, token expirado o de otro proyecto → 401 `UNAUTHORIZED`.
-- [x] **Verificado que un ID token válido de otro proyecto Firebase es rechazado.** `verifyIdToken()` valida el `aud` del token contra el proyecto configurado por diseño de Firebase; como ADR-011 descarta un segundo proyecto Firebase de prueba, esto se verificó con un test unitario que confirma que **cualquier** rechazo de `verifyIdToken()` (expirado, malformado, de otro proyecto) se traduce en `UnauthorizedError` → 401, más una verificación en vivo contra el proyecto real con un token basura (ver nota abajo). No se reimplementa la garantía de Firebase, se confía en ella y se prueba que nuestro código reacciona bien a su rechazo.
-- [x] Test que confirma que ninguna ruta bajo `/api/admin/` quedó sin proteger: `everyHandlerUnderApiAdminIsWrappedInWithAdminAuth` escanea `api/admin/**/*.ts` (glob real, no una lista harcodeada) y falla si algún handler no contiene `withAdminAuth`. Hoy pasa vacío porque `api/admin/` todavía no existe (WED-43); el test queda listo para proteger cada ruta que se agregue.
-
-**Implementación.** `api/_lib/adminAuth.ts` expone `requireAuth` (valida el header `Bearer`, llama a `auth().verifyIdToken()`, envuelve cualquier fallo en `UnauthorizedError`) y `withAdminAuth`, un higher-order function que envuelve un handler para que la protección sea estructural: un handler de `/api/admin/*` solo puede exportarse a través de `withAdminAuth`, así que no hay ninguna ruta que alguien pueda olvidar proteger individualmente. WED-43 en adelante debe exportar sus handlers como `export default withAdminAuth(async (request, response, admin) => {...})`.
-
-**Verificado en vivo contra el proyecto Firebase real (ADR-011).** Sin `Authorization` → rechazado. Un token basura (no un JWT real) → rechazado por el `verifyIdToken()` real, no por un mock. No se pudo probar en vivo el caso específico de "token de **otro proyecto** Firebase" porque ADR-011 descarta tener un segundo proyecto; ese sub-caso queda cubierto solo por el test unitario descrito arriba.
-
-#### WED-43 — CRUD de invitados
-
-**Feature · 5 · WED-42 — cerrado**
-
-- [x] `GET /api/admin/guests` devuelve `{ guests, stats }`; `stats` trae `total`, `confirmed`, `pending`, `openedNotConfirmed`, `totalConfirmedPeople`.
-- [x] `POST /api/admin/guests` genera `token` en servidor, aplica defaults, devuelve el documento creado (201).
-- [x] `PATCH /api/admin/guests/[id]` edita `firstName`, `lastName`, `titleLabel`, `guestLimit`, `phone`, `notes`, `confirmed`, `confirmedCount`; `token` y `createdAt` no forman parte de `updateGuestSchema`, así que cualquier intento de tocarlos se descarta silenciosamente por Zod (modo `strip`) — el cambio nunca se aplica, que es lo que pide el criterio.
-- [x] **`PATCH` es la única vía para modificar una confirmación** (ADR-006), y soporta **ambas** operaciones: corregir `confirmedCount` dejando `confirmed` en `true`, o devolver `confirmed` a `false` para que el invitado reenvíe por su cuenta. Ambas pasan por el mismo `updateGuest`.
-- [x] Reducir `guestLimit` por debajo de `confirmedCount` → 400 `GUEST_LIMIT_BELOW_CONFIRMED_COUNT` con `message` explicativo. La comparación usa el **resultado neto** del patch (si el mismo request baja `guestLimit` y `confirmedCount` de forma consistente, se acepta).
-- [x] `DELETE /api/admin/guests/[id]` elimina y devuelve 204.
-- [x] `POST /api/admin/guests/[id]/rotate-token` genera token nuevo vía `nanoid`; el token anterior deja de existir en el documento, así que el enlace viejo pasa a devolver 404 en `GET /api/invitation/[token]` (ADR-002: un token que no existe en Firestore es indistinguible de uno inválido).
-- [x] `GET /api/admin/export` devuelve CSV con encabezados en español (`src/content/guestExport.ts`, único lugar permitido para ese literal), BOM UTF-8 delante para que Excel abra los acentos bien, y `Content-Disposition: attachment; filename="invitados.csv"`.
-- [x] Tests de cada endpoint incluyendo casos de error. 157 tests en el repo, 100% de cobertura en los 4 archivos de rutas nuevos y en `api/_lib/guests.ts` (salvo una rama defensiva genuinamente inalcanzable, mismo criterio que en WED-40/41).
-
-**Implementación.** Todos los handlers están envueltos en `withAdminAuth` (WED-42), verificado tanto por el test estructural de WED-42 (`everyHandlerUnderApiAdminIsWrappedInWithAdminAuth`, que ya detecta estos 4 archivos reales) como en vivo. `api/_lib/guests.ts` ganó `getGuestById`, `listGuests`, `createGuest`, `updateGuest` (devuelve un resultado tipado `{ok, ...}` en vez de lanzar, igual que `confirmGuest`) y `rotateGuestToken`. `computeGuestStats` y `guestLimitCoversConfirmedCount` viven en `src/schemas/guest.ts` junto a `fitsWithinGuestLimit`, pensadas para reutilizarse también desde el cliente en WED-82 (actualización optimista). Se extrajo `api/_lib/httpParams.ts` (`extractRouteParam`) y se refactorizó `api/invitation/[token].ts` para usarlo también, evitando una tercera copia del mismo patrón de WED-40. El export CSV reutiliza `stringifyCsv` de `scripts/lib/csv.ts` (WED-22/23) en vez de reimplementar el escapado.
-
-**Verificado en vivo (ADR-011).** Sin `Authorization`, las 3 rutas probadas responden 401 real (no simulado). Con un token basura, `POST /api/admin/guests` también 401. Contra Firestore real (bypaseando la capa HTTP, que ya está probada arriba): crear invitado de prueba → aparece en `listGuests` → `updateGuest` rechaza `guestLimit: 0` con `confirmedCount: 1` → `updateGuest` aplica un cambio de `notes` real → `rotateGuestToken` cambia el token → `deleteGuestById` lo borra → ya no aparece en la lista. Invitado de prueba marcado y eliminado, sin rastro.
-
----
-
-### EPIC E5 — Invitación · _vía B_
-
-> Criterios compartidos: fiel al mock-up a 432 px (dividir entre 2.5 toda medida del archivo); textos desde `src/content/`; imágenes con `alt` descriptivo; sin errores de consola.
-
-#### WED-50 — Layout raíz, ancho fijo y enrutamiento
-
-**Feature · 3 · WED-10 · vía A**
-
-> Solo el enrutamiento y el contenedor. No necesita diseño: se puede hacer en la vía A y sirve de esqueleto para que `/admin` y `/i/:token` existan desde la semana 1.
-
-- [x] `<html lang="es">`, viewport meta correcto (ya estaban en `index.html` desde WED-10). Fuentes globales: `--font-sans` (stack de sistema) aplicado a `body` en `tokens.css`; las fuentes reales (Great Vibes/Inter) son WED-31, todavía vía B.
-- [x] Contenedor de la invitación: `PublicPageContainer` (`src/components/ui/`) con `w-full max-w-invitation mx-auto`; `body` lleva `background-color: var(--color-bg-base)` para que el color se extienda a los lados en pantallas anchas, no solo el contenedor de 432 px.
-- [~] **Sin scroll horizontal en 320 px.** El CSS es fluido a propósito (`max-w-invitation` es un tope, no un ancho fijo; ningún `width` en px duro). **No verificado en emulador ni en un dispositivo real de 360 px** — no hay navegador ni dispositivo disponible en este entorno. Pendiente de verificación manual.
-- [x] Rutas: `/i/:token`, `/admin/*` (lazy vía `React.lazy`), `/styleguide`, `*` (404 con estilo) — todas en `src/App.tsx`.
-- [x] `/` sin token muestra `HomePage`, una página informativa distinta de la invitación y del 404.
-- [x] **El chunk de `/admin` no se descarga en la ruta de invitación.** Verificado con `npm run build`: `AdminApp` sale en su propio chunk (`AdminApp-*.js`, 0.2 kB) y el chunk principal solo lo referencia como import dinámico, nunca de forma eager (confirmado con `grep` sobre el bundle de salida). No se verificó en la pestaña Network de un navegador real (no disponible en este entorno), pero el chunk separado en el build es la misma garantía.
-
-#### WED-51 — Carga de datos del invitado
-
-**Feature · 3 · WED-50, WED-40 · vía A**
-
-> Es lógica de datos, no presentación. Los estados de carga y error se maquetan sin estilo y se visten en la vía B.
-
-- [x] Hook `useInvitation(token)` (`src/hooks/useInvitation.ts`) con TanStack Query consulta `/api/invitation/:token` al montar (`enabled: token.length > 0`). Reutiliza `publicInvitationSchema` de `src/schemas/guest.ts` (WED-21) para parsear la respuesta, así que el cliente valida el mismo shape que el servidor devuelve.
-- [x] Estado de carga: `InvitationStatusScreen` sin diseño final (WED-30/31 siguen sin arrancar) pero no es pantalla en blanco.
-- [x] Token inválido → **misma `NotFoundPage` genérica que la ruta `*`**, sin filtrar el `code` crudo de la API (ADR-002: token inexistente = 404 indistinguible de uno inválido).
-- [x] Error de red → `InvitationStatusScreen` con botón "Reintentar" que llama `query.refetch()`; un solo reintento automático antes de mostrarlo (`InvitationNotFoundError` nunca reintenta, para no golpear la API con un token que ya sabemos que no existe).
-- [x] `titleLabel`, `guestLimit` y `confirmed` disponibles vía contexto (`InvitationProvider`/`useInvitationContext` en `src/hooks/`), no como props. **Nota sobre el fallback:** el AC dice "`titleLabel` con fallback a `firstName lastName`", pero el contrato público de §4 (`GET /api/invitation/[token]`) **nunca devuelve `lastName`** — solo `firstName`. El fallback implementado es `titleLabel ?? firstName`, que es todo lo que el cliente puede ver; no se infló el contrato para conseguir el `lastName` que el AC menciona.
-
-**Implementación (WED-50/51, 2026-09-01).** `src/App.tsx` monta `QueryClientProvider` + `BrowserRouter`; `/admin/*` usa `lazy()` + `Suspense`. `src/hooks/invitationContext.ts` separa el objeto `Context` y el mapeo `PublicInvitation → InvitationContextValue` de `src/hooks/InvitationProvider.tsx` (el componente) y `src/hooks/useInvitationContext.ts` (el hook) en tres archivos, no uno: `eslint-plugin-react-refresh` (`only-export-components`, con `--max-warnings 0`) marca error si un mismo archivo exporta un componente y algo más, así que mezclarlos habría roto `npm run lint`. Todos los componentes de esta sesión están como `const X = (): ReactNode => {...}` en vez de `function X() {...}`: la regla `@typescript-eslint/naming-convention` del repo solo permite PascalCase para variables `const` de tipo función, no para declaraciones `function` (que caen en el selector `default`, camelCase). Todo el copy en español (`homeCopy`, `notFoundCopy`, `invitationStatusCopy`, `adminShellCopy`) vive en `src/content/appShell.ts`, nuevo. `PublicPageContainer` (`src/components/ui/`) es el primer componente real bajo `ui/`, extraído para no repetir el wrapper de 432 px entre `HomePage`, `NotFoundPage` y los estados de `InvitationPage`. 177 tests en el repo (antes 157), 99.46% de cobertura global. `npm run verify` y `npm run build` en verde; el chunk de `/admin` sale separado (`AdminApp-*.js`, 0.2 kB) en el build de producción.
-
-#### WED-52 — Pantalla del sobre
-
-**Feature · 5 · WED-51 — código implementado 2026-09-16, faltan la animación (WED-60) y verificación en dispositivo real**
-
-- [x] `EnvelopeGate` (`src/components/ui/EnvelopeGate.tsx`) a pantalla completa (`h-dvh`): papel texturizado (dos mitades, mismo asset real exportado del Figma v2), sello de lacre con monograma "F&F" centrado sobre la costura. **Sin doblez vertical dibujado aparte** — no existe como elemento propio en el archivo v2 (la costura entre las dos mitades de papel ya cumple ese rol visual); si el diseñador diferencia "doblez" de "costura" más adelante, se ajusta.
-- [x] "Para:" seguido del `titleLabel`, en `font-script` (Great Vibes, WED-31), en la posición del mock-up (inferior derecha).
-- [x] **Es un `<button>` real** que cubre toda el área del sobre, con `aria-label` dinámico (`envelopeCopy.openButtonLabel(titleLabel)`, en `src/content/envelope.ts`).
-- [x] Operable con Enter y Espacio (nativo de `<button>`) y con `focus-visible` visible — verificado con `@testing-library/user-event`.
-- [x] Affordance: el texto del `aria-label` ya combina la instrucción ("Toca para abrir…") con el destino; sin elemento visual adicional para no competir con la estética del mock-up.
-- [x] **Scroll bloqueado** (`document.body.style.overflow = 'hidden'` mientras el sobre está visible, restaurado al desmontar) y contenido de abajo con `element.inert = true` (no alcanzable por teclado ni lectores de pantalla) hasta que se abre.
-- [x] Al abrirse, el foco se traslada al `<main>` de la invitación (`tabIndex={-1}` + `.focus()` explícito). Verificado con un test de integración en `InvitationPage.test.tsx`.
-- [x] La foto de portada se precarga mientras el sobre está en pantalla. **Implementado sin código de precarga dedicado, en WED-53.** `<main>` (con `CoverSection` dentro) ya se monta siempre, incluso mientras el sobre está visible — el sobre es un overlay `fixed` con `z-50` que lo cubre visualmente, pero no lo desmonta ni lo saca del flujo del documento (`content.inert` solo bloquea foco/teclado, no el montaje). El `<img>` de la foto de portada, con `loading="eager"`, dispara su fetch en cuanto el DOM existe, sin importar que esté tapado por el sobre — el `loading="lazy"` nativo se salta por distancia de scroll, no por z-index, así que igual habría precargado, pero se dejó `eager` para no depender de ese detalle sutil del navegador.
-- [x] **Se muestra en cada visita**: no hay persistencia (`sessionStorage`/`localStorage`) de ningún tipo, es estado de componente puro que nace en `false` en cada montaje.
-- [ ] **LCP del sobre < 2.5 s en 4G simulada.** No medible en este entorno (sin navegador ni Lighthouse disponibles) — pendiente de WED-91.
-
-**Assets reales, no placeholders.** `public/assets/envelope/paper.webp` (45 KB) y `seal.webp` (32 KB) se exportaron del Figma v2 real (nodos `125:1784`/`125:1790`/`125:1796`) vía captura MCP a 2×, y se convirtieron de PNG a WebP con `sharp` (agregado como devDependency solo para el pipeline de assets, no viaja al bundle de runtime). **Hallazgo real:** el PNG original que expone `get_design_context` para estos nodos pesa 5.7 MB (papel) y 2 MB (sello) sin comprimir — habría reventado el presupuesto de 700 KB de WED-91 varias veces con una sola imagen. Se usó en su lugar `get_screenshot` con `maxDimension` ajustado a ~2× el tamaño real de render (439×1900 para el papel, ~2× el ancho de sello real de 350px) y luego `sharp` para la conversión a WebP (calidad 65 para el papel, 85 para el sello, que sí necesita más detalle por sus relieves). Verificado que el asset de `get_design_context` para el sello (`ae525.png`) sí tiene transparencia alfa real (`0,0,0,0` en las esquinas); el screenshot de un nodo aislado, en cambio, compone contra un fondo oscuro opaco — para el sello se usó el asset de `get_design_context` (redimensionado), no el screenshot aislado, precisamente por eso.
-
-**Corrección al AC original.** El ticket asumía que el papel tenía un borde "torn"/deckled recortado con máscara — verificado con `sharp` que el canal alfa de la exportación es 100% opaco en las esquinas: es un rectángulo simple, la "máscara" que aparece en el código nativo de Figma solo recorta la textura ancha en dos mitades con una línea recta, no un borde decorativo. Simplificado en el código: dos `<span>` con el mismo `background-image`, sin replicar la técnica de `mask-image` + rotación de Figma.
-
-**Bug real reportado por el usuario y corregido (2026-09-16): el texto "Para:"/`titleLabel` salía centrado, no a la derecha como en el diseño.** Causa: el `<button>` raíz usaba `justify-center` y era el único participante real del layout flex — el papel y el sello son `absolute`, así que ese `justify-center` terminaba centrando exclusivamente el bloque de texto en medio de toda la pantalla. Corregido: el texto ahora se posiciona con `absolute right-8 bottom-16` dentro de un contenedor interno, en vez de depender del `justify-*` del botón. **De paso se corrigió un problema no reportado pero real:** el sobre no respetaba el tope de 432 px de ADR-004 — al ser `fixed inset-0`, el papel se estiraba de borde a borde en pantallas anchas, distinto al resto del sitio (que sí extiende `--color-bg-base` a los lados pero topa el contenido en 432 px). Se envolvió el papel/sello/texto en un contenedor `max-w-invitation` centrado dentro del botón, con `bg-envelope-text` llenando el resto del ancho en desktop — mismo patrón que `PublicPageContainer`. Tamaños de "Para:"/`titleLabel` ajustados a los valores reales medidos en el v2 (90px/65px a escala 885, ×0.4878 ≈ 44px/32px) en vez de la escala genérica de Tailwind usada en el primer borrador.
-
-#### WED-53 — `CoverSection`
-
-**Feature · 3 · WED-52 — código implementado 2026-09-18, con dos correcciones al AC verificadas contra el Figma v2 real**
-
-- [x] Foto vertical con degradado durazno arriba y ornamento floral abajo. `CoverSection` (`src/components/ui/CoverSection.tsx`): foto a `object-cover` dentro de un contenedor `aspect-[885/1280]` (la proporción real del frame "Contenedor portada", nodo `2:4`), con un vignette de un solo `linear-gradient` de 4 paradas (`bg-hero` sólido → transparente 40%–60% → `bg-hero` sólido) que replica los dos degradados separados del archivo ("degradado superior"/"Degradado inferior") en una sola capa. Debajo, la tira floral ("Flores Encabezado", nodo `13:174`) con dos `FloralOrnament` — **un solo asset, no dos**: el archivo real ya construye el lado derecho como el izquierdo con `scale-y(-1) rotate(180deg)` (mirror horizontal), así que el código hace lo mismo con `-scale-x-100` en vez de exportar/servir una segunda imagen.
-- [~] **"Fredy y Fátima" en script blanco con sombra — corrección al AC**: el texto nativo verificado en el nodo `5:22` del Figma v2 dice literalmente "Fredy y Fátima" (con "y", no "&"). El AC de este documento decía "Fredy & Fátima", pero ese texto nunca se verificó contra el archivo real hasta ahora — es el mismo texto informal que ya vive en `homeCopy.heading` (página `/`, que no es la invitación y no se tocó). Implementado en `src/content/cover.ts` (`coverCopy.names`) con el texto verificado. Tamaño de fuente y sombra escalados con el factor real 885→432 (ADR-004): 100px→49px, sombra `7px 7px 7px`→`3px 3px 3px`.
-- [x] **Sin nombre del invitado**: `CoverSection` no recibe ni usa ningún dato del invitado — es el mismo componente para todos.
-- [~] **Altura — corrección al AC**: el AC original asumía una sección a pantalla completa con `dvh` (probablemente heredado de la suposición de WED-53 sobre el v1). El Figma v2 real define "Contenedor portada" con una proporción fija (885:1280, ~0.69), no como bloque de altura de viewport — usar `dvh` la desalinearía del diseño real (recortaría o dejaría espacio vacío según el dispositivo). Implementado con `aspect-[885/1280]` sobre `width: 100%` (fluido hasta 432px, tope a partir de ahí, igual que el resto de la invitación vía ADR-004), sin ninguna dependencia de la altura del viewport — así que el problema que `dvh` resuelve (salto de la barra de Safari) no aplica aquí, no hay altura de viewport de la que depender.
-- [~] Imagen en WebP con `width`/`height` declarados (CLS ≈ 0); **sin variante AVIF ni `<picture>` de fallback** — mismo criterio que el resto de assets de imagen del sitio hasta ahora (WED-52 tampoco los tiene); WebP ya cubre el 100% de los navegadores objetivo de WED-93 (iOS Safari, Android Chrome, Safari/Chrome/Firefox desktop). Revisar la estrategia de formato de forma holística en WED-91, no ticket por ticket.
-
-**Assets reales, mismo patrón que WED-52.** `public/assets/cover/portada.webp` (140 KB, 900×1200) sale del `rawImages` que expone `download_assets` para el nodo `2:4` — la foto original subida al archivo (1200×1600 JPEG sin comprimir), no un render/screenshot recompuesto, para no heredar el degradado ya horneado del diseño (ese se re-implementa aparte, en CSS, para poder controlar sus paradas con precisión). `public/assets/ornaments/flores-encabezado.webp` (12 KB, 400×343) sale del `export` de `download_assets` para un solo clúster floral (nodo `13:77`, "Flor 1 izq."), no del nodo padre completo — **hallazgo real:** el frame de cada flor tiene un fill sólido `#F6D5A9` (`--color-bg-hero`, verificado muestreando los píxeles de la esquina con `sharp`), así que no hace falta transparencia real: el asset ya funde a la perfección contra el fondo de la página sin canal alfa que gestionar. Convertido con `sharp` (WebP calidad 80, igual que el sello de WED-52 por ser línea fina que necesita detalle).
-
-**Encabezado como H1.** El nombre de la pareja es el único encabezado de nivel 1 real de la página de invitación (antes no existía ninguno, la sección era un placeholder de texto plano) — cumple por adelantado un punto de WED-90 (`h1` único por página) en vez de dejarlo como deuda para esa auditoría.
-
-#### WED-54 — `DateSection`
-
-**Feature · 5 · WED-34 — código implementado 2026-09-18. WED-34 en sí sigue sin empezar; se adelantó solo la pieza mínima que este ticket necesita (ver nota).**
-
-- [~] **Encabezado "¡Nos vamos a casar!" según el diseño — no es texto real.** Verificado contra el nodo nativo (`44:158`): el grupo se llama literalmente "¡Nos vamos a casar!" pero es texto convertido a trazados (outline), no un nodo de texto editable con familia tipográfica asociada — a diferencia de "Fredy y Fátima" (WED-53) o los subtítulos de esta misma sección, que sí son texto nativo Inter. Es probable que sea una fuente caligráfica distinta de Great Vibes (las formas de la "N" y la "v" no coinciden con el resto de las mayúsculas en script del archivo), pero no hay forma de confirmarlo desde un `outline` — no expone `font-family`. Se implementó como imagen (`public/assets/headings/nos-vamos-a-casar.svg`, exportado tal cual del nodo, 12.3 KB tras `svgo`) con `alt="¡Nos vamos a casar!"` real (no `aria-hidden`, porque sí transmite información). **Pendiente real:** confirmar con el diseñador si es una fuente nueva a licenciar o una decisión de lettering a mano; se deja registrado como hallazgo nuevo de WED-02, no como AC cerrado del todo.
-- [x] Subtítulo "Y será un placer..." — texto real, nativo (`44:160`), en `dateSectionCopy.subtitle`.
-- [x] **Calendario de diciembre 2026 renderizado en HTML, no como imagen**: `CalendarCard` (`src/components/ui/CalendarCard.tsx`). Tarjeta `--surface-dark`, días Do–Sa (`dateSectionCopy.weekdayLabels`), días de noviembre/enero con `opacity-40`, el 20 marcado con un corazón — el corazón **no sale del archivo**: el bloque `calendario-con-fecha 1` (nodo `59:5`) es una sola imagen PNG plana sin estructura extraíble (confirma el hallazgo ya documentado en ADR-008 para el v2), así que el corazón es un trazo simple aproximado a mano a partir de la captura de referencia, no una reproducción vectorial exacta — mismo criterio que el resto de bloques flattened de E5.
-- [x] **El calendario se genera desde la fecha, no hardcodeado.** `src/lib/calendar.ts` (`buildMonthGrid`, `formatCalendarMonthLabel`, `formatCalendarNoteDate`, `formatCalendarNoteTime`) son funciones puras que reciben un `Date` — cambiar `weddingDate` en `src/content/weddingDate.ts` mueve el mes mostrado, el día marcado y el texto de la etiqueta sin tocar ningún componente (test `movingTheDateToAnotherMonthChangesTheGridWithoutCodeChanges`).
-- [x] **Etiqueta con estilo de cinta washi rotada.** Corregido el AC: el archivo muestra dos líneas ("20/Dic./2026" y "4:30 p.m."), no solo la hora — implementado igual, ambas derivadas de la misma fecha. El borde inferior irregular ("torn paper") se aproxima con un `clip-path: polygon(...)` a mano, mismo motivo que el corazón: el bloque de origen está flattened, no hay geometría que extraer.
-- [x] **Cuenta regresiva calculada contra `America/El_Salvador`.** `weddingDate` se define como ISO con offset explícito (`2026-12-20T16:30:00-06:00`, `src/content/weddingDate.ts`) — comparar dos instantes (`target.getTime() - now.getTime()`) es correcto sin librería de zona horaria sin importar el huso del dispositivo, mismo patrón ya usado en `RSVP_DEADLINE`/`isRsvpOpen` (WED-40).
-- [~] **Sin hydration mismatch — no aplica tal cual.** El AC asume SSR; este proyecto es una SPA pura sin renderizado en servidor (Vite), así que no existe un HTML del servidor contra el cual "mismatchear". Lo que sí se cumple y es lo que el AC realmente protege: el primer render usa `useState(() => computeCountdown(...))` (perezoso, sin parpadeo entre un valor inicial falso y el real) y los dígitos usan `tabular-nums` para no saltar de ancho — verificado con test (`rendersTheFourUnitsPaddedToTwoDigitsWithTabularNums`).
-- [x] Pasada la fecha, `dateSectionCopy.countdownClosedMessage` ("¡Hoy es el gran día!") reemplaza los cuatro números — `computeCountdown` devuelve `isPast: true` sin números negativos.
-- [x] **La cuenta regresiva no se anuncia repetidamente en lectores de pantalla.** Ningún `aria-live` en `CountdownCard` — los números se actualizan en el DOM cada segundo, pero sin una región viva explícita no hay garantía de anuncio automático por defecto, que es exactamente el comportamiento pedido.
-
-**Implementación.** `src/lib/countdown.ts` (`computeCountdown`, función pura) + `src/hooks/useCountdown.ts` (hook con `setInterval` de 1s, limpia el intervalo al desmontar — verificado con `vi.getTimerCount()`). `CalendarCard`/`CountdownCard`/`DateSection` en `src/components/ui/`, un archivo por componente igual que el resto de `ui/`. `CountdownCard` reutiliza `FloralOrnament` (WED-32) con el mismo asset de WED-53 (`flores-encabezado.webp`) como ornamento decorativo de esquina — primera reutilización real de ese asset fuera de la portada.
-
-**Alcance mínimo de WED-34 adelantado.** Este ticket depende de WED-34 ("la fecha en `src/content/`"), que en sí es más amplio (itinerario, dirección, URLs de mapas, mensajes de error del RSVP). Se adelantó solo `src/content/weddingDate.ts` (la fecha) y `src/content/dateSection.ts` (el copy propio de esta sección) — el resto de WED-34 sigue sin empezar y se hace cuando la sección correspondiente (itinerario, venue, RSVP) lo necesite, mismo criterio que WED-33 se dejó parcial.
-
-**Cobertura.** 420 tests en el repo (antes 398), 98.86% de cobertura global. `npm run verify` y `npm run build` en verde.
-
-#### WED-55 — `AboutUsSection`
-
-**Feature · 3 · WED-34**
-
-- [ ] Collage de 5 polaroids en abanico, marcos coral, con las rotaciones del diseño.
-- [ ] Fotos con lazy-load, sin competir con el LCP.
-- [ ] Frase con "juntos para siempre" en terracota, según el diseño.
-
-#### WED-56 — `VenueSection`
-
-**Feature · 3 · WED-34, WED-03**
-
-- [ ] Título en script, foto del venue, nombre y dirección completa.
-- [ ] Nota "(cerca de la UCA y el Estadio Cuscatlán)" en cursiva.
-- [ ] Dos botones de ubicación que abren Waze y Google Maps.
-- [ ] `rel="noopener noreferrer"` y pestaña nueva.
-- [ ] **Probado desde un Android y un iPhone reales**: cada botón abre su app y llega al lugar correcto.
-
-#### WED-57 — `TimelineSection`
-
-**Feature · 3 · WED-34**
-
-- [ ] Timeline en zigzag con los 7 hitos alternando lados, con su icono.
-- [ ] Marcado semántico como `<ol>`.
-- [ ] Agregar un hito en `src/content/` lo renderiza en el lado correcto sin tocar código.
-- [ ] Los ornamentos florales no tapan texto.
-
-#### WED-58 — `DressCodeSection`
-
-**Feature · 2 · WED-34**
-
-- [ ] Ilustración de la pareja, caja de nota y las dos listas por género.
-- [ ] Los colores mencionados aparecen coloreados **y nombrados en texto**, sin depender solo del color.
-- [ ] Contraste de los nombres coloreados verificado; si "blanco" sobre durazno no alcanza AA, hay tratamiento alternativo aprobado.
-
-#### WED-59 — Bloque de recordatorios
-
-**Feature · 2 · WED-34**
-
-- [ ] Título "-Recuerda-" y los tres bloques con sus ilustraciones.
-- [ ] Énfasis en negrita según el diseño.
-- [ ] Ilustraciones en SVG con `aria-hidden`.
-
----
-
-### EPIC E6 — Animaciones y audio · _vía B_
-
-#### WED-60 — Animación de apertura del sobre
-
-**Feature · 5 · WED-52, WED-02**
-
-- [ ] Secuencia según la especificación de WED-02 (sello, solapa, salida de la tarjeta), con Framer Motion.
-- [ ] Duración total entre 1.2 s y 2 s.
-- [ ] **Con `prefers-reduced-motion: reduce`, el sobre desaparece con un fundido simple** y la invitación queda accesible igual.
-- [ ] Si la animación falla o el JS se cae, existe un camino para llegar a la invitación; nadie queda atrapado en el sobre.
-- [ ] Solo se animan `transform` y `opacity`.
-- [ ] **Medida en un Android de gama media: sin caída perceptible de frames.**
-- [ ] No se dispara dos veces con doble tap.
-
-#### WED-61 — `MusicToggle`
-
-**Feature · 3 · WED-60, WED-04**
-
-- [ ] Disco fijo en la esquina inferior izquierda, girando mientras suena, quieto al estar en silencio.
-- [ ] **La reproducción arranca en el mismo handler del tap del sobre**, no en un `useEffect` posterior: las políticas de autoplay lo bloquearían.
-- [ ] Tocar el disco alterna silencio y reproducción.
-- [ ] **Es un `<button>` con `aria-label` que refleja el estado actual** y `aria-pressed`.
-- [ ] `preload="none"` hasta el tap; el mp3 no entra en la carga inicial.
-- [ ] El estado persiste durante la sesión (`sessionStorage`).
-- [ ] Reproduce en bucle sin corte audible.
-- [ ] **El disco se oculta cuando `#rsvp` entra en viewport** (IntersectionObserver) y reaparece al salir; la transición es un fundido, no un salto.
-- [ ] La música **sigue sonando** mientras el disco está oculto; ocultarlo no la detiene.
-- [ ] **Si el navegador bloquea la reproducción, el sitio funciona igual** y el disco queda en estado de silencio, sin errores en consola.
-- [ ] Probado en iOS Safari, donde el interruptor físico de silencio puede impedir la reproducción: comportamiento documentado, no tratado como bug.
-
-#### WED-62 — Animaciones de entrada por sección
-
-**Feature · 3 · E5 completa**
-
-- [ ] Cada sección aparece al entrar en viewport vía IntersectionObserver, sin listeners de scroll sin throttle.
-- [ ] **Con `prefers-reduced-motion: reduce`, todo el contenido es visible y estático**; ninguna sección queda invisible.
-- [ ] Si el JS falla, el contenido sigue visible: nada depende de JS para `opacity: 1`.
-- [ ] Solo `transform` y `opacity`.
-- [ ] Scroll fluido en un Android de gama media.
-
-#### WED-63 — Animaciones de detalle
-
-**Feature · 3 · WED-62**
-
-- [ ] Despliegue en abanico del collage de polaroids.
-- [ ] Latido del corazón del día 20 en el calendario.
-- [ ] Dibujado progresivo de la línea del timeline al hacer scroll.
-- [ ] Transición de los dígitos de la cuenta regresiva.
-- [ ] Todas desactivadas bajo `prefers-reduced-motion`.
-- [ ] **Framer Motion no supera 50 KB gzip**; si lo hace, se importa con `LazyMotion` + `m`.
-
----
-
-### EPIC E7 — RSVP · _vía B_
-
-#### WED-70 — `RsvpForm`
-
-**Feature · 5 · WED-41, WED-51**
-
-- [ ] Selector con opciones de 1 a `guestLimit`, etiquetadas "1 persona." / "N personas." según el diseño.
-- [ ] **Sin opción de declinar** (R1); el texto de la sección deja claro que no confirmar equivale a no asistir.
-- [ ] **Paso de confirmación antes del envío** (ADR-006): un `Modal` que muestra la cantidad elegida y advierte que la acción no se puede deshacer, con botones de confirmar y volver.
-- [ ] El texto del modal está en `src/content/` y es editable.
-- [ ] React Hook Form + Zod (mismo esquema que el servidor); errores en español, asociados al campo, anunciados con `role="alert"`.
-- [ ] Durante el envío el botón queda deshabilitado y en `loading`; doble clic no envía dos veces.
-- [ ] Error de red → mensaje claro **conservando la selección**.
-- [ ] **Si el invitado ya confirmó** (`confirmed === true` al cargar, o respuesta 409 `ALREADY_CONFIRMED`), muestra su cantidad confirmada en modo lectura y el texto literal: _"Ya confirmaste tu asistencia, en caso de querer hacer un cambio ponte en contacto con los novios por medio de Whatsapp"_. **Sin opción de modificar.**
-- [ ] Ese mensaje incluye un enlace `wa.me` a la novia, para que "ponerse en contacto" sea un tap y no una búsqueda de contacto.
-- [ ] Si `rsvpOpen === false` y aún no confirmó, muestra el mensaje de cierre en lugar del formulario.
-- [ ] Los tres estados (formulario, ya confirmado, cerrado) son visualmente distintos.
-- [ ] Operable completo con teclado, incluido el modal.
-
-#### WED-71 — Éxito y botón de WhatsApp
-
-**Feature · 3 · WED-70**
-
-- [ ] Tras un 200, confirmación con resumen ("Confirmaste 3 personas").
-- [ ] Botón prominente que abre `waLink` en pestaña nueva.
-- [ ] **Botón con gesto directo del usuario, no redirección automática**; verificado que no lo bloquea iOS Safari.
-- [ ] Mensaje prellenado: `Hola, soy {firstName} {lastName}. Confirmo mi asistencia a la boda con {count} personas.`
-- [ ] **Probado end-to-end en un teléfono real**: abre el chat de la novia con el texto correcto.
-- [ ] Enlace secundario para volver a la invitación. **Sin opción de modificar la respuesta** (R2).
-- [ ] Si el invitado recarga después de confirmar, ve el estado de "ya confirmado", no el formulario en blanco.
-
----
-
-### EPIC E8 — Consola · _vía A_
-
-#### WED-79 — Base visual de la consola
-
-**Setup · 3 · WED-10 · vía A**
-
-La consola no tiene diseño y no va a tenerlo (ADR-010). Este ticket le da una base decente sin diseñador.
-
-- [x] shadcn/ui instalado y configurado con paleta neutra propia, **sin tocar los tokens de §5**. `components.json` apunta explícitamente a `src/components/admin/primitives` (alias `ui`), `src/components/admin` (alias `components`) y a un stylesheet nuevo, `src/styles/admin.css` — nunca a `src/styles/tokens.css`. La paleta es `oklch` neutra (grises), sin relación con `--bg-base`/`--surface-sage`/etc. de §5.
-- [x] Componentes base disponibles: `Table`, `Dialog`, `Input`, `Select`, `Button`, `Badge`, `Toaster` (sonner) en `src/components/admin/primitives/`. **`Form`:** el registro de shadcn ya no distribuye ese componente (quedó vacío en la versión instalada); el reemplazo actual es `Field`/`FieldLabel`/`FieldError`/etc. (`field.tsx`, con `label.tsx` y `separator.tsx` como dependencias), pensado para usarse directo con React Hook Form sin un wrapper `<Form>` — se adopta ese patrón en vez de forzar el componente viejo.
-- [x] Shell de la consola: `AdminShell` (`src/components/admin/AdminShell.tsx`) — cabecera con título y botón de cerrar sesión (recibe `onLogout` como prop; el `signOut` real de Firebase lo conecta WED-80), contenedor principal. `AdminLoadingState`/`AdminErrorState` (mismo directorio) dan un estado de carga/error consistente y reutilizable para el resto de E8.
-- [x] Layout responsive real: `AdminShell` usa utilidades responsive de Tailwind (`px-4 sm:px-6`, flex), sin ningún ancho fijo — a diferencia de la invitación (ADR-004), la consola no tiene tope de 432 px.
-- [x] Verificado que **ningún componente de `admin/` importa de `ui/`**: además de la regla de ESLint de WED-15 (que ya pasa), se confirmó con `grep -rn "components/ui" src/components/admin/` sin resultados.
-- [x] **El chunk de `/admin` sigue siendo lazy y no entra en la carga de la invitación** — verificado con `npm run build`: sigue habiendo 99 módulos transformados (los mismos que antes de este ticket) porque `AdminShell` y los primitivos todavía no están importados desde ninguna ruta activa (`AdminApp.tsx` sigue siendo el placeholder de WED-50; WED-80 es quien los conecta de verdad). El CSS de la invitación (`tokens.css`) tampoco creció: **hallazgo real durante esta verificación** — Tailwind v4 escanea _todo_ el proyecto en busca de clases por defecto, así que sin restricción, clases usadas solo en `AdminShell`/los primitivos (`bg-primary`, `text-destructive`, etc.) se colaban igual dentro del CSS compilado de la invitación aunque esos componentes nunca se importaran (el bundle de `tokens.css` pasó de 7.32 kB a 28.46 kB). Corregido agregando `@source not '../components/admin'; @source not '../pages/admin';` en `tokens.css`; verificado que el CSS de producción vuelve exactamente al tamaño y hash de antes de este ticket (`index-BXVwqlQP.css`, 7.32 kB).
-
-**Decisión de arquitectura no prevista en el AC: excepción de lint para `src/components/admin/primitives/`.** El código que genera `shadcn add` usa `function Nombre(props) {}` (declaraciones, no `const` con arrow) y coexporta variantes (`buttonVariants` junto a `Button`) desde el mismo archivo — ambos patrones violan `@typescript-eslint/naming-convention` y `react-refresh/only-export-components` tal como están configuradas para el resto del repo (48 errores de lint reales al correrlo por primera vez). Reescribir a mano las ~43 declaraciones de función generadas divergiría del código de Radix/shadcn río arriba y rompería la posibilidad de re-sincronizar con `shadcn add --overwrite` en el futuro (todo el punto del modelo de distribución "copiar y pegar" de shadcn). Se agregó un override acotado en `eslint.config.ts` desactivando esas dos reglas **solo** bajo `src/components/admin/primitives/**` — documentado en el README junto a la exclusión de cobertura equivalente (mismo criterio que `api/_lib/firestore.ts`: "esto es código generado/de terceros, no lógica de la app"). Ningún otro directorio tiene esta excepción. Se corrigieron además tres bugs reales preexistentes en el código generado de `field.tsx` (`Array<T>` → `T[]`, chequeo opcional innecesario, `==` → `===`) porque esos sí son defectos de corrección, no de estilo.
-
-**Cobertura.** `src/components/admin/primitives/**` se excluyó de la cobertura en `vitest.config.ts` (mismo criterio que `api/_lib/firestore.ts`: probar wrappers generados de Radix solo probaría Radix, no lógica propia). `AdminShell`/`AdminLoadingState`/`AdminErrorState` sí están cubiertos al 100 % con tests propios. 183 tests en el repo (antes 177), 99.48 % de cobertura global.
-
-**Dependencias.** Runtime (van al bundle del admin): `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`, `radix-ui`. Solo build-time (devDependencies, igual que `tailwindcss`): `shadcn`, `tw-animate-css`. Se instaló y luego se quitó `@fontsource-variable/geist` y `next-themes` — ninguno de los dos hace falta (la consola usa la fuente de sistema, y no hay selector de tema claro/oscuro en este proyecto).
-
-#### WED-80 — Login
-
-**Feature · 3 · WED-42, WED-79 · vía A**
-
-- [x] `/admin` sin sesión muestra login de email + contraseña, sin exponer datos. `LoginPage` (`src/components/admin/auth/`) usa React Hook Form + Zod (`loginSchema.ts`), consistente con §2.
-- [x] Firebase Auth persiste la sesión entre recargas — comportamiento **por defecto** del SDK modular (persistencia local/IndexedDB), no requirió código adicional; documentado explícitamente para que quede claro que es intencional y no un olvido.
-- [x] Credenciales incorrectas → mensaje genérico, sin revelar si el email existe. **Decisión deliberadamente estricta:** cualquier rechazo de `signInWithEmailAndPassword` (no solo credenciales inválidas — también errores de red, cuenta deshabilitada, etc.) se mapea al mismo texto genérico (`adminLoginCopy.genericError`). Verificado con un test que fuerza un error con el mensaje `"auth/user-not-found"` y confirma que ese texto **nunca** llega al DOM.
-- [x] Botón de cerrar sesión visible — parte de `AdminShell` (WED-79), ahora conectado a `signOutAdmin` real.
-- [x] Token expirado durante el uso → redirige al login sin pantalla rota. **Mecanismo:** `fetchAdminApi` (`src/components/admin/auth/fetchAdminApi.ts`, listo para que WED-81 lo use contra `/api/admin/*`) llama `signOut(auth)` en cualquier `401`; como `RequireAdminAuth` ya está escuchando `onAuthStateChanged`, la vista cambia sola a `LoginPage` sin necesidad de una navegación de ruta explícita — "redirige" ocurre por cambio de estado, no por `history.push`.
-- [x] `/admin` con `noindex` y en `robots.txt` — ya cubierto por el `noindex` global de `index.html` (WED-14), que aplica a toda la SPA mientras el sitio no esté lanzado; no hizo falta código nuevo, mismo razonamiento que WED-14 documentó para cuando `/admin` todavía no existía.
-
-**Hallazgo real de compatibilidad (no es un AC, pero bloqueaba el ticket): el código generado por `shadcn add` asume React 19**, donde una función componente puede recibir `ref` como prop normal sin `React.forwardRef`. Este proyecto fija **React 18.3.1** (§2), donde eso no aplica: un `ref` pasado a un componente función sin `forwardRef` se descarta en silencio. Se detectó porque `LoginPage` con React Hook Form fallaba — `register('email')` nunca lograba enlazar su `ref` al `<input>` real, así que el formulario se enviaba siempre vacío pese a que la UI mostraba el texto tecleado. Corregido envolviendo `Input` (`src/components/admin/primitives/input.tsx`) en `React.forwardRef`, verificado en vivo con el test `callsSignInWithTheEnteredCredentials`. **No se tocaron los demás primitivos** (`Button`, `Select`, etc.) porque hoy ningún uso real les pasa un `ref` — si un ticket futuro (WED-70, WED-82) conecta alguno a React Hook Form o a un patrón `asChild` de Radix y el valor no llega, este es el primer sospechoso a revisar.
-
-**Hallazgo real de enforcement en `eslint.config.ts` (gap preexistente, no introducido en esta sesión, encontrado al verificar el nuevo bloque de ADR-001 para `firebase/auth`).** ESLint flat config **reemplaza por completo**, no fusiona, la configuración de una regla cuando dos bloques que matchean el mismo archivo fijan la misma regla — el bloque más específico que aparece más abajo en el array gana entero. Los bloques de WED-11/WED-15 para `src/components/ui/**` y `src/components/admin/**` (el ban de cruce de ADR-010) pisaban por completo el `no-restricted-imports` del bloque genérico de `src/**/*.{ts,tsx}` (el ban de Firestore/`firebase-admin` de ADR-001) para cualquier archivo dentro de esas dos carpetas. **Verificado con un fixture real:** un archivo en `src/components/admin/` importando `firebase/firestore` pasaba el lint limpio, sin ningún error, contradiciendo ADR-001 directamente. Corregido consolidando cada zona en un único bloque autocontenido con **todas** sus restricciones (`src/components/ui/**`: Firestore + `firebase-admin` + `firebase/auth` + `firebase/app` + ban de importar `admin/`; `src/components/admin/**`: Firestore + `firebase-admin` + ban de importar `ui/`, permitiendo `firebase/auth`/`firebase/app`; el resto de `src/` vía un bloque con `ignores` en ambas carpetas). Verificado con 6 fixtures cubriendo las combinaciones cruzadas (ver commit); los 6 se comportan como se espera.
-
-#### WED-81 — Listado y tablero
-
-**Feature · 5 · WED-80, WED-43 · vía A**
-
-- [x] Estadísticas: total, confirmados, pendientes, **abiertos sin confirmar**, y **total de personas confirmadas**. `AdminGuestsStats` renderiza los 5 valores de `stats` que ya devuelve `GET /api/admin/guests` (WED-43); no hizo falta ningún cálculo nuevo en el cliente.
-- [x] Tabla con `titleLabel`, nombre, apellido, teléfono, límite, estado, cantidad confirmada y fecha de apertura. `AdminGuestsTable`, usando los primitivos `Table`/`Badge` de WED-79. Fecha de apertura formateada con `Intl.DateTimeFormat('es-SV', ...)`; `null` se muestra como `—` en cualquier columna.
-- [x] Filtro por estado y buscador que **funciona con y sin acentos**, sin distinguir mayúsculas. `normalizeForSearch` (`src/lib/`, `NFD` + strip de diacríticos + `toLowerCase`) — utilidad genérica, no específica de admin, así que vive en `src/lib/` en vez de `components/admin/`. El buscador consulta nombre, apellido, `titleLabel` y teléfono a la vez.
-- [x] Ordenable por nombre y por estado. Encabezados clicables (`AdminGuestsTable`); un clic en un encabezado nuevo ordena ascendente, un segundo clic en el mismo invierte la dirección. Orden por nombre usa `resolveDisplayName` (ya existía en `src/schemas/guest.ts` desde WED-21) — mismo criterio título/nombre que usa el resto de la consola.
-- [x] **Usable desde el celular.** Grid de estadísticas responsive (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`), filtros en columna en pantallas angostas, tabla con scroll horizontal propio (ya lo traía el primitivo `Table` de WED-79).
-- [x] Estados de carga y de lista vacía diseñados. Carga → `AdminLoadingState` (WED-79); error → `AdminErrorState` con reintento (`query.refetch()`); **dos** vacíos distintos: "todavía no hay invitados" (colección vacía de verdad) vs. "ningún invitado coincide" (hay invitados pero el filtro/búsqueda no matchea ninguno) — son mensajes diferentes a propósito, no el mismo caso.
-
-**Contrato consumido.** `GET /api/admin/guests` (WED-43) vía el `fetchAdminApi` que dejó listo WED-80 — primer consumidor real de ese helper, confirma en vivo que el mecanismo de "401 → `signOut` → login" está conectado de punta a punta, no solo probado en aislamiento. Nuevo `adminGuestSchema`/`adminGuestListResponseSchema` en `src/schemas/guest.ts` (`guestSchema.extend({...})` sobrescribiendo solo los 4 campos de fecha con `z.coerce.date()`, porque llegan como string ISO tras `JSON.parse`, no como `Timestamp` de Firestore) — reutiliza el resto del shape de `guestSchema` sin duplicarlo.
-
-**Hallazgo real: Radix `Select` no funciona en jsdom sin polyfills.** Al escribir el primer test que abre el `Select` de estado, jsdom tiró `TypeError: target.hasPointerCapture is not a function` — jsdom no implementa `hasPointerCapture`/`setPointerCapture`/`releasePointerCapture`/`scrollIntoView`, que Radix Select usa internamente. Se agregaron los cuatro como no-ops en `src/testSetup.ts` (global, corre antes de cada archivo de test). **Este gap se repetirá en WED-82** en cuanto se pruebe un `Dialog` o cualquier otro primitivo de Radix con interacción real; ya está resuelto de una vez para todo el repo.
-
-**Cobertura.** 235 tests en el repo (antes 202), 99.67 % de cobertura global. `npm run verify` y `npm run build` en verde; confirmado que el chunk principal de la invitación no creció (258.68 kB, contra 258.02 kB antes de este ticket) pese a que el chunk de `/admin` sí creció (343.02 kB, por Radix Select + TanStack Query de verdad) — la separación de bundles de WED-79/80 sigue sosteniéndose.
-
-**Bug real encontrado en el CI de GitHub tras el push de este ticket, corregido en el mismo commit de cierre.** `npm run test:coverage` fallaba en CI (`Missing required environment variable: VITE_FIREBASE_API_KEY`) en `useAdminGuests.test.tsx` y `AdminGuestsPage.test.tsx`, pese a pasar en local. **Causa:** ambos archivos usaban `vi.mock('ruta')` **sin factory** (auto-mock) sobre `fetchAdminApi`/`useAdminGuests` respectivamente. Vitest, para construir un auto-mock, igual carga el módulo real para inspeccionar su forma — eso ejecuta el código de nivel superior de `firebaseClient.ts` (`readRequiredEnv`), que revienta si no hay `VITE_FIREBASE_API_KEY`/`VITE_FIREBASE_AUTH_DOMAIN`. En este entorno local pasaba inadvertido porque `.env.local` tiene valores reales; CI no tiene ese archivo (correcto, no debe tenerlo — son credenciales). **Reproducido localmente** ocultando `.env.local` y corriendo esos dos archivos, mismo error letra por letra. **Corregido** dándole una factory explícita a ambos `vi.mock` (`() => ({ fetchAdminApi: vi.fn() })` / `() => ({ useAdminGuests: vi.fn() })`), que evita que Vitest necesite cargar el módulo real. Verificado: el suite completo (`test`, `test:coverage`) pasa con `.env.local` oculto, replicando CI exactamente. **Los otros tres `vi.mock(...)` sin factory del repo** (`AdminApp.test.tsx`, `RequireAdminAuth.test.tsx`, `LoginPage.test.tsx`, todos sobre `useAdminAuth`) se revisaron y **no tienen este problema**: ninguno de sus módulos importa `firebaseClient.ts` sin que ya haya un mock explícito con factory cubriéndolo antes en la cadena.
-
-#### WED-82 — CRUD desde la interfaz
-
-**Feature · 5 · WED-81 · vía A**
-
-- [x] Formulario de creación con los campos de §3, validado con el esquema compartido. `CreateGuestDialog` usa React Hook Form + Zod; el schema del formulario (`guestFormSchema.ts`) reutiliza `phoneSchema` y las constantes `MAX_*`/`MIN_GUEST_LIMIT` de `src/schemas/guest.ts` en vez de duplicar los límites, así que sigue siendo "el esquema compartido" aunque el shape del formulario (campos de texto vacíos en vez de `null`) no sea idéntico byte a byte al de la API — la conversión ocurre en `toCreateGuestInput`, justo antes de llamar al endpoint.
-- [x] Edición en modal, precargada. `EditGuestDialog` recibe el invitado seleccionado y hace `reset()` del formulario con sus valores actuales cada vez que cambia.
-- [x] **Ambas vías de corrección soportadas** (Q17): `EditGuestDialog` incluye `confirmedCount` como campo editable normal (deja `confirmed` intacto); `ReleaseConfirmationDialog` es una acción **separada**, con su propio botón visible solo cuando `guest.confirmed === true`, que hace `PATCH {confirmed: false}` — nunca se mezclan en el mismo formulario ni el mismo botón.
-- [x] Liberar una confirmación pide confirmación explícita y advierte que el invitado podrá enviar de nuevo — texto literal en `releaseConfirmationDialogCopy.body` (`src/content/adminGuestActions.ts`), con el nombre del invitado interpolado.
-- [x] Eliminación con confirmación que **muestra el nombre del invitado** — `DeleteGuestDialog` interpola `resolveDisplayName(guest)` (ya existía desde WED-21) en el texto de la advertencia.
-- [x] Lista y estadísticas se actualizan sin recargar la página — las tres mutaciones invalidan `['admin','guests']` en `onSettled`, forzando un refetch de TanStack Query.
-- [x] Errores del servidor mostrados de forma legible. `AdminGuestsApiError` lleva el `code` crudo de la API; `resolveAdminGuestErrorMessage` (`src/content/adminGuestForm.ts`) lo traduce a un mensaje en español o cae a un genérico si el código no es uno de los conocidos — nunca se muestra el `code` ni un mensaje del servidor sin traducir.
-- [x] Actualización optimista con reversión si la petición falla. `adminGuestsOptimisticUpdate.ts`: cada mutación (`onMutate`) cancela refetches en curso, guarda una foto del caché y aplica el cambio (agregar/parchear/quitar + `computeGuestStats` recalculado); `onError` restaura la foto exacta. Verificado con tests que fuerzan un 400/404/500 y comprueban que el caché vuelve a su estado anterior.
-
-**Dos bugs reales encontrados al conectar las mutaciones de verdad (ninguno era visible en el ticket anterior porque nada llamaba a `mutateAsync` todavía):**
-
-1. **`await mutation.mutateAsync(...)` sin `try/catch` producía un `Unhandled Rejection` en cada error del servidor.** `mutateAsync` relanza el error después de que `onError` ya actualizó el estado reactivo (`mutation.error`), así que el rechazo llegaba sin nadie que lo esperara. La UI funcionaba bien (el mensaje de error sí aparecía), pero el rechazo quedaba sin capturar — mismo problema en el navegador real, no solo en los tests. **Corregido en los 4 diálogos** cambiando de `mutateAsync` + `await` a `mutation.mutate(variables, { onSuccess: ... })`, el patrón idiomático de TanStack Query para "dispara y reacciona sin necesitar el resultado en el mismo scope" — el estado de error se sigue leyendo de forma reactiva, nunca hay una promesa sin capturar.
-2. **Repetición del hallazgo de WED-80: `Button` y `DialogOverlay`/`DialogContent` tampoco tenían `React.forwardRef`.** Se detectó por la misma advertencia de React ("Function components cannot be given refs") al renderizar `DialogTrigger asChild` con nuestro `Button`. Corregidos los tres (`button.tsx`, y `DialogOverlay`/`DialogContent` en `dialog.tsx`) — son los primitivos que este ticket usa activamente con `asChild`. **Los demás primitivos de Radix (`Select`, `Badge`, resto de `Field`) siguen sin `forwardRef`**; corregir solo cuando un ticket futuro los conecte a un patrón que lo necesite de verdad, mismo criterio que WED-80.
-
-**Cobertura.** 286 tests en el repo (antes 235), 98.6 % de cobertura global. `npm run verify` y `npm run build` en verde; el chunk principal de la invitación se mantiene aislado (259.25 kB, prácticamente sin cambio), todo el peso nuevo (RHF + Zod resolver + Dialog) va al chunk de `/admin` (362.51 kB).
-
-#### WED-83 — Envío de invitaciones desde la consola
-
-**Feature · 3 · WED-82 — cerrado en código · vía A**
-
-- [x] Botón por fila que abre `wa.me/{phone}` con mensaje prellenado que **incluye el enlace único**. `GuestInviteActions` construye `/i/{token}` con `window.location.origin` (`buildInvitationUrl`) y arma el `wa.me` con el teléfono E.164 sin el `+` (`buildGuestWhatsAppLink`); el enlace se abre con `window.open` **de forma síncrona en el handler del clic**, antes de disparar la mutación, para no chocar con el bloqueo de popups de iOS Safari (mismo cuidado que ADR-003).
-- [x] Botón para copiar el enlace, con confirmación visual. `navigator.clipboard.writeText` + `toast.success`/`toast.error` (sonner, ya cableado desde la estabilización de endpoints) según el resultado.
-- [x] Marca de a quién ya se le envió. **Campo nuevo en el modelo de datos**, documentado en §3: `invitedAt: Timestamp | null`, mismo patrón que `firstOpenedAt` (se llena una vez, nunca se sobreescribe automáticamente). Se marca al hacer clic en "Enviar invitación" mediante `PATCH /api/admin/guests/[id]` (reutiliza `updateGuestSchema`/`useUpdateGuestMutation` existentes, sin endpoint nuevo). Columna "Invitación" en la tabla con badge Enviada/No enviada.
-- [x] La plantilla del mensaje vive en `src/content/` y es editable. `buildGuestInviteMessage` en `src/content/adminGuestInvite.ts`.
-- [~] **Probado en móvil**: no verificado — no hay dispositivo ni navegador disponible en este entorno. Pendiente de ensayo manual, mismo criterio que el resto de los "probado en un teléfono real" de la vía B.
-
-**Implementación.** `src/content/adminGuestInvite.ts` (copy + `buildGuestInviteMessage`) y `src/components/admin/guests/buildGuestInviteLink.ts` (`buildInvitationUrl`, `buildGuestWhatsAppLink`, funciones puras) alimentan `GuestInviteActions.tsx`, montado por fila en `AdminGuestsTable`. Como el envío real ocurre en WhatsApp (fuera de la app), no hay forma de confirmar que el mensaje se envió de verdad — "marcar como enviado" es una señal de intención del clic, mismo espíritu que ADR-003 ("la consola es la fuente de verdad, el paso de WhatsApp es cortesía"). 304 tests (antes 295), 98.67 % de cobertura global; `npm run verify` y `npm run build` en verde, incluida la verificación con `.env.local` oculto (ver lección de WED-81/estabilización de endpoints).
-
-#### WED-84 — Exportación y utilidades
-
-**Feature · 2 · WED-81 — cerrado en código · vía A**
-
-- [x] Exportar a CSV con encabezados en español. `ExportGuestsButton` llama `GET /api/admin/export` (ya existente desde WED-43) vía `fetchAdminApi`, arma un blob URL con `exportGuestsCsv.ts` (`downloadGuestsExport`) y dispara la descarga con un `<a download>` temporal — sin endpoint nuevo, el ticket era puramente de UI.
-- [x] **El CSV abre correctamente en Excel con acentos** (BOM UTF-8). Ya lo garantiza `api/admin/export.ts` desde WED-43 (`UTF8_BOM_CODE_POINT` antepuesto); este ticket solo agrega el botón que lo descarga desde la consola.
-- [x] Rotar token, con advertencia de que invalida el enlace anterior. `RotateTokenDialog` (nuevo) llama `POST /api/admin/guests/[id]/rotate-token` (ya existente desde WED-43) vía `useRotateTokenMutation`; el texto de advertencia (`rotateTokenDialogCopy.body`) deja explícito que el enlace anterior deja de funcionar de inmediato, aunque ya se haya compartido — mismo criterio de irreversibilidad que ADR-006. Botón "Rotar token" visible en cada fila de `AdminGuestsTable`, sin condición (a diferencia de "Liberar confirmación", que solo aplica a invitados confirmados).
-
-**Limpieza previa al cierre.** Con `RotateTokenDialog` la consola llegó a **tres** diálogos de confirmación casi idénticos (`DeleteGuestDialog`, `ReleaseConfirmationDialog`, el nuevo `RotateTokenDialog`): mismo `Dialog`/`DialogHeader`/`DialogFooter`, mismo botón `destructive` con estado `isPending`/`FieldError`. Se extrajo `ConfirmGuestActionDialog.tsx` (componente de presentación puro: `open`, `onOpenChange`, `title`, `body`, `errorMessage`, `confirmLabel`/`confirmingLabel`, `isPending`, `onConfirm`) y los tres diálogos ahora lo consumen; cada uno conserva su propio hook de mutación y su `handleConfirm`, que es lo único que realmente difiere entre ellos. Refactor puramente de presentación — verificado que los 319 tests del repo (incluidos los de Delete/Release, sin tocar) siguen en verde sin modificarlos, confirmando que el HTML resultante no cambió.
-
-**Implementación.** `useRotateTokenMutation` sigue el mismo patrón que `useUpdateGuestMutation`/`useDeleteGuestMutation` (`fetchAdminApi` + `adminGuestSchema.parse`), pero sin actualización optimista previa a la respuesta — no hay nada que adivinar del lado del cliente porque el token nuevo lo genera el servidor; en su lugar, `onSuccess` parchea el invitado en caché con `withPatchedGuest` (reutilizado de `adminGuestsOptimisticUpdate.ts`) para que "Enviar"/"Copiar enlace" (WED-83) usen el token nuevo sin esperar el refetch, seguido de `invalidateQueries` en `onSettled` como red de seguridad. `exportGuestsCsv.ts` reutiliza `GUEST_EXPORT_FILENAME` de `src/content/guestExport.ts` (ya existía para el header `Content-Disposition` del servidor) en vez de duplicar el nombre del archivo en el cliente.
-
-**Cobertura.** 319 tests en el repo (antes 304), 98.53 % de cobertura global. `npm run verify` y `npm run build` en verde; el chunk de la invitación no cambió (259.36 kB), todo el peso nuevo (export + rotar token) fue al chunk de `/admin` (403.52 kB, antes 362.51 kB).
-
----
-
-### Corrección fuera de ticket — la consola llevaba sin estilos desde WED-79 (2026-09-01)
-
-**No es un ticket del backlog.** Se hizo a pedido explícito del usuario ("mejora la consola admin... el botón de agregar invitado no hace nada"), aprovechando que la vía A se quedó sin material nuevo (E8 completa, WED-101 bloqueado por diseño) — mismo criterio que la "Estabilización de consumo de endpoints admin" de WED-82/83.
-
-**Diagnóstico verificado, no supuesto.** Dos bugs reales, ambos preexistentes desde WED-79 y nunca detectados porque ningún test ni build automatizado los ejercita:
-
-1. **`src/styles/admin.css` nunca se importaba en ningún archivo de la app.** Solo aparecía referenciado en `components.json` (config del CLI `shadcn add`). Verificado inspeccionando el CSS de producción real antes del fix: `dist/assets/index-*.css` (7.6 KB) no contenía ni una clase usada por `admin/` (`bg-primary`, `.admin-shell`, etc.). La consola entera corría con Tailwind preflight y nada más — sin color, sin spacing, sin las animaciones `data-open:animate-in`/`fade-in-0` que `tw-animate-css` ya provee y que `dialog.tsx`/`select.tsx` ya usan en su markup desde WED-79.
-2. **`Dialog` y `Select` de Radix se portalan a `document.body` por defecto**, fuera del `<div className="admin-shell">` donde WED-79 escopeó a propósito las variables de color para no filtrar hacia la invitación (ver nota de WED-79 más arriba). Verificado en el código fuente real de `@radix-ui/react-portal`: `container = containerProp || (mounted && document.body)`.
-
-Juntos explican el reporte exacto del usuario: "Agregar invitado" sí abría el diálogo (`open=true` real), pero sin overlay, posición ni color — indistinguible de "no pasa nada".
-
-**Corrección.**
-
-- `src/pages/admin/AdminApp.tsx` ahora importa `@/styles/admin.css`. Es el módulo que ya se carga vía `React.lazy` (WED-50), así que Vite emite el CSS como parte del mismo chunk async, no del bundle de la invitación.
-- Nuevo `src/components/admin/adminShellRoot.ts` (`ADMIN_SHELL_ROOT_ID`, `getAdminShellRootContainer()`) para no repetir el id en 3 archivos. `AdminShell.tsx` le pone ese id a su `<div className="admin-shell">` raíz; `dialog.tsx` (`DialogPortal`) y `select.tsx` (`SelectContent`) lo usan como `container` del Portal.
-- **Por qué esto no rompe los tests existentes:** el propio código de Radix cae a `document.body` cuando `container` es `null` — exactamente lo que pasa en cualquier test que renderiza un diálogo sin envolver en `<AdminShell>` (la mayoría). Verificado en el código fuente antes de aplicar el fix, no después de que fallara.
-- Verificado en el CSS de producción **después** del fix: apareció un chunk nuevo `dist/assets/AdminApp-*.css` (~47 kB) — antes no existía ninguno — con `.admin-shell` presente, `.bg-primary` generado, `animate-in` presente.
-- **Hallazgo colateral, no introducido por este fix: `index-*.css` (Tailwind de la invitación) genera `.inline`/`.animate-spin` de más (~150 bytes) de forma intermitente.** Al comparar tamaños noté que el CSS de la invitación creció de 7.60 a 7.75 kB y pasé un buen rato haciendo bisection pensando que algún archivo nuevo de esta sesión se estaba filtrando pese al `@source not` de `tokens.css`. **Verificado que no es así:** revirtiendo el working tree a `HEAD` (idéntico a `master`, cero cambios propios) el mismo par de clases sigue apareciendo — es reproducible en `master` puro bajo ciertos estados de caché de Vite/Tailwind (encontré además 4 procesos `npm run dev` huérfanos de intentos anteriores en esta misma sesión, que complicaron el diagnóstico). No se identificó la causa raíz exacta ni vale la pena seguir: son dos utilidades genéricas sin ningún token/color de admin, no aplicadas a ningún elemento real de la invitación — cero impacto visual o de datos, ~2 % de un archivo de 7.6 kB. Documentado por transparencia, no por gravedad.
-
-**Pulido de UX agregado en la misma pasada** (una vez que la consola es visible de verdad, la paleta neutra de WED-79 y las animaciones de `tw-animate-css` quedan cubiertas gratis; no se rediseñó la paleta):
-
-- `PendingButtonLabel` (`src/components/admin/`, nuevo): spinner (`Loader2Icon` + `animate-spin`) junto al texto "…ando" en cualquier botón con estado pendiente. Se extrajo porque el mismo par `{isPending && <Loader2Icon/>}` + toggle de texto se repitió en 4 lugares (`ConfirmGuestActionDialog`, `CreateGuestDialog`, `EditGuestDialog`, `ExportGuestsButton`) — regla de tres.
-- `notifyOnError` en `closeAndNotify.ts` (mismo patrón que el `notifyOnSuccess` ya existente): toast de error en el `onError` de las 5 mutaciones de guests (Create/Edit/Delete/Release/Rotate), además del `FieldError` inline que ya existía. Se excluye a propósito el código `UNAUTHORIZED` porque `fetchAdminApi.ts` ya muestra su propio toast de sesión expirada — mostrar los dos sería redundante.
-- `AdminLoadingState` gana el mismo spinner (antes era texto plano).
-- `admin.css` gana un bloque `@media (prefers-reduced-motion: reduce)` que neutraliza duración de animación/transición dentro de `.admin-shell` — mismo cuidado que el proyecto exige para la invitación (WED-60/62/63), aplicado aquí aunque no esté pedido explícitamente para la consola.
-
-**Explícitamente fuera de esta pasada:** no se agregó un menú "⋯ más acciones" (`DropdownMenu` de shadcn) para las 6 acciones por fila, ni se rediseñó la paleta de color — la paleta neutra de WED-79 sigue siendo la decisión correcta, el problema era que no cargaba.
-
-**Verificación.** No se pudo iniciar sesión real en `/admin` para probar los diálogos en un navegador (sin credenciales de Firebase Auth en este entorno, y sin herramienta de navegador disponible en esta sesión); la verificación quedó en el nivel de build (CSS generado, confirmado arriba) y de test (324 tests, 99.3 % de cobertura, sin modificar el comportamiento de los tests existentes de Dialog/Select). **Pendiente honesto:** confirmar visualmente en un navegador real con sesión iniciada que los diálogos, el `Select` de filtros y los toasts se ven como se espera.
-
----
-
-### Corrección fuera de ticket — renombrar "Trato", modo claro/oscuro, importar CSV desde la consola (2026-09-01, mismo día)
-
-**No es un ticket del backlog**, mismo criterio que la corrección de estilos anterior: pedido explícito del usuario mientras la vía A sigue sin material nuevo.
-
-**Renombrado.** "Trato" (columna de la tabla) y "Trato para el sobre" (label del formulario, encabezado del CSV exportado, encabezado del Excel de los novios) pasan a ser un único término: "Texto en sobre", en los 4 lugares donde aparecía (`adminGuestsTableCopy.titleLabel`, `guestFormFieldsCopy.titleLabel`, `GUEST_EXPORT_HEADER`, `HUMAN_SHEET_HEADER`). El campo de datos `titleLabel` no cambia — es un identificador de código, no contenido.
-
-**Modo claro/oscuro.** `admin.css` ya traía la paleta oscura completa desde WED-79 (`.admin-shell.dark`, generada por el scaffold de shadcn) sin que nada la activara nunca. `useAdminTheme.ts` (nuevo) es un hook propio de ~30 líneas — **no se reinstaló `next-themes`**, que WED-79 había quitado a propósito por innecesario, y cuyo comportamiento por defecto (alternar la clase en `<html>`) no encaja con el escopeo deliberado a `.admin-shell`. Lee `localStorage` (`admin-theme`), cae a `prefers-color-scheme` si no hay nada guardado, y persiste cada cambio. `AdminShell` aplica la clase `dark` a su raíz y agrega el botón de toggle (`SunIcon`/`MoonIcon`) junto a "Cerrar sesión"; `LoginPage` (su propio `<div className="admin-shell">`, antes de autenticar) lee el mismo hook para no verse distinto del resto de la consola, sin mostrar el botón. El `<Toaster>` de sonner ahora recibe `theme={theme}` explícito en vez de `theme="system"` — si no, los toasts se verían con el tema del sistema operativo en vez del tema elegido a mano.
-
-**Importar CSV desde la consola.** Nuevo endpoint documentado arriba en §4 (`POST /api/admin/guests/import`), con la misma lógica que ya tenía `npm run import:guests` — no se reescribió nada, se reutilizaron las funciones puras existentes (`parseCsv`, `mapCsvToGuestInputs`, `partitionNewGuests` de `scripts/lib/`). **Se unificó la escritura**: `api/_lib/guests.ts` gana `importGuests()`, que hace el fetch de teléfonos existentes + partición + `batch()` de Firestore; tanto el endpoint nuevo como `scripts/importGuests.ts` (simplificado a un wrapper de CLI) la usan ahora. De paso corrigió un gap real: la construcción del documento del script de CLI (`buildGuestDocument`, ahora eliminada) le faltaba `invitedAt: null` desde que WED-83 agregó ese campo — no era un bug visible (`toDateOrNull` ya trata un campo ausente como `null` al leer), pero sí una inconsistencia real entre dos copias de la misma lógica. `ImportGuestsDialog.tsx` (nuevo): input de archivo, todo-o-nada (si el CSV tiene una fila inválida, no se escribe nada y las filas con error se listan **dentro del diálogo**, no en un toast, porque pueden ser varias), duplicados por teléfono reportados como "omitidos" sin sobreescribir. Fuera de alcance a propósito: el normalizador de Excel de los novios (WED-23, encabezados en español) sigue siendo solo de CLI — el pedido fue "CSV", meter `exceljs` al bundle del cliente es una pieza aparte.
-
-**Quitar el beige.** Ningún componente de `admin/` usa los tokens de la invitación (verificado con `grep`, cero resultados) — el beige venía de `body { background-color: var(--color-bg-base) }` en `tokens.css`, que `main.tsx` carga de forma global e incondicional para toda la SPA, invitación y consola por igual. `admin.css` gana `body:has(.admin-shell)` (fondo blanco) y `body:has(.admin-shell.dark)` (fondo casi negro) para que el `<body>` real detrás de la consola nunca muestre el beige, sin tocar `tokens.css`. Verificado en el CSS de producción: ambas reglas presentes en el chunk de `/admin`, `tokens.css` de la invitación sin cambios.
-
-**Hallazgo real de test: jsdom no implementa `File.prototype.text()`.** El diálogo de importación lee el archivo con `file.text()`; el primer test que subió un `File` real explotó con `TypeError: file.text is not a function` (confirmado con Node directo: jsdom tiene `FileReader` pero no `.text()` en esta versión). Agregado como polyfill global en `src/testSetup.ts` — mismo criterio que los polyfills de Radix (`hasPointerCapture`, etc., WED-81) y `matchMedia` (estabilización de endpoints): un gap real de la API del navegador que jsdom no cubre, no algo específico de un test.
-
-**Cobertura.** 346 tests (antes 324), 99.14 % de cobertura global. `npm run verify`, `npm run build` y el suite completo con `.env.local` oculto (réplica de CI) en verde. Mismo pendiente honesto que la corrección anterior: sin navegador real disponible en este entorno, no se verificó visualmente el toggle de tema ni el diálogo de importación con una sesión real.
-
----
-
-### Incidente de producción — `GET /api/admin/guests` (y potencialmente cualquier endpoint de invitados) devolvía `FUNCTION_INVOCATION_FAILED` (2026-09-02)
-
-**Reportado por el usuario tras mergear el PR anterior a `master`.** Repetición exacta del bug de WED-12 (`TS2835`), reintroducida por el propio PR de arriba: `api/_lib/guests.ts` empezó a importar `scripts/lib/guestImport.ts` por primera vez (para `partitionNewGuests`, parte de `importGuests()`), y ese archivo tiene imports relativos **sin extensión `.js`** (`from '../../src/schemas/guest'` en vez de `.../guest.js'`). `package.json` tiene `"type": "module"`, así que Node en modo ESM estricto —el runtime real de una Vercel Function— **no resuelve imports relativos sin extensión explícita**: es un `ERR_MODULE_NOT_FOUND` en tiempo de ejecución (no un fallo de build), por eso el deploy se completó normal y la función crasheaba recién al invocarse.
-
-**Por qué mi verificación local no lo detectó antes de pushear.** Probé el código en vivo contra Firestore real con `node --env-file=.env.local --import tsx script.ts` — pero `tsx` usa su propio resolvedor de módulos, que sí tolera imports sin extensión. `npm run build` (`tsc -b`) tampoco lo agarra porque usa la resolución permisiva (`moduleResolution: "bundler"`) de `tsconfig.app.json`. Ninguna de las dos formas de probar localmente replica la resolución ESM estricta que usa el runtime real de Vercel.
-
-**Diagnóstico, reproducido antes de tocar nada:**
-
-1. Confirmé con un script de solo lectura contra Firestore de producción que el único documento de `guests` sí pasa `guestSchema.parse()` — descartado dato corrupto.
-2. El usuario aclaró que el problema empezó con el último PR mergeado, no antes — mi rama local de `master` estaba desactualizada (el usuario ya había mergeado los PRs #16 y #17 sin avisar, mismo patrón ya documentado arriba de "confiar en `git log origin/master`, no en la memoria ni en lo que uno cree que está pendiente").
-3. Reproducido el error letra por letra con `npx tsc --moduleResolution nodenext --module nodenext ...` sobre los archivos tocados por el PR — exactamente el mismo `TS2835` de WED-12.
-
-**Corrección.** Agregado `.js` a los 4 imports de `scripts/lib/guestImport.ts` (2 value imports + 2 type imports). **Verificado contra los 8 entry points reales de `api/`** (`export`, `admin/guests` list/create, `admin/guests/[id]`, `rotate-token`, `admin/guests/import`, `health`, `invitation/[token]`, `rsvp`) con el mismo chequeo estricto — los 8 limpios, no quedó ningún otro archivo con el mismo gap. `npm run verify` y `npm run build` en verde, 347 tests sin tocar ninguno.
-
-**Alcance real del bug mientras estuvo desplegado:** no solo el listado de invitados — `api/_lib/guests.ts` es el módulo que usan `api/invitation/[token].ts` y `api/rsvp.ts` también, así que cualquier invitado real abriendo su enlace o confirmando asistencia durante esa ventana pudo haber recibido el mismo error. No hay forma de saber cuánto tiempo estuvo así sin revisar los logs de Vercel.
-
-**Patrón a repetir, ampliando la lección de WED-12:** cada vez que un archivo de `api/` (directo o transitivamente, vía `api/_lib/` o `scripts/lib/`) empiece a importar un módulo que **antes nunca vivía en ese árbol de dependencias**, correr `npx tsc --moduleResolution nodenext --module nodenext --strict --skipLibCheck <cada entry point de api/>` antes de pushear — ni `tsc -b` ni ejecutar el código con `tsx` lo detectan, solo esta verificación puntual replica la resolución ESM real de Vercel.
-
----
-
-### Corrección fuera de ticket — importar CSV esperaba el formato equivocado, más eliminación del campo `notes` (2026-09-02)
-
-**Bug real reportado por el usuario al usar la función recién entregada.** `POST /api/admin/guests/import` (y por lo tanto `ImportGuestsDialog`) exigía el encabezado en inglés de `npm run import:guests` (`firstName,lastName,titleLabel,guestLimit,phone`) — pero el archivo real que el usuario intentó subir tiene el encabezado en español que la propia consola usa (`Nombre,Apellido,Texto en sobre,Cupo de invitados,Teléfono`), **y además viene delimitado por punto y coma, no por coma** (típico de un CSV exportado desde Excel en configuración regional en español). `parseCsv` solo reconocía `,`, así que interpretaba la fila completa del encabezado como un único campo — de ahí el mensaje de error exacto que reportó el usuario.
-
-**Corrección — el import de la consola ahora usa el mismo camino que `npm run normalize:guests`, no el de `npm run import:guests`:**
-
-- `scripts/lib/csv.ts#parseCsv` detecta automáticamente el delimitador (cuenta `;` vs `,` en la primera línea, usa el que predomine) — sigue aceptando comas por defecto, no rompe nada de lo que ya funcionaba con CSVs en inglés.
-- Nueva `mapHumanCsvToGuestInputs` en `scripts/lib/guestImport.ts`: encadena `normalizeHumanGuestSheet` (valida el encabezado humano + normaliza teléfono, ya existía desde WED-23) con `mapCsvToGuestInputs` (sustituyendo el encabezado por `REQUIRED_CSV_HEADER` antes de validar) — es exactamente la misma lógica que ya usaba `scripts/normalizeGuestSheet.ts`, solo que expuesta como función reutilizable en vez de estar inline en el script de CLI.
-- `api/admin/guests/import.ts` cambia de `mapCsvToGuestInputs` a `mapHumanCsvToGuestInputs`. El CSV que exige la consola ahora es el mismo formato que produce "Exportar CSV" (mismos 5 primeros encabezados) y el mismo que llenan los novios en Excel — no el formato de máquina que sigue siendo exclusivo de `npm run import:guests` para uso por CLI.
-- Contrato de §4 actualizado con el nuevo formato de request. Diálogo con una pista visible del encabezado esperado (`adminGuestsImportCopy.fileHint`).
-
-**Campo `notes` eliminado del modelo de datos**, a pedido del usuario en el mismo mensaje — nunca tuvo un flujo real que lo necesitara. Quitado de `createGuestSchema`/`updateGuestSchema`, el formulario de la consola (`GuestFormFields`, ambos diálogos), el CSV exportado (`GUEST_EXPORT_HEADER`, `api/admin/export.ts`) y el schema del formulario cliente. **Blast radius: ~25 archivos de test** (mismo patrón que el de `invitedAt` en WED-83), encontrado limpiamente con `tsc -b --noEmit`. Un puñado de tests usaban `notes` como "cualquier campo válido de ejemplo" para probar PATCH genérico — se cambiaron a `titleLabel`/`guestLimit` en vez de solo borrar la aserción, para no perder cobertura real. **Consecuencia sobre ADR-011:** la convención de marcar invitados de prueba se mueve enteramente a `titleLabel` (documentado en §3 arriba); varias verificaciones en vivo de sesiones anteriores ya lo hacían por partida doble (`titleLabel`/`notes`), así que no es un cambio de hábito, es quitar la mitad redundante.
-
-354 tests (antes 347), 99.14 % de cobertura global. `npm run verify` y `npm run build` en verde.
-
----
-
-### Corrección fuera de ticket — encabezado legado "Trato para el sobre" seguía rechazándose tras el rename (2026-09-16)
-
-**Reportado por el usuario al intentar importar su lista real de invitados.** El rename de `titleLabel` (`"Trato para el sobre"` → `"Texto en sobre"`, ver corrección anterior) cambió el encabezado que exige `normalizeHumanGuestSheet` (`scripts/lib/humanGuestSheet.ts`), pero el `.xlsx`/CSV que los novios mantienen en su escritorio se creó antes del rename y nunca se actualizó — encabezado real: `Nombre;Apellido;Trato para el sobre;Cupo de invitados;Teléfono`. `validateExactHeader` compara la fila completa contra `HUMAN_SHEET_HEADER` letra por letra, así que el archivo real del usuario quedaba rechazado con `Expected header "...Texto en sobre...", got "...Trato para el sobre..."`. No es un bug de lógica — es la consecuencia esperada de un rename de contenido sin ruta de compatibilidad para archivos existentes.
-
-**Corrección.** `normalizeHumanGuestSheet` ahora acepta **ambos** encabezados: el vigente (`HUMAN_SHEET_HEADER`) y una constante nueva, `LEGACY_HUMAN_SHEET_HEADER`, idéntica salvo por esa única columna. Un archivo con cualquiera de los dos encabezados se normaliza igual; solo un tercer encabezado distinto sigue produciendo el error. Alcance acotado a propósito: `REQUIRED_CSV_HEADER` (el formato de máquina en inglés de `npm run import:guests`) no se tocó, porque nunca tuvo el nombre viejo. Test que documenta la regla (ADR-007): `acceptsTheLegacyTratoParaElSobreHeaderFromFilesCreatedBeforeTheRename` en `scripts/lib/humanGuestSheet.test.ts`.
-
-**Por qué no se corrigió solo editando el archivo del usuario.** Se editó igual como solución inmediata (una sola celda), pero el archivo real de los novios en su escritorio es un `.xlsx` que van a seguir editando y volviendo a exportar — el mismo error iba a repetirse en cada exportación futura mientras esa copia de trabajo no se actualice. La corrección de código es la que hace que no vuelva a pasar, sin depender de que alguien recuerde renombrar la columna cada vez.
-
-`npm run verify` (lint, typecheck, tests de `scripts/lib/` y `api/admin/guests/import.test.ts`) en verde.
-
----
-
-### Corrección fuera de ticket — `normalizePhone` no reconocía números norteamericanos (2026-09-16)
-
-**Reportado por el usuario al importar su lista real, mismo archivo que las dos correcciones anteriores.** Tres filas (varios invitados con número de EE. UU., prefijo de área `571`, formato `15712773066`) fallaban `createGuestSchema` con `Phone must be E.164, for example +50370000000`. `normalizePhone` (`scripts/lib/humanGuestSheet.ts`) solo sabía anteponer `+503` a números locales de 8 dígitos; un número de 11 dígitos que ya trae el `1` de país (NANP: EE. UU./Canadá) no encajaba en ningún caso y se devolvía tal cual, sin `+` — de ahí el rechazo de `phoneSchema` (E.164 exige el prefijo).
-
-**Corrección.** `normalizePhone` gana un tercer caso: un valor de exactamente 11 dígitos que empieza en `1` se interpreta como NANP y se le antepone `+` sin más (`digitsAndPlus.length === NANP_DIGIT_COUNT && digitsAndPlus.startsWith(NANP_TRUNK_DIGIT)`). Es autodetección por forma del número, igual que el caso de El Salvador (8 dígitos → local), no requiere que el novio indique el país. Un número que ya trae `+` o el prefijo internacional `00` sigue resolviéndose antes, sin cambios. Tests: `prependsAPlusToAnElevenDigitNumberStartingWithOneAsANorthAmericanNumber`, `stripsSpacesFromANorthAmericanNumberBeforeDetectingIt`.
-
-`npm run verify` en verde.
-
----
-
-### Corrección fuera de ticket — Android forzaba modo oscuro sobre la invitación y deformaba los colores reales (2026-09-16)
-
-**Reportado por el usuario probando en un teléfono real.** Con el sistema en modo oscuro, Chrome/Android (y varios WebViews, incluido probablemente el navegador interno de WhatsApp que WED-93 tiene que probar) aplican su propio "forced dark"/"simplified adaptive dark theme": repintan los colores de cualquier página que no declare explícitamente qué esquema soporta. Como ni `index.html` ni el CSS declaraban nada al respecto, el navegador adivinaba y desviaba los tonos reales verificados en WED-30 (`--bg-base`, `--envelope-text`, etc.) — el sitio no tiene (ni va a tener) un modo oscuro propio para la invitación, así que ese repintado automático es puro ruido, nunca una mejora.
-
-**Corrección.** Se declaró el esquema de color explícitamente en tres capas, mismo patrón que ya usa `admin.css` para el fondo (`body:has(.admin-shell)`/`body:has(.admin-shell.dark)`):
-
-- `index.html`: `<meta name="color-scheme" content="light" />` — señal más temprana posible, antes de que cargue cualquier CSS.
-- `src/styles/tokens.css`, regla `body`: `color-scheme: light;` — cubre la invitación y cualquier página pública, que es donde vive el problema reportado.
-- `src/styles/admin.css`: `color-scheme: light;` bajo `body:has(.admin-shell)` y `color-scheme: dark;` bajo `body:has(.admin-shell.dark)` — la consola sí tiene su propio selector de tema (corrección fuera de ticket del 2026-09-01), así que en vez de forzarla a claro también, se le hace declarar explícitamente el esquema que ya tiene activo en cada caso. Esto además corrige los controles nativos del navegador (scrollbars, checkboxes) en el admin oscuro, que antes se quedaban con apariencia clara por defecto.
-
-**Por qué no alcanza con arreglar solo la invitación.** El fix de `tokens.css` por sí solo ya resuelve el reporte del usuario (la invitación es lo único que un invitado ve). El ajuste en `admin.css` es preventivo: sin él, declarar `color-scheme: light` en el `body` global (vía `tokens.css`, que se importa para toda la app) se habría heredado también en el admin oscuro, dejando sus controles nativos con apariencia clara sobre un fondo oscuro.
-
-Verificado en el CSS/HTML de producción (`npm run build`): el meta tag aparece en `dist/index.html`, y las tres declaraciones de `color-scheme` aparecen en los chunks CSS correctos. `npm run verify` en verde (391 tests, sin cambios de comportamiento en JS/TS, esto es CSS/HTML puro). **Pendiente honesto:** no hay forma de confirmar visualmente en un teléfono real con modo oscuro activado desde este entorno — el usuario es quien lo reportó y quien puede confirmar que ya no ocurre.
-
-**Refuerzo (mismo día, mismo hallazgo, reportado por QA con el celular en modo oscuro forzado).** `color-scheme: light` es la solución recomendada por el estándar, pero no todas las implementaciones de "forzar oscuro" de Android/WebView la respetan igual — hay dispositivos donde el heurístico de auto-oscurecido de Chromium sigue actuando encima. Se agregó una segunda capa, más agresiva y explícitamente dirigida a ese heurístico: un bloque `@media (prefers-color-scheme: dark)` que reafirma los 13 tokens de color de la invitación con sus valores reales exactos, más `img { filter: none; }` para neutralizar la inversión de luminancia que ese mismo heurístico a veces aplica sobre imágenes (relevante para `paper.webp`/`seal.webp` del sobre, y para cualquier foto futura de E5). Es la técnica documentada para "engañar" al heurístico de Chromium: al ver reglas de autor que ya diferencian el caso oscuro (aunque sean idénticas a las de claro), Chromium asume que el sitio ya es "dark-mode aware" para esos elementos y no aplica su propio repintado. Alcance: solo toca tokens `--color-*` de la invitación (namespace que el admin nunca lee, confirmado por grep en WED-79), así que no interfiere con el selector de tema propio del admin. Regla de negocio para dejar por escrito: **la invitación fuerza modo claro siempre, sin excepción; el admin conserva su propio selector claro/oscuro.**
-
-**Segundo refuerzo (mismo día, acotado a un dato concreto del usuario: el problema persiste únicamente en el navegador por defecto de Samsung).** Samsung Internet tiene su propio "modo oscuro de sitios web" (Ajustes → Modo oscuro), separado del heurístico estándar de Chromium — en varias versiones no respeta `color-scheme: light` a secas, porque ese valor solo declara qué esquema soporta la página, sin prohibir que el navegador la fuerce igual. Se agregó el modificador `only` (`color-scheme: light only`), que es la señal explícita del estándar para "ignora incluso la preferencia forzada del navegador", en las tres capas ya existentes (`<meta>`, `html`/`body` de `tokens.css`) y en las dos reglas de `admin.css` (`body:has(.admin-shell)` → `light only`, `body:has(.admin-shell.dark)` → `dark only` — el propio selector de tema del admin es la fuente de verdad explícita, así que tampoco debe dejarse pisar por el navegador). Verificado en el CSS compilado que las tres reglas de `light only`/`dark only` quedaron en los chunks correctos. **Si esto no resuelve el caso de Samsung Internet:** algunas versiones de ese navegador aplican su modo oscuro como una transformación a nivel de navegador que ignora cualquier opt-out estándar de la página (no es un bug nuestro, es una limitación conocida de ese navegador específico); la única salida en ese caso es que la QA desactive "Modo oscuro de sitios web" para este sitio desde los propios ajustes de Samsung Internet (usualmente un ícono de luna en la barra de direcciones o en el menú de la página).
-
----
-
-### EPIC E9 — Calidad
-
-#### WED-90 — Accesibilidad
-
-**QA · 3 · E5, E6, E7, E8**
-
-- [ ] axe DevTools sin violaciones críticas ni serias en sobre, invitación, consola y 404.
-- [ ] **El sobre es alcanzable y accionable solo con teclado**: es el gate, y si falla, el sitio entero es inaccesible.
-- [ ] El modal de confirmación atrapa el foco y cierra con `Esc`.
-- [ ] Recorrible con teclado, foco visible y en orden lógico.
-- [ ] Un solo `h1` por página, sin saltos de nivel.
-- [ ] Imágenes informativas con `alt`; decorativas con `alt=""`.
-- [ ] **Flujo completo probado con VoiceOver o TalkBack**, desde el sobre hasta el envío del RSVP.
-- [ ] Contraste AA verificado en el sitio real.
-
-#### WED-91 — Rendimiento
-
-**QA · 3 · E5, E6**
-
-- [ ] Lighthouse móvil: Performance ≥ 90, Accessibility ≥ 95, Best Practices ≥ 95.
-- [ ] **LCP (el sobre) < 2.5 s**, CLS < 0.1, INP < 200 ms.
-- [ ] Imágenes en AVIF/WebP con dimensiones declaradas.
-- [ ] Primera carga (documento + JS + CSS + sobre) < 700 KB.
-- [ ] **Verificado en Network que el mp3 no se descarga hasta el tap del sobre.**
-- [ ] Bundle analizado; Framer Motion y las fuentes justificadas.
-- [ ] En 4G lenta simulada, el sobre es visible en < 3 s.
-
-#### WED-92 — Metadatos
-
-**Chore · 2 · WED-53**
-
-- [ ] `title` y `meta description` definidos.
-- [ ] Favicon y `apple-touch-icon` en todos los tamaños.
-- [ ] `manifest.json` con nombre y colores del tema.
-- [ ] Open Graph con imagen estática **igual para todos**; nunca incluye el nombre del invitado.
-- [ ] Imagen OG de 1200×630, < 300 KB.
-
-#### WED-93 — Matriz cross-browser
-
-**QA · 3 · E5, E6, E7, E8**
-
-- [ ] Matriz con resultado para: iOS Safari, Android Chrome, Chrome desktop, Safari desktop, Firefox y **el navegador interno de WhatsApp**.
-- [ ] **La animación del sobre y el audio probados específicamente en el navegador interno de WhatsApp.**
-- [ ] Probado en 320 px, 360 px, 432 px y 1920 px.
-- [ ] Probado en landscape.
-- [ ] Probado con fuente del sistema al 200%: nada se corta.
-- [ ] Bugs registrados con severidad.
-
-#### ~~WED-94 — Test end-to-end del RSVP~~
-
-**Eliminado — ver ADR-011.**
-
-> Requería un proyecto Firebase de prueba para no arriesgar datos reales de invitados. Sin ambiente de pruebas (ADR-011), automatizarlo contra producción es más riesgo que beneficio. La red de seguridad del flujo de RSVP queda en los tests unitarios de WED-41 y el ensayo manual de WED-102.
-
----
-
-### EPIC E10 — Lanzamiento
-
-#### WED-100 — Contenido final
-
-**Chore · 2 · E5, WED-01**
-
-- [ ] Cero placeholders.
-- [ ] Revisión ortográfica y de acentos por una segunda persona.
-- [ ] **Corregidos los dos errores detectados en el Figma durante WED-02:**
-  - `-Recuarda-` → `-Recuerda-`
-  - `Hemos elegido caminarjuntos para siempre` → falta el espacio entre "caminar" y "juntos"
-- [ ] Fecha, hora, dirección y textos verificados y **aprobados por escrito por los novios**.
-- [ ] Cambios de diseño pendientes incorporados o formalmente pospuestos.
-
-#### WED-101 — Carga de la lista real
-
-**Chore · 2 · WED-22, WED-100**
-
-- [ ] Lista importada; conteo validado contra el CSV origen.
-- [ ] Cero duplicados; acentos y `ñ` correctos.
-- [ ] **Cada `titleLabel` revisado uno por uno**: es el texto que el invitado ve en el sobre, y un error ahí es visible e incómodo.
-- [ ] Suma de `guestLimit` coincide con el aforo esperado del Hotel Álamo.
-- [ ] Todos los `phone` en E.164.
-- [ ] 5 enlaces de muestra abiertos y verificados manualmente.
-
-#### WED-102 — Ensayo general
-
-**QA · 2 · WED-101, E7**
-
-- [ ] 3 personas ajenas recorren el flujo desde su celular: reciben el enlace por WhatsApp, abren el sobre, leen, confirman.
-- [ ] Sus respuestas aparecen en la consola.
-- [ ] El `wa.me` llega al teléfono de la novia con el texto correcto.
-- [ ] **Se observa si el sobre resulta claro**: ¿entienden que hay que tocarlo, sin que nadie se lo explique? Es el mayor riesgo de usabilidad del proyecto.
-- [ ] **Se observa si el modal de confirmación comunica bien la irreversibilidad**, o si lo aceptan sin leerlo.
-- [ ] Fricciones registradas y priorizadas.
-- [ ] **Datos de prueba eliminados** antes del envío real.
-
-#### WED-103 — Go-live
-
-**Chore · 1 · WED-102**
-
-- [ ] `robots.txt` y `noindex` retirados de las páginas públicas, **manteniéndolos en `/i/*` y `/admin`**.
-- [ ] Vercel Analytics activo.
-- [ ] Monitoreo de errores con alerta.
-- [ ] **Export manual de Firestore guardado como respaldo.**
-- [ ] Tag de release creado.
-- [ ] **Envío por lotes**: primero 10 invitados, verificar, luego el resto.
-
----
-
-### EPIC E11 — Post-lanzamiento
-
-#### WED-110 — Seguimiento
-
-**Feature · 2 · WED-81**
-
-- [ ] Filtro de pendientes con acción de reenviar por `wa.me`.
-- [ ] Distinción visible entre quien abrió y no confirmó, y quien nunca abrió.
-- [ ] Plantilla de recordatorio lista.
-
-#### WED-111 — Cierre y entrega
-
-**Chore · 1 · WED-81**
-
-- [ ] Pasado el 25 de octubre, el formulario muestra el cierre y `/api/rsvp` devuelve 409 `RSVP_CLOSED`.
-- [ ] Export final entregado con confirmados y total de personas.
-- [ ] Documentado cuándo se apaga el sitio y cuándo se borran los datos personales.
-
----
-
-## 7. Esfuerzo y calendario
-
-| Épica                  | Vía                    | Tickets | Puntos  |
-| ---------------------- | ---------------------- | ------- | ------- |
-| E0 Descubrimiento      | B (salvo WED-03/04)    | 4       | 8       |
-| E1 Fundamentos         | A                      | 6       | 13      |
-| E2 Firebase y datos    | A                      | 3       | 7       |
-| E3 Design System       | B                      | 5       | 13      |
-| E4 API                 | A                      | 4       | 16      |
-| E5 Invitación          | A (50, 51) / B (resto) | 10      | 32      |
-| E6 Animaciones y audio | B                      | 4       | 14      |
-| E7 RSVP                | B                      | 2       | 8       |
-| E8 Consola             | A                      | 6       | 21      |
-| E9 Calidad             | mixta                  | 4       | 11      |
-| E10 Lanzamiento        | mixta                  | 4       | 7       |
-| E11 Post               | A                      | 2       | 3       |
-| **Total**              |                        | **54**  | **153** |
-
-**Reparto entre vías:** 70 puntos en la vía A (46 %), 75 en la vía B, 8 mixtos. WED-94 (3 puntos, vía B) se eliminó por ADR-011.
-
-### Calendario con lanzamiento el 10 de octubre
-
-| Semana             | Vía A (arranca ya)                    | Vía B (espera el Figma)              |
-| ------------------ | ------------------------------------- | ------------------------------------ |
-| 1 · ago 28 – sep 5 | E1 completa, E2, WED-03, WED-04       | —                                    |
-| 2 · sep 6 – 12     | E4 completa con tests, WED-50, WED-51 | —                                    |
-| 3 · sep 13 – 19    | E8 completa (WED-79 a WED-84)         | _llega el Figma v2_ → WED-01, WED-02 |
-| 4 · sep 20 – 26    | WED-101 (lista real)                  | E3 Design System                     |
-| 5 · sep 27 – oct 3 | —                                     | E5 secciones de la invitación        |
-| 6 · oct 4 – 10     | WED-93, WED-103                       | E6, E7, WED-90, WED-91, WED-102      |
-
-### La fecha límite del diseño
-
-Reordenar compra tiempo, no lo crea. La vía A tiene **material para tres semanas**: al terminar la semana 3, el 19 de septiembre, se acaba todo lo que se puede hacer sin diseño.
-
-> **El Figma v2 tiene que estar listo el 19 de septiembre.** Cada día de retraso a partir de ahí es un día de retraso en el lanzamiento, uno a uno, porque no queda trabajo alternativo con el que rellenar.
-
-Si el diseñador avisa que no llega a esa fecha, hay dos salidas y conviene decidirlas antes, no cuando ya pasó:
-
-1. **Correr el lanzamiento.** El cierre de RSVP es el 25 de octubre; se puede lanzar hasta el 17 y todavía dejar una semana de margen. Eso da una semana extra de colchón.
-2. **Recibir el diseño por partes.** Si llegan primero el sobre y la portada, la semana 4 arranca igual y el resto entra en paralelo. Vale la pena pedirlo en ese orden explícitamente.
-
-### Qué se recorta si algo se atrasa
+## 7. Qué se recorta si algo se atrasa
 
 En orden: WED-63 (animaciones de detalle), WED-61 (música), WED-110. El sitio funciona sin las tres.
 
-## 8. Riesgos
+## 8. Riesgos activos
 
-| Riesgo                                                                                                                                   | Prob.    | Impacto     | Mitigación                                                                                                                                                                                                                             |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Los invitados no entienden que hay que tocar el sobre                                                                                    | Media    | **Crítico** | Affordance en WED-52 y observación en WED-102. Si falla, nadie llega a la invitación                                                                                                                                                   |
-| Confirmaciones erróneas por mis-tap, irreversibles para el invitado                                                                      | **Alta** | Medio       | Modal en WED-70; enlace `wa.me` en el mensaje de R2; ambas vías de corrección en WED-82                                                                                                                                                |
-| Sin ambiente de pruebas (ADR-011), un Preview de Vercel o una prueba manual quema la confirmación de un invitado real o altera sus datos | Media    | Alto        | Nunca probar con tokens reales; usar invitados de prueba marcados en `titleLabel` y borrarlos antes de WED-101/WED-103; WED-94 (e2e automatizado) queda eliminado por esta misma razón                                                 |
-| ~~Las fuentes no son licenciables para web~~                                                                                             | —        | —           | **CERRADO en WED-02.** Great Vibes e Inter son Google Fonts bajo SIL OFL                                                                                                                                                               |
-| Los ornamentos importados de Illustrator inflan el peso de la página                                                                     | Media    | Medio       | ADR-008 los manda a WebP en vez de SVG; presupuesto verificado en WED-33 y WED-91                                                                                                                                                      |
-| La animación de apertura no está especificada en ninguna parte                                                                           | **Alta** | Medio       | El Figma v1 no la contenía (ADR-009). Pedirla explícitamente para el v2                                                                                                                                                                |
-| **El Figma v2 llega después del 19 de septiembre**                                                                                       | Media    | **Crítico** | Es el día en que se agota el trabajo sin diseño. Retraso día por día en el lanzamiento. Salidas en §7: correr la fecha, o pedir el diseño por partes empezando por sobre y portada                                                     |
-| ~~Las modificaciones del cliente cambian el modelo de datos o el flujo de RSVP~~                                                         | —        | —           | **CERRADO.** Confirmado que los cambios son solo visuales: colores, tamaños de fuente y un componente nuevo en el código de vestimenta. §3 y §4 quedan firmes y la vía A puede avanzar sin riesgo de retrabajo                         |
-| La geometría del sobre cambia y rompe el supuesto de ADR-009                                                                             | Media    | Medio       | La animación asume dos hojas verticales. Confirmar que el v2 conserva esa estructura                                                                                                                                                   |
-| La animación del sobre va lenta en gama media                                                                                            | Media    | Alto        | Medición obligatoria en WED-60; fallback a fundido simple                                                                                                                                                                              |
-| Renderizado o audio roto en el navegador interno de WhatsApp                                                                             | Media    | Alto        | WED-93 lo prueba explícitamente; es el canal principal                                                                                                                                                                                 |
-| Uso de una pista musical comercial sin licencia                                                                                          | Alta     | Bajo–Medio  | Riesgo asumido de forma explícita en WED-04; el sitio se mantiene `noindex`                                                                                                                                                            |
-| La música no reproduce (silencio de iOS, políticas del navegador)                                                                        | Alta     | Bajo        | Degradación elegante en WED-61, no un fallo                                                                                                                                                                                            |
-| Las reglas de §10 se aplican tarde y obligan a refactorizar                                                                              | Media    | Alto        | WED-15 en la semana 1, antes de escribir features                                                                                                                                                                                      |
-| Los límites de complejidad producen abstracciones forzadas                                                                               | Media    | Bajo        | Los umbrales son generosos; si un caso legítimo los excede, se documenta la excepción en el PR                                                                                                                                         |
-| Los cambios pendientes de diseño no son mínimos                                                                                          | Media    | Medio       | Congelar diseño al terminar E3 (≈12 de septiembre)                                                                                                                                                                                     |
-| ~~Contraste insuficiente del texto salvia sobre durazno~~                                                                                | —        | —           | **CERRADO en WED-30.** Con los valores reales del Figma v2, `--text-body` sobre `--bg-base` da 6.13:1 — pasa AA. Riesgo nuevo en su lugar: `--text-on-sage` sobre `--surface-sage` da 3.42:1, no alcanza AA para texto normal (ver §5) |
-| Un `titleLabel` mal escrito en el sobre                                                                                                  | Media    | Medio       | Revisión uno por uno en WED-101                                                                                                                                                                                                        |
-| Secreto filtrado por prefijo `VITE_`                                                                                                     | Baja     | **Crítico** | Regla de ESLint (WED-11) y verificación en WED-20                                                                                                                                                                                      |
-| Un enlace se comparte y alguien confirma por otro                                                                                        | Baja     | Medio       | R2 hace que la primera confirmación sea la única; token rotable (WED-84)                                                                                                                                                               |
-| El invitado no envía o edita el `wa.me`                                                                                                  | Alta     | Bajo        | Riesgo aceptado; la consola es la fuente de verdad                                                                                                                                                                                     |
+| Riesgo                                                                           | Prob.    | Impacto     | Mitigación                                                                                                  |
+| -------------------------------------------------------------------------------- | -------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| Los invitados no entienden que hay que tocar el sobre                            | Media    | **Crítico** | Affordance en WED-52, observación en WED-102                                                                |
+| Confirmaciones erróneas por mis-tap, irreversibles para el invitado              | **Alta** | Medio       | Modal en WED-70; enlace `wa.me` en el mensaje de R2; ambas vías de corrección en WED-82 (ya implementado)   |
+| Sin ambiente de pruebas (ADR-011), un preview o prueba manual quema datos reales | Media    | Alto        | Nunca probar con tokens reales; invitados de prueba marcados en `titleLabel`, borrados antes de WED-101/103 |
+| Los ornamentos importados inflan el peso de la página                            | Media    | Medio       | ADR-008 → WebP; presupuesto verificado en WED-33/91                                                         |
+| La animación de apertura no está especificada                                    | **Alta** | Medio       | Pedirla explícitamente al diseñador antes de WED-60                                                         |
+| La animación del sobre va lenta en gama media                                    | Media    | Alto        | Medición obligatoria en WED-60; fallback a fundido simple                                                   |
+| Renderizado o audio roto en el navegador interno de WhatsApp                     | Media    | Alto        | WED-93 lo prueba explícitamente; es el canal principal                                                      |
+| Pista musical comercial sin licencia                                             | Alta     | Bajo–Medio  | Riesgo asumido en WED-04; sitio se mantiene `noindex`                                                       |
+| La música no reproduce (silencio de iOS, políticas del navegador)                | Alta     | Bajo        | Degradación elegante en WED-61, no un fallo                                                                 |
+| Un `titleLabel` mal escrito en el sobre                                          | Media    | Medio       | Revisión uno por uno en WED-101                                                                             |
+| Secreto filtrado por prefijo `VITE_`                                             | Baja     | **Crítico** | Regla de ESLint + verificación                                                                              |
+| Un enlace se comparte y alguien confirma por otro                                | Baja     | Medio       | R2 hace que la primera confirmación sea la única; token rotable (WED-84, ya implementado)                   |
+| El invitado no envía o edita el `wa.me`                                          | Alta     | Bajo        | Riesgo aceptado; la consola es la fuente de verdad                                                          |
 
 ---
 
-## 10. Convenciones de código
+## 9. Convenciones de código
 
-Estas reglas son parte del DoD de todo ticket y se verifican automáticamente en WED-15. Un PR que las incumple no se puede mergear.
+Parte del DoD de todo ticket, verificadas en CI (WED-15).
 
-### Idioma
+### Idioma y nomenclatura
 
-- **Todo el código en inglés**: identificadores, funciones, tipos, archivos, carpetas, rutas de API, campos de Firestore, tokens CSS, anclas del DOM, variables de entorno, mensajes de commit, nombres de tests y de ramas.
-- **El contenido visible en español**, siempre en `src/content/`, con claves en inglés y valores en español. Ningún literal en español dentro de un componente.
-
-### Nomenclatura
+Todo el código en inglés (identificadores, archivos, rutas, campos de Firestore, tokens CSS, anclas, env vars, commits, tests, ramas). Contenido visible en español solo en `src/content/`, claves en inglés.
 
 | Elemento                  | Convención                  | Ejemplo                               |
 | ------------------------- | --------------------------- | ------------------------------------- |
@@ -1427,44 +361,18 @@ Estas reglas son parte del DoD de todo ticket y se verifican automáticamente en
 | Booleanos                 | prefijo `is`/`has`/`should` | `isSubmitting`, `hasConfirmed`        |
 | Rutas y anclas            | kebab-case                  | `/api/admin/guests`, `#dress-code`    |
 
-### Reglas de Clean Code exigibles
+### Clean Code exigible
 
-- **Sin comentarios** (ADR-007). El nombre explica el qué; el test explica el porqué. Única excepción: JSDoc sobre declaraciones exportadas de `api/_lib/`.
-- **Sin `any`.** `@ts-ignore` prohibido; `@ts-expect-error` admitido solo con una explicación de 20 caracteres o más.
-- Complejidad ciclomática ≤ 10; función ≤ 50 líneas; anidamiento ≤ 3; parámetros ≤ 4. Más de tres parámetros pasan como objeto.
-- Sin números mágicos: toda constante con nombre.
-- Una responsabilidad por función. Si el nombre necesita "and", son dos.
-- Sin abreviaturas salvo las universales (`id`, `url`, `api`).
-- Sin código muerto ni imports sin usar; el historial de Git es el archivo.
-- Errores manejados explícitamente; nada de `catch` vacío.
-- **Ni un solo archivo `.js` en el repo.** Incluye la configuración de herramientas: `eslint.config.ts`, `vite.config.ts`, `vitest.config.ts`.
+Sin comentarios (excepción: JSDoc en `api/_lib/`). Sin `any`; `@ts-ignore` prohibido, `@ts-expect-error` solo con explicación ≥20 caracteres. Complejidad ciclomática ≤10, función ≤50 líneas, anidamiento ≤3, parámetros ≤4 (más de tres, pasar como objeto). Sin números mágicos. Una responsabilidad por función. Sin abreviaturas salvo universales (`id`, `url`, `api`). Sin código muerto ni imports sin usar. Errores manejados explícitamente, nada de `catch` vacío. Ningún archivo `.js` en el repo, incluida la config de herramientas.
 
 ### Supresiones de lint
 
-Desactivar una regla es una decisión, no un atajo. Las condiciones son acumulativas:
-
-- Solo `eslint-disable-next-line`. El `eslint-disable` de archivo o de bloque está prohibido.
-- Las reglas se nombran una por una. Nunca una supresión abierta.
-- Toda directiva lleva justificación en la misma línea con la sintaxis `-- motivo`, y el motivo explica por qué el código es correcto así, no que la regla molesta.
-- Una directiva que dejó de suprimir algo rompe el build.
-- **Tope de 10 supresiones en todo el repo**, verificado en CI. Pasado ese número, la salida es corregir el código o cambiar la regla, nunca sumar excepciones.
-
-Ejemplo aceptable:
+Solo `eslint-disable-next-line`, reglas nombradas una por una, justificación en la misma línea con `-- motivo` (explicando por qué el código es correcto así, no que la regla molesta). Tope de 10 supresiones en todo el repo, verificado en CI.
 
 ```ts
 // eslint-disable-next-line complexity -- máquina de estados del sobre; dividirla en dos funciones oscurece la secuencia
 ```
 
-Ejemplo rechazado por el linter:
-
-```ts
-/* eslint-disable */
-// eslint-disable-next-line
-// eslint-disable-next-line complexity
-```
-
 ### Testing
 
-- Los tests describen comportamiento, no implementación.
-- El nombre del test es la documentación de la regla: `rejectsCountAboveGuestLimit`, no `test1`.
-- Cobertura mínima en CI: 90 % en `api/` y `src/schemas/`, 60 % global.
+Los tests describen comportamiento, no implementación. El nombre del test es la documentación de la regla (`rejectsCountAboveGuestLimit`, no `test1`). Cobertura mínima en CI: 90% en `api/` y `src/schemas/`, 60% global.
