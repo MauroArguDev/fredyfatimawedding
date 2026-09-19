@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { useCountdown } from '@/hooks/useCountdown';
-import { FloralOrnament } from '@/components/ui/FloralOrnament';
 import { dateSectionCopy } from '@/content/dateSection';
 
+const FRAME_IMAGE = '/assets/date-section/marco-de-contador.webp';
+const FRAME_IMAGE_WIDTH = 1690;
+const FRAME_IMAGE_HEIGHT = 1148;
 const UNIT_PAD_LENGTH = 2;
 const UNIT_PAD_CHAR = '0';
 
@@ -12,10 +14,10 @@ interface CountdownCardProps {
 
 const UnitTile = ({ value, label }: { value: number; label: string }): ReactNode => (
   <div>
-    <p className="font-sans text-3xl font-bold tabular-nums">
+    <p className="font-sans text-xl font-bold tabular-nums text-text-body sm:text-3xl">
       {String(value).padStart(UNIT_PAD_LENGTH, UNIT_PAD_CHAR)}
     </p>
-    <p className="text-xs">{label}</p>
+    <p className="text-[11px] text-text-body sm:text-xs">{label}</p>
   </div>
 );
 
@@ -24,27 +26,29 @@ export const CountdownCard = ({ target }: CountdownCardProps): ReactNode => {
   const units = dateSectionCopy.countdownUnits;
 
   return (
-    <div className="relative overflow-hidden rounded-[24px] bg-surface-sage px-6 py-10 text-text-on-sage shadow-lg">
-      <FloralOrnament
-        src="/assets/ornaments/flores-encabezado.webp"
-        className="pointer-events-none absolute -top-4 -right-4 w-28 opacity-70"
+    <div className="relative w-full">
+      <img
+        src={FRAME_IMAGE}
+        alt=""
+        aria-hidden="true"
+        width={FRAME_IMAGE_WIDTH}
+        height={FRAME_IMAGE_HEIGHT}
+        className="w-full"
       />
-      <FloralOrnament
-        src="/assets/ornaments/flores-encabezado.webp"
-        className="pointer-events-none absolute -bottom-4 -left-4 w-28 rotate-180 opacity-70"
-      />
-      {breakdown.isPast ? (
-        <p className="relative text-center font-script text-2xl">
-          {dateSectionCopy.countdownClosedMessage}
-        </p>
-      ) : (
-        <div className="relative grid grid-cols-4 gap-3 text-center">
-          <UnitTile value={breakdown.days} label={units.days} />
-          <UnitTile value={breakdown.hours} label={units.hours} />
-          <UnitTile value={breakdown.minutes} label={units.minutes} />
-          <UnitTile value={breakdown.seconds} label={units.seconds} />
-        </div>
-      )}
+      <div className="absolute inset-x-[12%] inset-y-[30%] flex items-center justify-center">
+        {breakdown.isPast ? (
+          <p className="text-center font-script text-2xl text-text-body">
+            {dateSectionCopy.countdownClosedMessage}
+          </p>
+        ) : (
+          <div className="grid w-full grid-cols-4 gap-1 text-center">
+            <UnitTile value={breakdown.days} label={units.days} />
+            <UnitTile value={breakdown.hours} label={units.hours} />
+            <UnitTile value={breakdown.minutes} label={units.minutes} />
+            <UnitTile value={breakdown.seconds} label={units.seconds} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

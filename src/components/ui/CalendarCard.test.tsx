@@ -3,30 +3,19 @@ import { render, screen } from '@testing-library/react';
 import { CalendarCard } from '@/components/ui/CalendarCard';
 
 describe('CalendarCard', () => {
-  it('rendersTheMonthLabelDerivedFromTheGivenDate', () => {
-    render(<CalendarCard date={new Date(2026, 11, 20)} />);
-
-    expect(screen.getByText('Diciembre 2,026.')).toBeInTheDocument();
-  });
-
-  it('rendersAllSevenWeekdayLabels', () => {
-    render(<CalendarCard date={new Date(2026, 11, 20)} />);
-
-    for (const label of ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa']) {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    }
-  });
-
-  it('rendersTheNoteWithTheDayAndTimeDerivedFromTheGivenDate', () => {
+  it('rendersTheExtractedCalendarImageWithADescriptiveAltDerivedFromTheGivenDate', () => {
     render(<CalendarCard date={new Date(2026, 11, 20, 16, 30)} />);
 
-    expect(screen.getByText('20/Dic./2026')).toBeInTheDocument();
-    expect(screen.getByText('4:30 p.m.')).toBeInTheDocument();
+    const image = screen.getByRole('img');
+    expect(image).toHaveAttribute('src', '/assets/date-section/calendario-con-fecha.webp');
+    expect(image.getAttribute('alt')).toContain('Diciembre 2,026.');
+    expect(image.getAttribute('alt')).toContain('20/Dic./2026');
+    expect(image.getAttribute('alt')).toContain('4:30 p.m.');
   });
 
-  it('movingTheDateToAnotherMonthChangesTheGridWithoutCodeChanges', () => {
+  it('movingTheDateToAnotherMonthChangesTheAltTextWithoutCodeChanges', () => {
     render(<CalendarCard date={new Date(2027, 0, 15)} />);
 
-    expect(screen.getByText('Enero 2,027.')).toBeInTheDocument();
+    expect(screen.getByRole('img').getAttribute('alt')).toContain('Enero 2,027.');
   });
 });
