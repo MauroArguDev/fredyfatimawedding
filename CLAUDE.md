@@ -658,15 +658,19 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-33 — Iconos y ornamentos
 
-**Feature · 3 · WED-01**
+**Feature · 3 · WED-01 — parcial, código implementado 2026-09-18. Cubre Waze/Google Maps; los 7 iconos del itinerario y el disco de música quedan bloqueados (ver nota).**
 
-- [ ] Iconos funcionales en SVG optimizado con SVGO; heredan color con `currentColor` donde aplique.
-- [ ] **Ornamentos e ilustraciones en WebP con transparencia**, no SVG (ADR-008).
-- [ ] Ornamentos e ilustraciones decorativas con `aria-hidden="true"`.
-- [ ] Iconos de ubicación con `aria-label` ("Abrir en Waze", "Abrir en Google Maps").
-- [ ] **Peso total de iconos SVG < 40 KB.**
-- [ ] **Peso total de ornamentos WebP < 400 KB**, todos con `loading="lazy"` salvo los de la portada.
-- [ ] Comparado el peso SVG vs WebP de un ornamento representativo, y la decisión documentada con el número real.
+- [~] **Iconos funcionales en SVG optimizado con SVGO; heredan color con `currentColor` donde aplique.** Hecho para Waze y Google Maps (`public/assets/icons/waze.svg`, `google-maps.svg`); son marcas de marca multicolor (no monocromas), así que no heredan `currentColor` — no aplica, a diferencia del chevron del `Select` (ya en SVG inline desde WED-32, monocromo, sí hereda color). **Los 7 iconos del itinerario y el del disco de música siguen sin poder extraerse**: el "contenedor itinerario completo" (nodo `95:194`, sección WED-57) ya estaba documentado en ADR-008 como una sola imagen PNG plana en el v2, sin nodos de icono individuales que exportar — ese hallazgo es previo a esta sesión, no nuevo. El disco de música no aparece en ningún nodo del árbol auditado; depende de WED-60/61, todavía lejos en el backlog. Ambos quedan pendientes de este ticket hasta que haya una fuente vectorial real.
+- [x] **Ornamentos e ilustraciones en WebP con transparencia, no SVG (ADR-008).** El único ornamento genérico del archivo (`Flores Encabezado`, usado en la portada) ya se resolvió en WED-53 como WebP — ver esa sección para el detalle de la exportación. No se encontraron otros ornamentos reutilizables fuera de bloques específicos de una sola sección (esos se exportan al implementar cada sección de E5, por su propio AC).
+- [x] Ornamentos e ilustraciones decorativas con `aria-hidden="true"` — `FloralOrnament` (WED-32) ya lo aplica; `LocationIcon` (nuevo, `src/components/ui/LocationIcon.tsx`) también, porque el nombre accesible del botón de ubicación debe venir del enlace que lo envuelve (WED-56), no del icono.
+- [ ] **Iconos de ubicación con `aria-label` ("Abrir en Waze", "Abrir en Google Maps").** No aplica todavía a este ticket: el `aria-label` va en el `<a>`/botón que envuelve al icono, que es responsabilidad de WED-56 (`VenueSection`, sin empezar). `LocationIcon` ya se dejó deliberadamente `aria-hidden` para que ese enlace sea la única fuente del nombre accesible.
+- [x] **Peso total de iconos SVG < 40 KB.** `waze.svg` (3.9 KB) + `google-maps.svg` (1.2 KB) = 5.1 KB tras optimizar con `svgo --multipass` (agregado como devDependency, mismo criterio que `sharp` en WED-52: solo pipeline de build, no viaja al bundle de runtime).
+- [x] **Peso total de ornamentos WebP < 400 KB.** El único ornamento de este alcance (`flores-encabezado.webp`, WED-53) pesa 12 KB. Los assets del sobre (`paper.webp`/`seal.webp`, WED-52) no se cuentan aquí porque son textura/sello, no "ornamento decorativo" en el sentido de este ticket — de todos modos, sumados (45+32 KB) siguen muy por debajo del presupuesto.
+- [x] **Comparado el peso SVG vs WebP de un ornamento representativo, y la decisión documentada con el número real.** Ya se hizo en la práctica al construir WED-53: el SVG que exporta Figma para un solo clúster floral (`Flores Encabezado`, un lado) pesa 74 KB sin optimizar; el mismo asset convertido a WebP pesa 12 KB. Confirma la decisión de ADR-008 con un número real de este archivo v2 (no solo del v1).
+
+**Implementación.** `LocationIcon` (`src/components/ui/LocationIcon.tsx`) mapea `brand: 'waze' | 'google-maps'` a su asset — mismo patrón plano que `FloralOrnament`. Los dos SVG se construyeron componiendo las capas vectoriales reales del archivo (nodos `86:102`/`93:180`, "Ubicación Waze"/"Ubicación Google"), usando las posiciones `x`/`y` exactas de `get_metadata` para los `transform="translate(...)"` de cada grupo — no son un trazado a mano ni una recomposición aproximada, cada `path` es el `d` que expone Figma tal cual. Se excluyó a propósito el círculo de fondo (`Ellipse 1`) y el texto "Ubicación" del SVG: el círculo se reconstruye con un token de color (`bg-hero`) y el texto es contenido editable, ninguno de los dos pertenece al icono en sí — eso es responsabilidad de armar el botón completo en WED-56.
+
+Verificados visualmente renderizando ambos SVG a PNG con `sharp` antes y después de `svgo`, sin diferencias.
 
 #### WED-34 — Contenido desacoplado
 
