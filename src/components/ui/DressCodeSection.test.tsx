@@ -3,19 +3,6 @@ import { render, screen } from '@testing-library/react';
 import { DressCodeSection } from '@/components/ui/DressCodeSection';
 import { dressCodeCopy } from '@/content/dressCode';
 
-const HEX_RADIX = 16;
-const RED_START = 1;
-const GREEN_START = 3;
-const BLUE_START = 5;
-const BLUE_END = 7;
-
-const hexToRgb = (hex: string): string => {
-  const r = Number.parseInt(hex.slice(RED_START, GREEN_START), HEX_RADIX);
-  const g = Number.parseInt(hex.slice(GREEN_START, BLUE_START), HEX_RADIX);
-  const b = Number.parseInt(hex.slice(BLUE_START, BLUE_END), HEX_RADIX);
-  return `rgb(${String(r)}, ${String(g)}, ${String(b)})`;
-};
-
 describe('DressCodeSection', () => {
   it('rendersTheTitleAndCoupleIllustrationWithAccessibleNames', () => {
     render(<DressCodeSection />);
@@ -34,15 +21,14 @@ describe('DressCodeSection', () => {
     expect(dressCodeCopy.women.avoidNote).not.toBe(dressCodeCopy.men.avoidNote);
   });
 
-  it('rendersFiveColorSwatchesPerGenderColoredAndNamedInText', () => {
+  it('rendersTheExtractedAvoidColorsImagePerGenderWithColorNamesInTheAltText', () => {
     render(<DressCodeSection />);
 
-    for (const color of [...dressCodeCopy.women.colors, ...dressCodeCopy.men.colors]) {
-      const label = screen.getByText(color.name);
-      const swatch = label.previousElementSibling;
-      expect(swatch).toHaveAttribute('aria-hidden', 'true');
-      expect(swatch).toHaveStyle({ backgroundColor: hexToRgb(color.hex) });
-    }
+    const womenImage = screen.getByRole('img', { name: dressCodeCopy.women.avoidColorsImageAlt });
+    expect(womenImage).toHaveAttribute('src', '/assets/dress-code/avoid-colors-women.webp');
+
+    const menImage = screen.getByRole('img', { name: dressCodeCopy.men.avoidColorsImageAlt });
+    expect(menImage).toHaveAttribute('src', '/assets/dress-code/avoid-colors-men.webp');
   });
 
   it('rendersBothGenderHeadingsWithDecorativeFloralCorners', () => {
