@@ -26,7 +26,7 @@ export const CalendarCard = (): ReactNode => {
       alt={alt}
       width={CALENDAR_IMAGE_WIDTH}
       height={CALENDAR_IMAGE_HEIGHT}
-      className="w-full rounded-[24px] shadow-lg"
+      className="w-full"
     />
   );
 };

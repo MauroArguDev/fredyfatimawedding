@@ -22,12 +22,12 @@ const UnitTile = ({
   fullLabel: string;
 }): ReactNode => (
   <div className="flex flex-col items-center gap-1">
-    <div className="flex size-12 items-center justify-center rounded-invitation-sm bg-surface-dark shadow-md sm:size-16">
-      <p className="font-sans text-lg font-normal tabular-nums text-text-on-dark sm:text-2xl">
+    <div className="flex size-11 items-center justify-center rounded-invitation-sm bg-surface-dark shadow-md sm:size-14">
+      <p className="font-sans text-base font-normal tabular-nums text-text-on-dark sm:text-xl">
         {String(value).padStart(UNIT_PAD_LENGTH, UNIT_PAD_CHAR)}
       </p>
     </div>
-    <p className="text-sm text-text-body">
+    <p className="text-lg font-bold text-text-body">
       <span aria-hidden="true">{label}</span>
       <span className="sr-only">{fullLabel}</span>
     </p>
@@ -35,7 +35,7 @@ const UnitTile = ({
 );
 
 const UnitSeparator = (): ReactNode => (
-  <span aria-hidden="true" className="pb-6 text-xl font-normal text-text-body">
+  <span aria-hidden="true" className="pb-6 text-xl font-normal text-text-on-dark">
     :
   </span>
 );
@@ -54,13 +54,13 @@ export const CountdownCard = ({ target }: CountdownCardProps): ReactNode => {
         height={FRAME_IMAGE_HEIGHT}
         className="w-full"
       />
-      <div className="absolute inset-x-[8%] inset-y-[23%] flex items-center justify-center rounded-[24px] bg-surface-sage shadow-lg">
+      <div className="absolute inset-x-[11%] inset-y-[26%] flex items-center justify-center rounded-[24px] bg-surface-sage shadow-[0_10px_14px_0_rgba(0,0,0,0.3)]">
         {breakdown.isPast ? (
           <p className="text-center font-script text-3xl text-text-body">
             {dateSectionCopy.countdownClosedMessage}
           </p>
         ) : (
-          <div className="flex items-center justify-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-center gap-1 sm:gap-2">
             <UnitTile value={breakdown.days} label={units.days.label} fullLabel={units.days.full} />
             <UnitSeparator />
             <UnitTile

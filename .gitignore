@@ -9,3 +9,7 @@ coverage
 *.local
 .DS_Store
 Thumbs.db
+
+# Local-only preview of the invitation with sample data (never commit)
+/dev-preview.html
+/src/devPreview.tsx
