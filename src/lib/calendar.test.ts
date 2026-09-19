@@ -1,34 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildMonthGrid,
   formatCalendarMonthLabel,
   formatCalendarNoteDate,
   formatCalendarNoteTime,
 } from '@/lib/calendar';
-
-describe('buildMonthGrid', () => {
-  it('padsDecember2026WithNovemberAndJanuaryDaysToCompleteFullWeeks', () => {
-    const grid = buildMonthGrid(2026, 11);
-
-    expect(grid[0]).toEqual({ date: 29, isCurrentMonth: false });
-    expect(grid[1]).toEqual({ date: 30, isCurrentMonth: false });
-    expect(grid[2]).toEqual({ date: 1, isCurrentMonth: true });
-    expect(grid.at(-1)).toEqual({ date: 2, isCurrentMonth: false });
-  });
-
-  it('marksTheWeddingDayAsPartOfTheCurrentMonth', () => {
-    const grid = buildMonthGrid(2026, 11);
-
-    const weddingDay = grid.find((cell) => cell.isCurrentMonth && cell.date === 20);
-    expect(weddingDay).toBeDefined();
-  });
-
-  it('returnsAWholeNumberOfWeeks', () => {
-    const grid = buildMonthGrid(2026, 11);
-
-    expect(grid.length % 7).toBe(0);
-  });
-});
 
 describe('formatCalendarMonthLabel', () => {
   it('formatsTheMonthWithASpanishNameAndAThousandsSeparatedYear', () => {

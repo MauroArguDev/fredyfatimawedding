@@ -1,7 +1,3 @@
-const DAYS_PER_WEEK = 7;
-const FIRST_DAY_OF_MONTH = 1;
-const LAST_DAY_OF_PREVIOUS_MONTH_OFFSET = 0;
-
 const MONTH_NAMES = [
   'Enero',
   'Febrero',
@@ -21,37 +17,7 @@ const MONTH_ABBREVIATION_LENGTH = 3;
 const TWO_DIGIT_PAD_LENGTH = 2;
 const ZERO_PAD_CHAR = '0';
 
-export interface CalendarDay {
-  date: number;
-  isCurrentMonth: boolean;
-}
-
 const getMonthName = (monthIndex: number): string => MONTH_NAMES[monthIndex] ?? '';
-
-export const buildMonthGrid = (year: number, monthIndex: number): CalendarDay[] => {
-  const firstWeekday = new Date(year, monthIndex, FIRST_DAY_OF_MONTH).getDay();
-  const daysInMonth = new Date(year, monthIndex + 1, LAST_DAY_OF_PREVIOUS_MONTH_OFFSET).getDate();
-  const daysInPreviousMonth = new Date(
-    year,
-    monthIndex,
-    LAST_DAY_OF_PREVIOUS_MONTH_OFFSET,
-  ).getDate();
-  const totalCells = Math.ceil((firstWeekday + daysInMonth) / DAYS_PER_WEEK) * DAYS_PER_WEEK;
-
-  return Array.from({ length: totalCells }, (_, index) => {
-    const dayOffset = index - firstWeekday + FIRST_DAY_OF_MONTH;
-
-    if (dayOffset < FIRST_DAY_OF_MONTH) {
-      return { date: daysInPreviousMonth + dayOffset, isCurrentMonth: false };
-    }
-
-    if (dayOffset > daysInMonth) {
-      return { date: dayOffset - daysInMonth, isCurrentMonth: false };
-    }
-
-    return { date: dayOffset, isCurrentMonth: true };
-  });
-};
 
 export const formatCalendarMonthLabel = (date: Date): string => {
   const monthName = getMonthName(date.getMonth());

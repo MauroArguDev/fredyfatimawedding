@@ -36,9 +36,9 @@ export const CoverSection = (): ReactNode => {
         </h1>
       </div>
       <div className="flex items-start justify-center">
-        <FloralOrnament src={FLOWER_ORNAMENT} className="flex-1" />
+        <FloralOrnament src={FLOWER_ORNAMENT} className="min-w-0 flex-1" />
         <div aria-hidden="true" className="w-[49px] shrink-0" />
-        <FloralOrnament src={FLOWER_ORNAMENT} className="flex-1 -scale-x-100" />
+        <FloralOrnament src={FLOWER_ORNAMENT} className="min-w-0 flex-1 -scale-x-100" />
       </div>
     </section>
   );
