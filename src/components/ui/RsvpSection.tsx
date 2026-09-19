@@ -30,7 +30,7 @@ const ReminderIllustration = ({ src }: { src: string }): ReactNode => (
     loading="lazy"
     width={ILLUSTRATION_WIDTH}
     height={ILLUSTRATION_HEIGHT}
-    className="mt-4 w-full"
+    className="mt-4 -mx-6 w-[calc(100%+3rem)] max-w-none"
   />
 );
 
