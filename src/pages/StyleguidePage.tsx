@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Divider } from '@/components/ui/Divider';
 import { FloralOrnament } from '@/components/ui/FloralOrnament';
+import { LocationIcon } from '@/components/ui/LocationIcon';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
 
@@ -166,11 +167,17 @@ const ComponentsSection = (): ReactNode => (
     <Divider className="mt-2" />
 
     <h3 className="mt-4 font-semibold">FloralOrnament</h3>
-    <p className="text-sm">
-      Pending WED-01/WED-33 (real WebP exports); the component itself already renders as decorative
-      (`alt=""`, `aria-hidden`) and lazy-loaded.
-    </p>
-    <FloralOrnament src="/assets/floral-placeholder.webp" className="mt-2 size-16" />
+    <FloralOrnament
+      src="/assets/ornaments/flores-encabezado.webp"
+      className="mt-2 w-40"
+      isPriority
+    />
+
+    <h3 className="mt-4 font-semibold">LocationIcon</h3>
+    <div className="mt-2 flex gap-4">
+      <LocationIcon brand="waze" className="size-16" />
+      <LocationIcon brand="google-maps" className="size-16" />
+    </div>
 
     <h3 className="mt-4 font-semibold">Modal</h3>
     <div className="mt-2">
