@@ -6,7 +6,8 @@ import { toInvitationContextValue } from '@/hooks/invitationContext';
 import { useInvitationContext } from '@/hooks/useInvitationContext';
 import { PublicPageContainer } from '@/components/ui/PublicPageContainer';
 import { EnvelopeGate } from '@/components/ui/EnvelopeGate';
-import { invitationContentCopy, invitationStatusCopy } from '@/content/appShell';
+import { CoverSection } from '@/components/ui/CoverSection';
+import { invitationStatusCopy } from '@/content/appShell';
 import NotFoundPage from '@/pages/NotFoundPage';
 
 interface InvitationStatusScreenProps {
@@ -79,9 +80,9 @@ const InvitationContent = (): ReactNode => {
       <main
         ref={contentRef}
         tabIndex={-1}
-        className="mx-auto min-h-dvh w-full max-w-invitation bg-bg-base p-6 text-text-body"
+        className="mx-auto min-h-dvh w-full max-w-invitation bg-bg-base text-text-body"
       >
-        <p>{invitationContentCopy.placeholder}</p>
+        <CoverSection />
       </main>
     </>
   );

@@ -377,7 +377,7 @@ Los tamaños del archivo están a escala 1080. Para llevarlos al contenedor de 4
 
 | #   | Sección                                                                                                                                  | Ancla         | Componente         |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------ |
-| 1   | Portada — foto vertical, "Fredy & Fátima" en script blanco, borde floral inferior                                                        | `#cover`      | `CoverSection`     |
+| 1   | Portada — foto vertical, "Fredy y Fátima" en script blanco (texto nativo verificado en el Figma v2, WED-53), borde floral inferior       | `#cover`      | `CoverSection`     |
 | 2   | "¡Nos vamos a casar!" — calendario de diciembre 2026 con el 20 marcado, etiqueta "4:30 p.m.", cuenta regresiva                           | `#date`       | `DateSection`      |
 | 3   | Collage de 5 polaroids en abanico + frase "Hemos elegido caminar juntos para siempre…"                                                   | `#about-us`   | `AboutUsSection`   |
 | 4   | "Ceremonia y Recepción." — foto del venue, dirección, botones de Waze y Google Maps                                                      | `#venue`      | `VenueSection`     |
@@ -794,7 +794,7 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 - [x] Affordance: el texto del `aria-label` ya combina la instrucción ("Toca para abrir…") con el destino; sin elemento visual adicional para no competir con la estética del mock-up.
 - [x] **Scroll bloqueado** (`document.body.style.overflow = 'hidden'` mientras el sobre está visible, restaurado al desmontar) y contenido de abajo con `element.inert = true` (no alcanzable por teclado ni lectores de pantalla) hasta que se abre.
 - [x] Al abrirse, el foco se traslada al `<main>` de la invitación (`tabIndex={-1}` + `.focus()` explícito). Verificado con un test de integración en `InvitationPage.test.tsx`.
-- [ ] La foto de portada se precarga mientras el sobre está en pantalla. **No implementado**: la foto de portada es un asset de WED-53, todavía no descargado/optimizado. Queda para cuando se implemente esa sección.
+- [x] La foto de portada se precarga mientras el sobre está en pantalla. **Implementado sin código de precarga dedicado, en WED-53.** `<main>` (con `CoverSection` dentro) ya se monta siempre, incluso mientras el sobre está visible — el sobre es un overlay `fixed` con `z-50` que lo cubre visualmente, pero no lo desmonta ni lo saca del flujo del documento (`content.inert` solo bloquea foco/teclado, no el montaje). El `<img>` de la foto de portada, con `loading="eager"`, dispara su fetch en cuanto el DOM existe, sin importar que esté tapado por el sobre — el `loading="lazy"` nativo se salta por distancia de scroll, no por z-index, así que igual habría precargado, pero se dejó `eager` para no depender de ese detalle sutil del navegador.
 - [x] **Se muestra en cada visita**: no hay persistencia (`sessionStorage`/`localStorage`) de ningún tipo, es estado de componente puro que nace en `false` en cada montaje.
 - [ ] **LCP del sobre < 2.5 s en 4G simulada.** No medible en este entorno (sin navegador ni Lighthouse disponibles) — pendiente de WED-91.
 
@@ -806,13 +806,17 @@ WED-22 exige el CSV en el formato exacto (`firstName,lastName,titleLabel,guestLi
 
 #### WED-53 — `CoverSection`
 
-**Feature · 3 · WED-52**
+**Feature · 3 · WED-52 — código implementado 2026-09-18, con dos correcciones al AC verificadas contra el Figma v2 real**
 
-- [ ] Foto vertical con degradado durazno arriba y ornamento floral abajo.
-- [ ] "Fredy & Fátima" en script blanco con la sombra del mock-up, legible sobre la foto.
-- [ ] **Sin nombre del invitado**: la personalización vive solo en el sobre.
-- [ ] Altura con `dvh`; sin salto al aparecer u ocultarse la barra de iOS.
-- [ ] Imagen en AVIF/WebP con fallback, `width`/`height` declarados (CLS ≈ 0).
+- [x] Foto vertical con degradado durazno arriba y ornamento floral abajo. `CoverSection` (`src/components/ui/CoverSection.tsx`): foto a `object-cover` dentro de un contenedor `aspect-[885/1280]` (la proporción real del frame "Contenedor portada", nodo `2:4`), con un vignette de un solo `linear-gradient` de 4 paradas (`bg-hero` sólido → transparente 40%–60% → `bg-hero` sólido) que replica los dos degradados separados del archivo ("degradado superior"/"Degradado inferior") en una sola capa. Debajo, la tira floral ("Flores Encabezado", nodo `13:174`) con dos `FloralOrnament` — **un solo asset, no dos**: el archivo real ya construye el lado derecho como el izquierdo con `scale-y(-1) rotate(180deg)` (mirror horizontal), así que el código hace lo mismo con `-scale-x-100` en vez de exportar/servir una segunda imagen.
+- [~] **"Fredy y Fátima" en script blanco con sombra — corrección al AC**: el texto nativo verificado en el nodo `5:22` del Figma v2 dice literalmente "Fredy y Fátima" (con "y", no "&"). El AC de este documento decía "Fredy & Fátima", pero ese texto nunca se verificó contra el archivo real hasta ahora — es el mismo texto informal que ya vive en `homeCopy.heading` (página `/`, que no es la invitación y no se tocó). Implementado en `src/content/cover.ts` (`coverCopy.names`) con el texto verificado. Tamaño de fuente y sombra escalados con el factor real 885→432 (ADR-004): 100px→49px, sombra `7px 7px 7px`→`3px 3px 3px`.
+- [x] **Sin nombre del invitado**: `CoverSection` no recibe ni usa ningún dato del invitado — es el mismo componente para todos.
+- [~] **Altura — corrección al AC**: el AC original asumía una sección a pantalla completa con `dvh` (probablemente heredado de la suposición de WED-53 sobre el v1). El Figma v2 real define "Contenedor portada" con una proporción fija (885:1280, ~0.69), no como bloque de altura de viewport — usar `dvh` la desalinearía del diseño real (recortaría o dejaría espacio vacío según el dispositivo). Implementado con `aspect-[885/1280]` sobre `width: 100%` (fluido hasta 432px, tope a partir de ahí, igual que el resto de la invitación vía ADR-004), sin ninguna dependencia de la altura del viewport — así que el problema que `dvh` resuelve (salto de la barra de Safari) no aplica aquí, no hay altura de viewport de la que depender.
+- [~] Imagen en WebP con `width`/`height` declarados (CLS ≈ 0); **sin variante AVIF ni `<picture>` de fallback** — mismo criterio que el resto de assets de imagen del sitio hasta ahora (WED-52 tampoco los tiene); WebP ya cubre el 100% de los navegadores objetivo de WED-93 (iOS Safari, Android Chrome, Safari/Chrome/Firefox desktop). Revisar la estrategia de formato de forma holística en WED-91, no ticket por ticket.
+
+**Assets reales, mismo patrón que WED-52.** `public/assets/cover/portada.webp` (140 KB, 900×1200) sale del `rawImages` que expone `download_assets` para el nodo `2:4` — la foto original subida al archivo (1200×1600 JPEG sin comprimir), no un render/screenshot recompuesto, para no heredar el degradado ya horneado del diseño (ese se re-implementa aparte, en CSS, para poder controlar sus paradas con precisión). `public/assets/ornaments/flores-encabezado.webp` (12 KB, 400×343) sale del `export` de `download_assets` para un solo clúster floral (nodo `13:77`, "Flor 1 izq."), no del nodo padre completo — **hallazgo real:** el frame de cada flor tiene un fill sólido `#F6D5A9` (`--color-bg-hero`, verificado muestreando los píxeles de la esquina con `sharp`), así que no hace falta transparencia real: el asset ya funde a la perfección contra el fondo de la página sin canal alfa que gestionar. Convertido con `sharp` (WebP calidad 80, igual que el sello de WED-52 por ser línea fina que necesita detalle).
+
+**Encabezado como H1.** El nombre de la pareja es el único encabezado de nivel 1 real de la página de invitación (antes no existía ninguno, la sección era un placeholder de texto plano) — cumple por adelantado un punto de WED-90 (`h1` único por página) en vez de dejarlo como deuda para esa auditoría.
 
 #### WED-54 — `DateSection`
 
