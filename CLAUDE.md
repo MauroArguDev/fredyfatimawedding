@@ -824,16 +824,23 @@ Verificados visualmente renderizando ambos SVG a PNG con `sharp` antes y despué
 
 #### WED-54 — `DateSection`
 
-**Feature · 5 · WED-34**
+**Feature · 5 · WED-34 — código implementado 2026-09-18. WED-34 en sí sigue sin empezar; se adelantó solo la pieza mínima que este ticket necesita (ver nota).**
 
-- [ ] Encabezado "¡Nos vamos a casar!" y subtítulo según el diseño.
-- [ ] **Calendario de diciembre 2026 renderizado en HTML, no como imagen**: tarjeta verde oscuro, días Do–Sa, días de noviembre y enero atenuados, el 20 marcado con el ornamento de corazón.
-- [ ] El calendario se genera desde la fecha en `src/content/`, no hardcodeado.
-- [ ] Etiqueta "4:30 p.m." con estilo de cinta washi rotada.
-- [ ] **Cuenta regresiva calculada contra `America/El_Salvador`**: un dispositivo con el reloj en otro huso ve el mismo tiempo restante.
-- [ ] Sin hydration mismatch; los dígitos no saltan de ancho (`tabular-nums`).
-- [ ] Pasada la fecha, mensaje alternativo en vez de números negativos.
-- [ ] La cuenta regresiva no se anuncia repetidamente en lectores de pantalla.
+- [~] **Encabezado "¡Nos vamos a casar!" según el diseño — no es texto real.** Verificado contra el nodo nativo (`44:158`): el grupo se llama literalmente "¡Nos vamos a casar!" pero es texto convertido a trazados (outline), no un nodo de texto editable con familia tipográfica asociada — a diferencia de "Fredy y Fátima" (WED-53) o los subtítulos de esta misma sección, que sí son texto nativo Inter. Es probable que sea una fuente caligráfica distinta de Great Vibes (las formas de la "N" y la "v" no coinciden con el resto de las mayúsculas en script del archivo), pero no hay forma de confirmarlo desde un `outline` — no expone `font-family`. Se implementó como imagen (`public/assets/headings/nos-vamos-a-casar.svg`, exportado tal cual del nodo, 12.3 KB tras `svgo`) con `alt="¡Nos vamos a casar!"` real (no `aria-hidden`, porque sí transmite información). **Pendiente real:** confirmar con el diseñador si es una fuente nueva a licenciar o una decisión de lettering a mano; se deja registrado como hallazgo nuevo de WED-02, no como AC cerrado del todo.
+- [x] Subtítulo "Y será un placer..." — texto real, nativo (`44:160`), en `dateSectionCopy.subtitle`.
+- [x] **Calendario de diciembre 2026 renderizado en HTML, no como imagen**: `CalendarCard` (`src/components/ui/CalendarCard.tsx`). Tarjeta `--surface-dark`, días Do–Sa (`dateSectionCopy.weekdayLabels`), días de noviembre/enero con `opacity-40`, el 20 marcado con un corazón — el corazón **no sale del archivo**: el bloque `calendario-con-fecha 1` (nodo `59:5`) es una sola imagen PNG plana sin estructura extraíble (confirma el hallazgo ya documentado en ADR-008 para el v2), así que el corazón es un trazo simple aproximado a mano a partir de la captura de referencia, no una reproducción vectorial exacta — mismo criterio que el resto de bloques flattened de E5.
+- [x] **El calendario se genera desde la fecha, no hardcodeado.** `src/lib/calendar.ts` (`buildMonthGrid`, `formatCalendarMonthLabel`, `formatCalendarNoteDate`, `formatCalendarNoteTime`) son funciones puras que reciben un `Date` — cambiar `weddingDate` en `src/content/weddingDate.ts` mueve el mes mostrado, el día marcado y el texto de la etiqueta sin tocar ningún componente (test `movingTheDateToAnotherMonthChangesTheGridWithoutCodeChanges`).
+- [x] **Etiqueta con estilo de cinta washi rotada.** Corregido el AC: el archivo muestra dos líneas ("20/Dic./2026" y "4:30 p.m."), no solo la hora — implementado igual, ambas derivadas de la misma fecha. El borde inferior irregular ("torn paper") se aproxima con un `clip-path: polygon(...)` a mano, mismo motivo que el corazón: el bloque de origen está flattened, no hay geometría que extraer.
+- [x] **Cuenta regresiva calculada contra `America/El_Salvador`.** `weddingDate` se define como ISO con offset explícito (`2026-12-20T16:30:00-06:00`, `src/content/weddingDate.ts`) — comparar dos instantes (`target.getTime() - now.getTime()`) es correcto sin librería de zona horaria sin importar el huso del dispositivo, mismo patrón ya usado en `RSVP_DEADLINE`/`isRsvpOpen` (WED-40).
+- [~] **Sin hydration mismatch — no aplica tal cual.** El AC asume SSR; este proyecto es una SPA pura sin renderizado en servidor (Vite), así que no existe un HTML del servidor contra el cual "mismatchear". Lo que sí se cumple y es lo que el AC realmente protege: el primer render usa `useState(() => computeCountdown(...))` (perezoso, sin parpadeo entre un valor inicial falso y el real) y los dígitos usan `tabular-nums` para no saltar de ancho — verificado con test (`rendersTheFourUnitsPaddedToTwoDigitsWithTabularNums`).
+- [x] Pasada la fecha, `dateSectionCopy.countdownClosedMessage` ("¡Hoy es el gran día!") reemplaza los cuatro números — `computeCountdown` devuelve `isPast: true` sin números negativos.
+- [x] **La cuenta regresiva no se anuncia repetidamente en lectores de pantalla.** Ningún `aria-live` en `CountdownCard` — los números se actualizan en el DOM cada segundo, pero sin una región viva explícita no hay garantía de anuncio automático por defecto, que es exactamente el comportamiento pedido.
+
+**Implementación.** `src/lib/countdown.ts` (`computeCountdown`, función pura) + `src/hooks/useCountdown.ts` (hook con `setInterval` de 1s, limpia el intervalo al desmontar — verificado con `vi.getTimerCount()`). `CalendarCard`/`CountdownCard`/`DateSection` en `src/components/ui/`, un archivo por componente igual que el resto de `ui/`. `CountdownCard` reutiliza `FloralOrnament` (WED-32) con el mismo asset de WED-53 (`flores-encabezado.webp`) como ornamento decorativo de esquina — primera reutilización real de ese asset fuera de la portada.
+
+**Alcance mínimo de WED-34 adelantado.** Este ticket depende de WED-34 ("la fecha en `src/content/`"), que en sí es más amplio (itinerario, dirección, URLs de mapas, mensajes de error del RSVP). Se adelantó solo `src/content/weddingDate.ts` (la fecha) y `src/content/dateSection.ts` (el copy propio de esta sección) — el resto de WED-34 sigue sin empezar y se hace cuando la sección correspondiente (itinerario, venue, RSVP) lo necesite, mismo criterio que WED-33 se dejó parcial.
+
+**Cobertura.** 420 tests en el repo (antes 398), 98.86% de cobertura global. `npm run verify` y `npm run build` en verde.
 
 #### WED-55 — `AboutUsSection`
 

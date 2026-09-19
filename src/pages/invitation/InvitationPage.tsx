@@ -7,6 +7,7 @@ import { useInvitationContext } from '@/hooks/useInvitationContext';
 import { PublicPageContainer } from '@/components/ui/PublicPageContainer';
 import { EnvelopeGate } from '@/components/ui/EnvelopeGate';
 import { CoverSection } from '@/components/ui/CoverSection';
+import { DateSection } from '@/components/ui/DateSection';
 import { invitationStatusCopy } from '@/content/appShell';
 import NotFoundPage from '@/pages/NotFoundPage';
 
@@ -83,6 +84,7 @@ const InvitationContent = (): ReactNode => {
         className="mx-auto min-h-dvh w-full max-w-invitation bg-bg-base text-text-body"
       >
         <CoverSection />
+        <DateSection />
       </main>
     </>
   );
