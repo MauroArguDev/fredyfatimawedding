@@ -16,7 +16,7 @@ export const DateSection = (): ReactNode => {
       />
       <p className="mt-4">{dateSectionCopy.subtitle}</p>
       <div className="mt-8">
-        <CalendarCard date={weddingDate} />
+        <CalendarCard />
       </div>
       <p className="mt-12">{dateSectionCopy.countdownIntro}</p>
       <div className="mt-4">

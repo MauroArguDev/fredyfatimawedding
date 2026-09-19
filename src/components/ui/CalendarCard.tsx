@@ -3,23 +3,21 @@ import {
   formatCalendarMonthLabel,
   formatCalendarNoteDate,
   formatCalendarNoteTime,
+  getCalendarDay,
 } from '@/lib/calendar';
 import { dateSectionCopy } from '@/content/dateSection';
+import { weddingDate } from '@/content/weddingDate';
 
 const CALENDAR_IMAGE = '/assets/date-section/calendario-con-fecha.webp';
 const CALENDAR_IMAGE_WIDTH = 1610;
 const CALENDAR_IMAGE_HEIGHT = 1837;
 
-interface CalendarCardProps {
-  date: Date;
-}
-
-export const CalendarCard = ({ date }: CalendarCardProps): ReactNode => {
+export const CalendarCard = (): ReactNode => {
   const alt = dateSectionCopy.calendarImageAlt(
-    formatCalendarMonthLabel(date),
-    date.getDate(),
-    formatCalendarNoteDate(date),
-    formatCalendarNoteTime(date),
+    formatCalendarMonthLabel(weddingDate),
+    getCalendarDay(weddingDate),
+    formatCalendarNoteDate(weddingDate),
+    formatCalendarNoteTime(weddingDate),
   );
 
   return (
