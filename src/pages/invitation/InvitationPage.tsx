@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
-import { LazyMotion, domAnimation } from 'framer-motion';
+import { LazyMotion, domAnimation, m, useReducedMotion } from 'framer-motion';
 import { useInvitation, InvitationNotFoundError } from '@/hooks/useInvitation';
 import { InvitationProvider } from '@/hooks/InvitationProvider';
 import { toInvitationContextValue } from '@/hooks/invitationContext';
@@ -77,6 +77,10 @@ const useEnvelopeGate = () => {
   return { isOpen, contentRef, handleOpen };
 };
 
+const CONTENT_ENTRANCE_DURATION_S = 0.7;
+const CONTENT_ENTRANCE_OFFSET_PX = 20;
+const CONTENT_ENTRANCE_SCALE_FROM = 0.985;
+
 interface InvitationContentProps {
   token: string;
 }
@@ -84,14 +88,26 @@ interface InvitationContentProps {
 const InvitationContent = ({ token }: InvitationContentProps): ReactNode => {
   const invitation = useInvitationContext();
   const { isOpen, contentRef, handleOpen } = useEnvelopeGate();
+  const shouldReduceMotion = useReducedMotion() ?? false;
+
+  const entranceOffset = shouldReduceMotion ? 0 : CONTENT_ENTRANCE_OFFSET_PX;
+  const entranceScale = shouldReduceMotion ? 1 : CONTENT_ENTRANCE_SCALE_FROM;
+  const contentVariants = {
+    hidden: { y: entranceOffset, scale: entranceScale },
+    visible: { y: 0, scale: 1 },
+  };
 
   return (
     <LazyMotion features={domAnimation} strict>
       {!isOpen && <EnvelopeGate titleLabel={invitation.displayName} onOpen={handleOpen} />}
-      <main
+      <m.main
         ref={contentRef}
         tabIndex={-1}
         className="mx-auto min-h-dvh w-full max-w-invitation bg-bg-base text-text-body"
+        variants={contentVariants}
+        initial="hidden"
+        animate={isOpen ? 'visible' : 'hidden'}
+        transition={{ duration: CONTENT_ENTRANCE_DURATION_S, ease: 'easeOut' }}
       >
         <CoverSection />
         <DateSection />
@@ -100,7 +116,7 @@ const InvitationContent = ({ token }: InvitationContentProps): ReactNode => {
         <TimelineSection />
         <DressCodeSection />
         <RsvpSection token={token} />
-      </main>
+      </m.main>
     </LazyMotion>
   );
 };
