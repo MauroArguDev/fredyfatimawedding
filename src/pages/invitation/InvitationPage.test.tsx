@@ -127,7 +127,12 @@ describe('InvitationPage', () => {
     });
     await user.click(envelopeButton);
 
-    expect(envelopeButton).not.toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(envelopeButton).not.toBeInTheDocument();
+      },
+      { timeout: 2500 },
+    );
     expect(screen.getByRole('main')).toHaveFocus();
   });
 });

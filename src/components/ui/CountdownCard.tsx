@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { AnimatePresence, m, useReducedMotion } from 'framer-motion';
 import { useCountdown } from '@/hooks/useCountdown';
 import { dateSectionCopy } from '@/content/dateSection';
 
@@ -7,6 +8,10 @@ const FRAME_IMAGE_WIDTH = 1690;
 const FRAME_IMAGE_HEIGHT = 1148;
 const UNIT_PAD_LENGTH = 2;
 const UNIT_PAD_CHAR = '0';
+const DIGIT_TRANSITION_DURATION_S = 0.35;
+const DIGIT_OFFSET_PX = 14;
+
+const DIGIT_CLASSES = 'font-sans text-base font-normal tabular-nums text-text-on-dark sm:text-xl';
 
 interface CountdownCardProps {
   target: Date;
@@ -20,19 +25,37 @@ const UnitTile = ({
   value: number;
   label: string;
   fullLabel: string;
-}): ReactNode => (
-  <div className="flex flex-col items-center gap-1">
-    <div className="flex size-11 items-center justify-center rounded-invitation-sm bg-surface-dark shadow-md sm:size-14">
-      <p className="font-sans text-base font-normal tabular-nums text-text-on-dark sm:text-xl">
-        {String(value).padStart(UNIT_PAD_LENGTH, UNIT_PAD_CHAR)}
+}): ReactNode => {
+  const shouldReduceMotion = useReducedMotion();
+  const formattedValue = String(value).padStart(UNIT_PAD_LENGTH, UNIT_PAD_CHAR);
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative flex size-11 items-center justify-center overflow-hidden rounded-invitation-sm bg-surface-dark shadow-md sm:size-14">
+        {shouldReduceMotion ? (
+          <p className={DIGIT_CLASSES}>{formattedValue}</p>
+        ) : (
+          <AnimatePresence initial={false}>
+            <m.p
+              key={formattedValue}
+              className={`absolute inset-0 flex items-center justify-center ${DIGIT_CLASSES}`}
+              initial={{ y: DIGIT_OFFSET_PX, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -DIGIT_OFFSET_PX, opacity: 0 }}
+              transition={{ duration: DIGIT_TRANSITION_DURATION_S, ease: 'easeOut' }}
+            >
+              {formattedValue}
+            </m.p>
+          </AnimatePresence>
+        )}
+      </div>
+      <p className="text-lg font-bold text-text-body">
+        <span aria-hidden="true">{label}</span>
+        <span className="sr-only">{fullLabel}</span>
       </p>
     </div>
-    <p className="text-lg font-bold text-text-body">
-      <span aria-hidden="true">{label}</span>
-      <span className="sr-only">{fullLabel}</span>
-    </p>
-  </div>
-);
+  );
+};
 
 const UnitSeparator = (): ReactNode => (
   <span aria-hidden="true" className="pb-6 text-xl font-normal text-text-on-dark">

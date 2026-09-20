@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { CountdownCard } from '@/components/ui/CountdownCard';
 import { dateSectionCopy } from '@/content/dateSection';
 
@@ -41,6 +41,22 @@ describe('CountdownCard', () => {
     render(<CountdownCard target={target} />);
 
     expect(screen.getByText(dateSectionCopy.countdownClosedMessage)).toBeInTheDocument();
+  });
+
+  it('rerendersTheSecondsDigitWithANewKeyedElementOnEachTick', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-12-17T10:20:15-06:00'));
+    const target = new Date('2026-12-20T16:30:00-06:00');
+
+    render(<CountdownCard target={target} />);
+
+    expect(screen.getByText('45')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(screen.getByText('44')).toBeInTheDocument();
   });
 
   it('rendersTheExtractedFrameImageAsDecorative', () => {
