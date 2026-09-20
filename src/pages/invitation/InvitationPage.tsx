@@ -76,7 +76,11 @@ const useEnvelopeGate = () => {
   return { isOpen, contentRef, handleOpen };
 };
 
-const InvitationContent = (): ReactNode => {
+interface InvitationContentProps {
+  token: string;
+}
+
+const InvitationContent = ({ token }: InvitationContentProps): ReactNode => {
   const invitation = useInvitationContext();
   const { isOpen, contentRef, handleOpen } = useEnvelopeGate();
 
@@ -94,7 +98,7 @@ const InvitationContent = (): ReactNode => {
         <VenueSection />
         <TimelineSection />
         <DressCodeSection />
-        <RsvpSection />
+        <RsvpSection token={token} />
       </main>
     </>
   );
@@ -126,7 +130,7 @@ const InvitationPage = (): ReactNode => {
 
   return (
     <InvitationProvider value={toInvitationContextValue(query.data)}>
-      <InvitationContent />
+      <InvitationContent token={token ?? ''} />
     </InvitationProvider>
   );
 };

@@ -36,6 +36,27 @@ export const rsvpRequestSchema = z.object({
   count: z.number().int().min(MIN_GUEST_LIMIT).max(MAX_GUEST_LIMIT),
 });
 
+export const rsvpSuccessResponseSchema = z.object({
+  ok: z.literal(true),
+  waLink: z.string().url(),
+});
+
+export const RSVP_ERROR_CODES = [
+  'INVALID_PAYLOAD',
+  'COUNT_OUT_OF_RANGE',
+  'TOKEN_NOT_FOUND',
+  'ALREADY_CONFIRMED',
+  'RSVP_CLOSED',
+  'RATE_LIMITED',
+] as const;
+
+export const rsvpErrorResponseSchema = z.object({
+  code: z.enum(RSVP_ERROR_CODES),
+});
+
+export type RsvpSuccessResponse = z.infer<typeof rsvpSuccessResponseSchema>;
+export type RsvpErrorCode = (typeof RSVP_ERROR_CODES)[number];
+
 export const guestSchema = createGuestSchema.extend({
   token: z.string().length(TOKEN_LENGTH),
   confirmed: z.boolean(),
