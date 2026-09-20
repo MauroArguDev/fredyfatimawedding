@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
 import { remindersCopy } from '@/content/reminders';
+import { rsvpDeadlineCopy } from '@/content/rsvp';
+import { useInvitationContext } from '@/hooks/useInvitationContext';
+import { RsvpFormCard } from '@/components/ui/RsvpFormCard';
 
 const RECUERDA_TITLE_IMAGE = '/assets/reminders/recuerda-title.webp';
 const RECUERDA_TITLE_WIDTH = 1000;
@@ -34,7 +37,13 @@ const ReminderIllustration = ({ src }: { src: string }): ReactNode => (
   />
 );
 
-export const RsvpSection = (): ReactNode => {
+interface RsvpSectionProps {
+  token: string;
+}
+
+export const RsvpSection = ({ token }: RsvpSectionProps): ReactNode => {
+  const invitation = useInvitationContext();
+
   return (
     <section id="rsvp" className="w-full px-6 py-10 text-center text-text-body">
       <img
@@ -56,6 +65,15 @@ export const RsvpSection = (): ReactNode => {
         />
       </div>
       <ReminderIllustration src={REGALO_SOBRE_IMAGE} />
+      <RsvpFormCard
+        token={token}
+        guestLimit={invitation.guestLimit}
+        confirmed={invitation.confirmed}
+        confirmedCount={invitation.confirmedCount}
+        rsvpOpen={invitation.rsvpOpen}
+      />
+      <p className="mt-8">{rsvpDeadlineCopy.confirmReminder}</p>
+      <p className="mt-2 text-sm">{rsvpDeadlineCopy.silenceMeansAbsence}</p>
     </section>
   );
 };

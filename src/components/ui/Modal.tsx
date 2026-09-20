@@ -86,7 +86,7 @@ export const Modal = ({ isOpen, onClose, titleId, title, children }: ModalProps)
       aria-labelledby={titleId}
       onKeyDown={handleKeyDown}
       onClick={handleBackdropClick}
-      className="rounded-invitation-sm bg-surface-muted p-6 text-text-body backdrop:bg-black/50"
+      className="m-auto rounded-invitation-sm bg-surface-muted p-6 text-text-body backdrop:bg-black/50"
     >
       <h2 id={titleId} className="text-lg font-bold">
         {title}
