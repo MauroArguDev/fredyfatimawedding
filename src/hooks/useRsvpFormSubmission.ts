@@ -22,6 +22,26 @@ function resolveRsvpErrorCode(error: unknown): RsvpErrorCode | 'NETWORK_ERROR' {
   return error instanceof RsvpApiError ? error.code : 'NETWORK_ERROR';
 }
 
+interface HandleRsvpErrorDeps {
+  onAlreadyConfirmed: () => void;
+  onClosed: () => void;
+  setSubmitError: (message: string) => void;
+  clearPendingCount: () => void;
+}
+
+function handleRsvpError(error: unknown, deps: HandleRsvpErrorDeps): void {
+  deps.clearPendingCount();
+  const code = resolveRsvpErrorCode(error);
+
+  if (code === 'ALREADY_CONFIRMED') {
+    deps.onAlreadyConfirmed();
+  } else if (code === 'RSVP_CLOSED') {
+    deps.onClosed();
+  } else {
+    deps.setSubmitError(rsvpErrorMessages[code]);
+  }
+}
+
 function useRsvpCountForm(guestLimit: number) {
   const countSchema = z.object({
     count: z.coerce
@@ -50,19 +70,6 @@ function useRsvpSubmissionState({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const mutation = useSubmitRsvp();
 
-  const handleRsvpError = (error: unknown): void => {
-    setPendingCount(null);
-    const code = resolveRsvpErrorCode(error);
-
-    if (code === 'ALREADY_CONFIRMED') {
-      onAlreadyConfirmed();
-    } else if (code === 'RSVP_CLOSED') {
-      onClosed();
-    } else {
-      setSubmitError(rsvpErrorMessages[code]);
-    }
-  };
-
   const handleConfirm = (): void => {
     if (pendingCount === null) {
       return;
@@ -74,7 +81,16 @@ function useRsvpSubmissionState({
         onSuccess: (response) => {
           onSuccess({ count: pendingCount, waLink: response.waLink });
         },
-        onError: handleRsvpError,
+        onError: (error) => {
+          handleRsvpError(error, {
+            onAlreadyConfirmed,
+            onClosed,
+            setSubmitError,
+            clearPendingCount: () => {
+              setPendingCount(null);
+            },
+          });
+        },
       },
     );
   };
@@ -91,6 +107,9 @@ function useRsvpSubmissionState({
       setPendingCount(null);
     },
     confirm: handleConfirm,
+    dismissError: () => {
+      setSubmitError(null);
+    },
   };
 }
 
@@ -121,5 +140,6 @@ export function useRsvpFormSubmission({
     onSubmit,
     onConfirm: submission.confirm,
     onCancelConfirm: submission.cancelConfirmation,
+    dismissSubmitError: submission.dismissError,
   };
 }

@@ -130,7 +130,7 @@ describe('RsvpForm', () => {
     });
   });
 
-  it('showsAnInlineErrorAndKeepsTheSelectionWhenTheServerRejectsWithARateLimit', async () => {
+  it('showsATransientToastAndKeepsTheSelectionWhenTheServerRejectsWithARateLimit', async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ code: 'RATE_LIMITED' }, 429));
     const user = userEvent.setup();
     renderRsvpForm();

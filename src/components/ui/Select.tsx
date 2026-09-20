@@ -5,12 +5,13 @@ type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, children, ...rest }, ref): ReactNode => {
     const classes = [
+      'w-48',
       'appearance-none',
       'rounded-invitation-sm',
       'bg-surface-dark',
       'px-4',
       'py-2',
-      'pr-10',
+      'pr-12',
       'font-sans',
       'text-text-on-dark',
       'focus-visible:outline',
@@ -29,6 +30,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select ref={ref} className={classes.join(' ')} {...rest}>
           {children}
         </select>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 right-9 h-4 w-px -translate-y-1/2 bg-text-on-dark/40"
+        />
         <svg
           aria-hidden="true"
           viewBox="0 0 20 20"

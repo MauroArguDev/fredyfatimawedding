@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { RsvpForm } from '@/components/ui/RsvpForm';
+import { RsvpSuccessModal } from '@/components/ui/RsvpSuccessModal';
 import {
   brideWhatsAppLink,
   formatGuestCountSummary,
   rsvpAlreadyConfirmedCopy,
   rsvpClosedCopy,
-  rsvpSuccessCopy,
 } from '@/content/rsvp';
 
 const FRAME_IMAGE = '/assets/rsvp/marco-flor.webp';
@@ -50,24 +50,6 @@ const RsvpClosed = (): ReactNode => (
   </div>
 );
 
-const RsvpSuccess = ({ count, waLink }: RsvpSubmission): ReactNode => (
-  <div className="flex flex-col items-center gap-3 text-center">
-    <p className="font-bold text-text-body">{rsvpSuccessCopy.heading}</p>
-    <p className="text-text-body">{formatGuestCountSummary(count)}</p>
-    <a
-      href={waLink}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="rounded-invitation-sm bg-surface-sage px-6 py-3 font-bold text-text-on-sage"
-    >
-      {rsvpSuccessCopy.whatsappButtonLabel}
-    </a>
-    <a href="#cover" className="text-sm underline text-text-body">
-      {rsvpSuccessCopy.backLinkLabel}
-    </a>
-  </div>
-);
-
 interface RsvpCardState {
   submission: RsvpSubmission | null;
   staleConfirmation: boolean;
@@ -86,7 +68,7 @@ function resolveRsvpCardContent(
   { onAlreadyConfirmed, onClosed, onSuccess }: RsvpCardHandlers,
 ): ReactNode {
   if (submission !== null) {
-    return <RsvpSuccess count={submission.count} waLink={submission.waLink} />;
+    return <RsvpAlreadyConfirmed confirmedCount={submission.count} />;
   }
 
   if (confirmed || staleConfirmation) {
@@ -110,6 +92,7 @@ function resolveRsvpCardContent(
 
 export const RsvpFormCard = (props: RsvpFormCardProps): ReactNode => {
   const [submission, setSubmission] = useState<RsvpSubmission | null>(null);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [staleConfirmation, setStaleConfirmation] = useState(false);
   const [staleClosed, setStaleClosed] = useState(false);
 
@@ -123,7 +106,10 @@ export const RsvpFormCard = (props: RsvpFormCardProps): ReactNode => {
       onClosed: () => {
         setStaleClosed(true);
       },
-      onSuccess: setSubmission,
+      onSuccess: (result) => {
+        setSubmission(result);
+        setIsSuccessModalOpen(true);
+      },
     },
   );
 
@@ -141,6 +127,16 @@ export const RsvpFormCard = (props: RsvpFormCardProps): ReactNode => {
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 px-10 py-8">
         {content}
       </div>
+      {submission !== null && (
+        <RsvpSuccessModal
+          isOpen={isSuccessModalOpen}
+          count={submission.count}
+          waLink={submission.waLink}
+          onClose={() => {
+            setIsSuccessModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

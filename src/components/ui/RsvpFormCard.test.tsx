@@ -1,9 +1,14 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RsvpFormCard } from '@/components/ui/RsvpFormCard';
-import { rsvpConfirmModalCopy, rsvpSuccessCopy, formatGuestCountSummary } from '@/content/rsvp';
+import {
+  rsvpAlreadyConfirmedCopy,
+  rsvpConfirmModalCopy,
+  rsvpSuccessCopy,
+  formatGuestCountSummary,
+} from '@/content/rsvp';
 
 const TOKEN = 'V1StGXR8_Z5jdHi6B-myT';
 
@@ -52,7 +57,7 @@ describe('RsvpFormCard', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   });
 
-  it('switchesToTheSuccessScreenAfterAConfirmedSubmission', async () => {
+  it('opensASuccessModalWithTheWaLinkAfterAConfirmedSubmission', async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(JSON.stringify({ ok: true, waLink: 'https://wa.me/50376982534?text=hi' }), {
         status: 200,
@@ -65,12 +70,36 @@ describe('RsvpFormCard', () => {
     await user.click(screen.getByRole('button', { name: /^confirmar$/i }));
     await user.click(screen.getByRole('button', { name: rsvpConfirmModalCopy.confirmLabel }));
 
-    expect(await screen.findByText(rsvpSuccessCopy.heading)).toBeInTheDocument();
-    expect(screen.getByText(formatGuestCountSummary(2))).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: rsvpSuccessCopy.whatsappButtonLabel })).toHaveAttribute(
-      'href',
-      'https://wa.me/50376982534?text=hi',
+    const modal = await screen.findByRole('dialog', { name: rsvpSuccessCopy.heading });
+    expect(within(modal).getByText(formatGuestCountSummary(2))).toBeInTheDocument();
+    expect(
+      within(modal).getByRole('link', { name: rsvpSuccessCopy.whatsappButtonLabel }),
+    ).toHaveAttribute('href', 'https://wa.me/50376982534?text=hi');
+  });
+
+  it('showsThePersistentAlreadyConfirmedSummaryAfterClosingTheSuccessModal', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, waLink: 'https://wa.me/50376982534?text=hi' }), {
+        status: 200,
+      }),
     );
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.selectOptions(screen.getByRole('combobox'), '2');
+    await user.click(screen.getByRole('button', { name: /^confirmar$/i }));
+    await user.click(screen.getByRole('button', { name: rsvpConfirmModalCopy.confirmLabel }));
+
+    const modal = await screen.findByRole('dialog', { name: rsvpSuccessCopy.heading });
+    await user.click(within(modal).getByRole('button', { name: rsvpSuccessCopy.closeLabel }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText(rsvpAlreadyConfirmedCopy.heading)).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: rsvpAlreadyConfirmedCopy.contactLinkLabel }),
+    ).toBeInTheDocument();
   });
 
   it('switchesToTheClosedStateWhenTheServerRejectsAStaleSubmissionAfterTheDeadline', async () => {

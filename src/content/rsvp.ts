@@ -7,7 +7,7 @@ export const brideWhatsAppLink = `https://wa.me/${BRIDE_WHATSAPP_NUMBER}?text=${
 const formatPeopleLabel = (count: number): string => (count === 1 ? 'persona' : 'personas');
 
 export const formatGuestCountOption = (count: number): string =>
-  `${String(count)} ${formatPeopleLabel(count)}.`;
+  `${String(count)} ${formatPeopleLabel(count)}`;
 
 export const formatGuestCountSummary = (count: number): string =>
   `Confirmaste ${String(count)} ${formatPeopleLabel(count)}.`;
@@ -19,13 +19,12 @@ export const rsvpDeadlineCopy = {
 } as const;
 
 export const rsvpPickerCopy = {
-  label: 'Cantidad de personas que asistirán',
-  placeholder: 'Selecciona...',
+  instruction: 'Elige la cantidad de personas que asistirán',
+  placeholder: 'Selecciona',
 } as const;
 
 export const rsvpFormCopy = {
   submitLabel: 'Confirmar',
-  submittingLabel: 'Confirmando…',
   countRequiredError: 'Selecciona cuántas personas asistirán.',
 } as const;
 
@@ -53,9 +52,10 @@ export const rsvpClosedCopy = {
 } as const;
 
 export const rsvpSuccessCopy = {
+  titleId: 'rsvp-success-modal-title',
   heading: '¡Gracias por confirmar!',
   whatsappButtonLabel: 'Avisar a la novia por WhatsApp',
-  backLinkLabel: 'Volver al inicio de la invitación',
+  closeLabel: 'Cerrar',
 } as const;
 
 export const rsvpErrorMessages = {
