@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Section } from '@/components/ui/Section';
 import { dressCodeCopy } from '@/content/dressCode';
 
 const TITLE_IMAGE = '/assets/dress-code/title.webp';
@@ -63,7 +64,7 @@ const GenderBlock = ({
 
 export const DressCodeSection = (): ReactNode => {
   return (
-    <section id="dress-code" className="w-full px-6 py-10 text-center text-text-body">
+    <Section id="dress-code" className="text-center text-text-body">
       <img
         src={TITLE_IMAGE}
         alt={dressCodeCopy.titleAlt}
@@ -95,6 +96,6 @@ export const DressCodeSection = (): ReactNode => {
         avoidColorsImage={AVOID_COLORS_MEN_IMAGE}
         avoidColorsImageAlt={dressCodeCopy.men.avoidColorsImageAlt}
       />
-    </section>
+    </Section>
   );
 };

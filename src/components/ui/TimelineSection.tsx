@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Section } from '@/components/ui/Section';
 import { timelineCopy } from '@/content/timeline';
 
 const TITLE_IMAGE = '/assets/timeline/title.webp';
@@ -10,7 +11,7 @@ const FULL_HEIGHT = 3003;
 
 export const TimelineSection = (): ReactNode => {
   return (
-    <section id="timeline" className="w-full px-6 py-10 text-center text-text-body">
+    <Section id="timeline" className="text-center text-text-body">
       <img
         src={TITLE_IMAGE}
         alt={timelineCopy.titleAlt}
@@ -25,6 +26,6 @@ export const TimelineSection = (): ReactNode => {
         height={FULL_HEIGHT}
         className="mt-6 w-full"
       />
-    </section>
+    </Section>
   );
 };

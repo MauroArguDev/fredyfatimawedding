@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
+import { LazyMotion, domAnimation } from 'framer-motion';
 import { useInvitation, InvitationNotFoundError } from '@/hooks/useInvitation';
 import { InvitationProvider } from '@/hooks/InvitationProvider';
 import { toInvitationContextValue } from '@/hooks/invitationContext';
@@ -87,19 +88,21 @@ const InvitationContent = ({ token }: InvitationContentProps): ReactNode => {
   return (
     <>
       {!isOpen && <EnvelopeGate titleLabel={invitation.displayName} onOpen={handleOpen} />}
-      <main
-        ref={contentRef}
-        tabIndex={-1}
-        className="mx-auto min-h-dvh w-full max-w-invitation bg-bg-base text-text-body"
-      >
-        <CoverSection />
-        <DateSection />
-        <AboutUsSection />
-        <VenueSection />
-        <TimelineSection />
-        <DressCodeSection />
-        <RsvpSection token={token} />
-      </main>
+      <LazyMotion features={domAnimation} strict>
+        <main
+          ref={contentRef}
+          tabIndex={-1}
+          className="mx-auto min-h-dvh w-full max-w-invitation bg-bg-base text-text-body"
+        >
+          <CoverSection />
+          <DateSection />
+          <AboutUsSection />
+          <VenueSection />
+          <TimelineSection />
+          <DressCodeSection />
+          <RsvpSection token={token} />
+        </main>
+      </LazyMotion>
     </>
   );
 };

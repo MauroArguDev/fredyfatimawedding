@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Section } from '@/components/ui/Section';
 import { CalendarCard } from '@/components/ui/CalendarCard';
 import { CountdownCard } from '@/components/ui/CountdownCard';
 import { dateSectionCopy } from '@/content/dateSection';
@@ -8,7 +9,7 @@ const HEADING_IMAGE = '/assets/headings/nos-vamos-a-casar.svg';
 
 export const DateSection = (): ReactNode => {
   return (
-    <section id="date" className="w-full px-6 py-10 text-center text-text-body">
+    <Section id="date" className="text-center text-text-body">
       <img
         src={HEADING_IMAGE}
         alt={dateSectionCopy.headingAlt}
@@ -22,6 +23,6 @@ export const DateSection = (): ReactNode => {
       <div className="mt-4">
         <CountdownCard target={weddingDate} />
       </div>
-    </section>
+    </Section>
   );
 };
