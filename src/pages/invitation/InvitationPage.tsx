@@ -8,6 +8,9 @@ import { PublicPageContainer } from '@/components/ui/PublicPageContainer';
 import { EnvelopeGate } from '@/components/ui/EnvelopeGate';
 import { CoverSection } from '@/components/ui/CoverSection';
 import { DateSection } from '@/components/ui/DateSection';
+import { AboutUsSection } from '@/components/ui/AboutUsSection';
+import { VenueSection } from '@/components/ui/VenueSection';
+import { TimelineSection } from '@/components/ui/TimelineSection';
 import { DressCodeSection } from '@/components/ui/DressCodeSection';
 import { RsvpSection } from '@/components/ui/RsvpSection';
 import { invitationStatusCopy } from '@/content/appShell';
@@ -87,6 +90,9 @@ const InvitationContent = (): ReactNode => {
       >
         <CoverSection />
         <DateSection />
+        <AboutUsSection />
+        <VenueSection />
+        <TimelineSection />
         <DressCodeSection />
         <RsvpSection />
       </main>
