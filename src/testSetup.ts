@@ -37,3 +37,34 @@ window.matchMedia = (query: string): MediaQueryList => ({
   removeEventListener: () => undefined,
   dispatchEvent: () => false,
 });
+
+class ImmediatelyIntersectingObserver implements IntersectionObserver {
+  readonly root: Element | Document | null = null;
+  readonly rootMargin: string = '';
+  readonly thresholds: readonly number[] = [];
+
+  constructor(private readonly callback: IntersectionObserverCallback) {}
+
+  observe(target: Element): void {
+    const entry = {
+      target,
+      isIntersecting: true,
+      intersectionRatio: 1,
+      boundingClientRect: target.getBoundingClientRect(),
+      intersectionRect: target.getBoundingClientRect(),
+      rootBounds: null,
+      time: 0,
+    } satisfies IntersectionObserverEntry;
+    this.callback([entry], this);
+  }
+
+  unobserve = (): void => undefined;
+
+  disconnect = (): void => undefined;
+
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+}
+
+window.IntersectionObserver = ImmediatelyIntersectingObserver;

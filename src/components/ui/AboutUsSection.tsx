@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Section } from '@/components/ui/Section';
 import { aboutUsCopy } from '@/content/aboutUs';
 
 const COLLAGE_IMAGE = '/assets/about-us/collage.webp';
@@ -12,7 +13,7 @@ const QUOTE_BLUSH = [
 
 export const AboutUsSection = (): ReactNode => {
   return (
-    <section id="about-us" className="w-full px-6 py-10 text-center text-text-body">
+    <Section id="about-us" className="text-center text-text-body">
       <img
         src={COLLAGE_IMAGE}
         alt={aboutUsCopy.collageAlt}
@@ -33,6 +34,6 @@ export const AboutUsSection = (): ReactNode => {
         </p>
         <div className="mx-auto mt-4 h-px w-2/3 bg-accent-terracotta/50" />
       </div>
-    </section>
+    </Section>
   );
 };

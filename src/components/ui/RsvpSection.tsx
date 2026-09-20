@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Section } from '@/components/ui/Section';
 import { remindersCopy } from '@/content/reminders';
 import { rsvpDeadlineCopy } from '@/content/rsvp';
 import { useInvitationContext } from '@/hooks/useInvitationContext';
@@ -45,7 +46,7 @@ export const RsvpSection = ({ token }: RsvpSectionProps): ReactNode => {
   const invitation = useInvitationContext();
 
   return (
-    <section id="rsvp" className="w-full px-6 py-10 text-center text-text-body">
+    <Section id="rsvp" className="text-center text-text-body">
       <img
         src={RECUERDA_TITLE_IMAGE}
         alt={remindersCopy.titleAlt}
@@ -74,6 +75,6 @@ export const RsvpSection = ({ token }: RsvpSectionProps): ReactNode => {
       />
       <p className="mt-8">{rsvpDeadlineCopy.confirmReminder}</p>
       <p className="mt-2 text-sm">{rsvpDeadlineCopy.silenceMeansAbsence}</p>
-    </section>
+    </Section>
   );
 };

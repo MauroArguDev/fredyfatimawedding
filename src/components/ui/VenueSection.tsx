@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Section } from '@/components/ui/Section';
 import { LocationIcon } from '@/components/ui/LocationIcon';
 import { venueCopy } from '@/content/venue';
 
@@ -34,7 +35,7 @@ const LocationButton = ({
 
 export const VenueSection = (): ReactNode => {
   return (
-    <section id="venue" className="w-full px-6 py-10 text-center text-text-body">
+    <Section id="venue" className="text-center text-text-body">
       <img src={TITLE_IMAGE} alt={venueCopy.titleAlt} width={TITLE_WIDTH} height={TITLE_HEIGHT} />
       <img
         src={HOTEL_IMAGE}
@@ -56,6 +57,6 @@ export const VenueSection = (): ReactNode => {
           ariaLabel={venueCopy.googleMapsAriaLabel}
         />
       </div>
-    </section>
+    </Section>
   );
 };
