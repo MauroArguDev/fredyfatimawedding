@@ -114,7 +114,7 @@ export const RsvpFormCard = (props: RsvpFormCardProps): ReactNode => {
   );
 
   return (
-    <div className="relative mt-8 -mx-6 w-[calc(100%+3rem)]">
+    <div className="relative isolate mt-8 -mx-6 w-[calc(100%+3rem)]">
       <img
         src={FRAME_IMAGE}
         alt=""

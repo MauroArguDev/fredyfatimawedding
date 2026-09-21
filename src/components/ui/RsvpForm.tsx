@@ -43,7 +43,11 @@ const RsvpFormFields = ({
   countError,
   onSubmit,
 }: RsvpFormFieldsProps): ReactNode => (
-  <form className="flex flex-col items-center gap-4" onSubmit={onSubmit}>
+  <form className="relative flex flex-col items-center gap-4 px-6 py-6" onSubmit={onSubmit}>
+    <div
+      aria-hidden="true"
+      className="absolute inset-2 -z-10 rounded-invitation-sm bg-surface-form"
+    />
     <div className="flex flex-col items-center gap-2">
       <label htmlFor={GUEST_COUNT_SELECT_ID} className="font-bold text-text-body">
         {rsvpPickerCopy.instruction}

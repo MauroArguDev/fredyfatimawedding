@@ -10,6 +10,7 @@
   --color-surface-dark: #48553f;
   --color-surface-sage: #97a98f;
   --color-surface-muted: #ebc9a0;
+  --color-surface-form: #f1ca9e;
   --color-accent-coral: #e5ab84;
   --color-accent-terracotta: #20431e;
   --color-text-heading: #4a5a46;
@@ -49,6 +50,7 @@ body {
     --color-surface-dark: #48553f;
     --color-surface-sage: #97a98f;
     --color-surface-muted: #ebc9a0;
+    --color-surface-form: #f1ca9e;
     --color-accent-coral: #e5ab84;
     --color-accent-terracotta: #20431e;
     --color-text-heading: #4a5a46;
