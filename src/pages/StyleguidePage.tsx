@@ -143,6 +143,7 @@ const ComponentsSection = (): ReactNode => (
     <div className="mt-2 flex flex-wrap items-center gap-3">
       <Button>Enviar</Button>
       <Button variant="secondary">Ver mapa</Button>
+      <Button variant="dark">Confirmar</Button>
       <Button disabled>Deshabilitado</Button>
       <Button isLoading loadingLabel="Enviando…">
         Enviar

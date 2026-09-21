@@ -70,7 +70,7 @@ const RsvpFormFields = ({
         </p>
       )}
     </div>
-    <Button type="submit" className="shadow-[0_10px_14px_0_rgba(0,0,0,0.3)]">
+    <Button type="submit" variant="dark" className="shadow-[0_10px_14px_0_rgba(0,0,0,0.3)]">
       {rsvpFormCopy.submitLabel}
     </Button>
   </form>

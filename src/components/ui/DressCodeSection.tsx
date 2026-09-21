@@ -29,7 +29,7 @@ const GenderBlock = ({
   avoidColorsImageAlt: string;
 }): ReactNode => (
   <div className="mt-10">
-    <div className="relative flex min-h-24 items-center justify-center">
+    <div className="relative -mx-6 flex min-h-24 w-[calc(100%+3rem)] items-center justify-center">
       <img
         src={CORNER_LEFT_IMAGE}
         alt=""
