@@ -20,7 +20,7 @@ export const AboutUsSection = (): ReactNode => {
         loading="lazy"
         width={COLLAGE_WIDTH}
         height={COLLAGE_HEIGHT}
-        className="-mx-6 w-[calc(100%+3rem)]"
+        className="-mx-6 w-[calc(100%+3rem)] max-w-none"
       />
       <div className="relative mt-8 py-8" style={{ background: QUOTE_BLUSH }}>
         <div className="mx-auto h-px w-2/3 bg-accent-terracotta/50" />

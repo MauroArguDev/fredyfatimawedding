@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary';
+export type ButtonVariant = 'primary' | 'secondary' | 'dark';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -11,6 +11,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: 'bg-surface-sage text-text-on-sage',
   secondary: 'border border-text-body bg-transparent text-text-body',
+  dark: 'bg-surface-dark text-text-on-dark',
 };
 
 export const Button = ({
