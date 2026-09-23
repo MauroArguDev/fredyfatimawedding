@@ -26,11 +26,11 @@ export function buildGuestInviteMessage(
 ): string {
   return `${formatGreetingLine(firstName, lastName)}
 Estamos muy emocionados de celebrar este día tan especial! ✨☺️
-Queremos compartirlo contigo y hacer de este momento un recuerdo inolvidable. 🤍
+Queremos compartirlo contigo y hacer de este momento un recuerdo inolvidable. ❤️
 
  Todos los detalles están en el siguiente enlace:
 ${link}
-¡Tenemos ${String(guestLimit)} ${formatReservedSpotsLabel(guestLimit)} especialmente para ti! 🤍
+¡Tenemos ${String(guestLimit)} ${formatReservedSpotsLabel(guestLimit)} especialmente para ti! ❤️
 Ayúdanos a preparar todo confirmando tu asistencia antes del ${RSVP_DEADLINE_LABEL}!
 
 ¡Nos encantará celebrar contigo! ✨`;

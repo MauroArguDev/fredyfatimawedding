@@ -9,7 +9,7 @@ const GROOM_FULL_NAME = 'Fredy Molina';
 const BRIDE_FULL_NAME = 'Fatima Peña';
 
 const buildConfirmationMessage = (recipientName: string): string =>
-  `Hola ${recipientName}! 👋🏼 Quiero confirmar mi asistencia a su boda ☺️ 🤩 🫶🏻 Sera un gusto celebrar con ustedes! 🥳`;
+  `Hola ${recipientName}! 👋 Quiero confirmar mi asistencia a su boda ☺️ 😍 💕 Sera un gusto celebrar con ustedes! 🎉`;
 
 export const groomConfirmationWhatsAppLink = `https://wa.me/${GROOM_WHATSAPP_NUMBER}?text=${encodeURIComponent(buildConfirmationMessage(GROOM_FULL_NAME))}`;
 
