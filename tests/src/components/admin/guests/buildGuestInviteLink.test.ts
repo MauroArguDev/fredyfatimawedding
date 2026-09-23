@@ -13,10 +13,16 @@ describe('buildInvitationUrl', () => {
 });
 
 describe('buildGuestWhatsAppLink', () => {
-  it('stripsTheLeadingPlusBecauseWaMeExpectsDigitsOnly', () => {
+  it('stripsTheLeadingPlusBecauseWhatsappExpectsDigitsOnly', () => {
     const link = buildGuestWhatsAppLink('+50370000000', 'hola');
 
-    expect(link.startsWith('https://wa.me/50370000000?text=')).toBe(true);
+    expect(link.startsWith('https://api.whatsapp.com/send/?phone=50370000000&text=')).toBe(true);
+  });
+
+  it('usesApiWhatsappComInsteadOfWaMeBecauseWaMesRedirectCorruptsEmojiInTheTextParam', () => {
+    const link = buildGuestWhatsAppLink('+50370000000', 'hola');
+
+    expect(link).not.toContain('wa.me');
   });
 
   it('urlEncodesTheMessage', () => {

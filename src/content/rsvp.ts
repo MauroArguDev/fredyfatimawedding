@@ -3,17 +3,29 @@ const GROOM_WHATSAPP_NUMBER = '50378260102';
 const CHANGE_REQUEST_MESSAGE =
   'Hola, ya había confirmado mi asistencia y necesito hacer un cambio.';
 
-export const brideWhatsAppLink = `https://wa.me/${BRIDE_WHATSAPP_NUMBER}?text=${encodeURIComponent(CHANGE_REQUEST_MESSAGE)}`;
+export const buildWhatsAppDeepLink = (phone: string, message: string): string =>
+  `https://api.whatsapp.com/send/?phone=${phone}&text=${encodeURIComponent(message)}`;
+
+export const brideWhatsAppLink = buildWhatsAppDeepLink(
+  BRIDE_WHATSAPP_NUMBER,
+  CHANGE_REQUEST_MESSAGE,
+);
 
 const GROOM_FULL_NAME = 'Fredy Molina';
 const BRIDE_FULL_NAME = 'Fatima Peña';
 
 const buildConfirmationMessage = (recipientName: string): string =>
-  `Hola ${recipientName}! 👋 Quiero confirmar mi asistencia a su boda ☺️ 😍 💕 Sera un gusto celebrar con ustedes! 🎉`;
+  `Hola ${recipientName}! 👋🏼 Quiero confirmar mi asistencia a su boda ☺️ 🤩 🫶🏻 Sera un gusto celebrar con ustedes! 🥳`;
 
-export const groomConfirmationWhatsAppLink = `https://wa.me/${GROOM_WHATSAPP_NUMBER}?text=${encodeURIComponent(buildConfirmationMessage(GROOM_FULL_NAME))}`;
+export const groomConfirmationWhatsAppLink = buildWhatsAppDeepLink(
+  GROOM_WHATSAPP_NUMBER,
+  buildConfirmationMessage(GROOM_FULL_NAME),
+);
 
-export const brideConfirmationWhatsAppLink = `https://wa.me/${BRIDE_WHATSAPP_NUMBER}?text=${encodeURIComponent(buildConfirmationMessage(BRIDE_FULL_NAME))}`;
+export const brideConfirmationWhatsAppLink = buildWhatsAppDeepLink(
+  BRIDE_WHATSAPP_NUMBER,
+  buildConfirmationMessage(BRIDE_FULL_NAME),
+);
 
 const formatPeopleLabel = (count: number): string => (count === 1 ? 'persona' : 'personas');
 

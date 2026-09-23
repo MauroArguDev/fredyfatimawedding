@@ -70,7 +70,7 @@ describe('GuestInviteActions', () => {
 
     expect(openMock).toHaveBeenCalledTimes(1);
     const [url] = openMock.mock.calls[0] as [string];
-    expect(url).toContain('https://wa.me/50370000000');
+    expect(url).toContain('https://api.whatsapp.com/send/?phone=50370000000');
     expect(fetchAdminApiMock).toHaveBeenCalledWith(
       '/api/admin/guests/id-1',
       expect.objectContaining({ method: 'PATCH' }),
