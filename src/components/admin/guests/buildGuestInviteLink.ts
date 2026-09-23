@@ -5,5 +5,5 @@ export function buildInvitationUrl(origin: string, token: string): string {
 export function buildGuestWhatsAppLink(phone: string, message: string): string {
   const digits = phone.replace('+', '');
 
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  return `https://api.whatsapp.com/send/?phone=${digits}&text=${encodeURIComponent(message)}`;
 }
