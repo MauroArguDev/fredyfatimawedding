@@ -1,5 +1,5 @@
 const BRIDE_WHATSAPP_NUMBER = '50376982534';
-const GROOM_WHATSAPP_NUMBER = '50375861550';
+const GROOM_WHATSAPP_NUMBER = '50378260102';
 const CHANGE_REQUEST_MESSAGE =
   'Hola, ya había confirmado mi asistencia y necesito hacer un cambio.';
 
