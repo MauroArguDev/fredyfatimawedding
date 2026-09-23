@@ -43,7 +43,7 @@ describe('buildGuestInviteMessage', () => {
       3,
     );
 
-    expect(message).toContain('¡Tenemos 3 lugares reservados especialmente para ti! ❤️');
+    expect(message).toContain('¡Tenemos 3 lugares reservados especialmente para ti!');
   });
 
   it('usesTheSingularSpotWordingWhenTheGuestLimitIsExactlyOne', () => {
@@ -54,6 +54,6 @@ describe('buildGuestInviteMessage', () => {
       1,
     );
 
-    expect(message).toContain('¡Tenemos 1 lugar reservado especialmente para ti! ❤️');
+    expect(message).toContain('¡Tenemos 1 lugar reservado especialmente para ti!');
   });
 });
