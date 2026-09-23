@@ -7,6 +7,8 @@ import { toInvitationContextValue } from '@/hooks/invitationContext';
 import { useInvitationContext } from '@/hooks/useInvitationContext';
 import { PublicPageContainer } from '@/components/ui/PublicPageContainer';
 import { EnvelopeGate } from '@/components/ui/EnvelopeGate';
+import { MusicToggle } from '@/components/ui/MusicToggle';
+import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 import { CoverSection } from '@/components/ui/CoverSection';
 import { DateSection } from '@/components/ui/DateSection';
 import { AboutUsSection } from '@/components/ui/AboutUsSection';
@@ -88,6 +90,7 @@ interface InvitationContentProps {
 const InvitationContent = ({ token }: InvitationContentProps): ReactNode => {
   const invitation = useInvitationContext();
   const { isOpen, contentRef, handleOpen } = useEnvelopeGate();
+  const music = useBackgroundMusic();
   const shouldReduceMotion = useReducedMotion() ?? false;
 
   const entranceOffset = shouldReduceMotion ? 0 : CONTENT_ENTRANCE_OFFSET_PX;
@@ -99,7 +102,11 @@ const InvitationContent = ({ token }: InvitationContentProps): ReactNode => {
 
   return (
     <LazyMotion features={domAnimation} strict>
-      {!isOpen && <EnvelopeGate titleLabel={invitation.displayName} onOpen={handleOpen} />}
+      <audio ref={music.audioRef} src={music.audioSource} loop preload="none" />
+      {!isOpen && (
+        <EnvelopeGate titleLabel={invitation.displayName} onOpen={handleOpen} onTap={music.play} />
+      )}
+      {isOpen && <MusicToggle isPlaying={music.isPlaying} onToggle={music.toggle} />}
       <m.main
         ref={contentRef}
         tabIndex={-1}

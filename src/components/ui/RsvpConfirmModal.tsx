@@ -25,12 +25,19 @@ export const RsvpConfirmModal = ({
     title={rsvpConfirmModalCopy.title}
   >
     <p className="mt-2">{rsvpConfirmModalCopy.body(count)}</p>
-    <div className="mt-4 flex justify-end gap-3">
-      <Button type="button" variant="secondary" disabled={isSubmitting} onClick={onClose}>
+    <div className="mt-4 flex justify-center gap-3">
+      <Button
+        type="button"
+        variant="secondary"
+        className="flex-1 text-center"
+        disabled={isSubmitting}
+        onClick={onClose}
+      >
         {rsvpConfirmModalCopy.cancelLabel}
       </Button>
       <Button
         type="button"
+        className="flex-1 text-center"
         isLoading={isSubmitting}
         loadingLabel={rsvpConfirmModalCopy.confirmingLabel}
         onClick={onConfirm}

@@ -14,7 +14,6 @@ const FRAME_IMAGE_HEIGHT = 409;
 
 interface RsvpSubmission {
   count: number;
-  waLink: string;
 }
 
 interface RsvpFormCardProps {
@@ -131,7 +130,6 @@ export const RsvpFormCard = (props: RsvpFormCardProps): ReactNode => {
         <RsvpSuccessModal
           isOpen={isSuccessModalOpen}
           count={submission.count}
-          waLink={submission.waLink}
           onClose={() => {
             setIsSuccessModalOpen(false);
           }}

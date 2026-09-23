@@ -27,7 +27,12 @@ export const GuestInviteActions = ({ guest }: GuestInviteActionsProps): ReactNod
   const link = buildInvitationUrl(window.location.origin, guest.token);
 
   const handleSend = (): void => {
-    const message = buildGuestInviteMessage(guest.firstName, link);
+    const message = buildGuestInviteMessage(
+      guest.firstName,
+      guest.lastName,
+      link,
+      guest.guestLimit,
+    );
     window.open(buildGuestWhatsAppLink(guest.phone, message), '_blank', 'noopener,noreferrer');
     mutation.mutate({ id: guest.id, patch: { invitedAt: new Date() } });
   };

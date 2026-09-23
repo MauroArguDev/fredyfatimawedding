@@ -1,9 +1,7 @@
 import { fitsWithinGuestLimit, rsvpRequestSchema } from '../src/schemas/guest.js';
-import { buildRsvpConfirmationMessage } from '../src/content/whatsapp.js';
 import { confirmGuest, findGuestByToken } from './_lib/guests.js';
 import { isRsvpOpen } from './_lib/rsvpDeadline.js';
 import { rsvpRateLimiter } from './_lib/rateLimit.js';
-import { buildWhatsAppLink } from './_lib/whatsapp.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const HTTP_OK = 200;
@@ -77,11 +75,5 @@ export default async function handler(
     return;
   }
 
-  const message = buildRsvpConfirmationMessage({
-    firstName: guest.data.firstName,
-    lastName: guest.data.lastName,
-    count,
-  });
-
-  response.status(HTTP_OK).json({ ok: true, waLink: buildWhatsAppLink(message) });
+  response.status(HTTP_OK).json({ ok: true });
 }

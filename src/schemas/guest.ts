@@ -38,7 +38,6 @@ export const rsvpRequestSchema = z.object({
 
 export const rsvpSuccessResponseSchema = z.object({
   ok: z.literal(true),
-  waLink: z.string().url(),
 });
 
 export const RSVP_ERROR_CODES = [

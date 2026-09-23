@@ -124,11 +124,13 @@ const ModalDemo = (): ReactNode => {
       <Button onClick={openModal}>Abrir modal de ejemplo</Button>
       <Modal isOpen={isOpen} onClose={closeModal} titleId="demo-modal" title="Confirmar">
         <p>Esta acción no se puede deshacer.</p>
-        <div className="mt-4 flex gap-2">
-          <Button variant="secondary" onClick={closeModal}>
+        <div className="mt-4 flex justify-center gap-2">
+          <Button variant="secondary" className="flex-1 text-center" onClick={closeModal}>
             Volver
           </Button>
-          <Button onClick={closeModal}>Confirmar</Button>
+          <Button className="flex-1 text-center" onClick={closeModal}>
+            Confirmar
+          </Button>
         </div>
       </Modal>
     </>

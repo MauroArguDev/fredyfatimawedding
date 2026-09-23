@@ -25,6 +25,8 @@
 
   --shadow-invitation-badge: 2px 2px 1px rgba(0, 0, 0, 0.25);
 
+  --animate-spin-slow: spin 4s linear infinite;
+
   --font-sans:
     'Inter', 'Inter Fallback', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
   --font-script: 'Great Vibes', cursive;

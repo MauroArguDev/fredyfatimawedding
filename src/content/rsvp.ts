@@ -1,8 +1,19 @@
 const BRIDE_WHATSAPP_NUMBER = '50376982534';
+const GROOM_WHATSAPP_NUMBER = '50375861550';
 const CHANGE_REQUEST_MESSAGE =
   'Hola, ya había confirmado mi asistencia y necesito hacer un cambio.';
 
 export const brideWhatsAppLink = `https://wa.me/${BRIDE_WHATSAPP_NUMBER}?text=${encodeURIComponent(CHANGE_REQUEST_MESSAGE)}`;
+
+const GROOM_FULL_NAME = 'Fredy Molina';
+const BRIDE_FULL_NAME = 'Fatima Peña';
+
+const buildConfirmationMessage = (recipientName: string): string =>
+  `Hola ${recipientName}! 👋🏼 Quiero confirmar mi asistencia a su boda ☺️ 🤩 🫶🏻 Sera un gusto celebrar con ustedes! 🥳`;
+
+export const groomConfirmationWhatsAppLink = `https://wa.me/${GROOM_WHATSAPP_NUMBER}?text=${encodeURIComponent(buildConfirmationMessage(GROOM_FULL_NAME))}`;
+
+export const brideConfirmationWhatsAppLink = `https://wa.me/${BRIDE_WHATSAPP_NUMBER}?text=${encodeURIComponent(buildConfirmationMessage(BRIDE_FULL_NAME))}`;
 
 const formatPeopleLabel = (count: number): string => (count === 1 ? 'persona' : 'personas');
 
@@ -54,7 +65,8 @@ export const rsvpClosedCopy = {
 export const rsvpSuccessCopy = {
   titleId: 'rsvp-success-modal-title',
   heading: '¡Gracias por confirmar!',
-  whatsappButtonLabel: 'Avisar a la novia por WhatsApp',
+  notifyGroomLabel: 'Avisar a Fredy por WhatsApp',
+  notifyBrideLabel: 'Avisar a Fátima por WhatsApp',
   closeLabel: 'Cerrar',
 } as const;
 
