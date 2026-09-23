@@ -3,7 +3,14 @@ import { relative } from 'node:path';
 
 const MAX_DISABLES = 10;
 const DISABLE_PATTERN = /(\/\/|\/\*)\s*eslint-disable/;
-const FILE_GLOBS = ['src/**/*.ts', 'src/**/*.tsx', 'api/**/*.ts', 'scripts/**/*.ts'];
+const FILE_GLOBS = [
+  'src/**/*.ts',
+  'src/**/*.tsx',
+  'api/**/*.ts',
+  'scripts/**/*.ts',
+  'tests/**/*.ts',
+  'tests/**/*.tsx',
+];
 
 interface Finding {
   file: string;
@@ -20,7 +27,11 @@ function collectFindings(): Finding[] {
 
       lines.forEach((text, index) => {
         if (DISABLE_PATTERN.test(text)) {
-          findings.push({ file: relative(process.cwd(), file), line: index + 1, text: text.trim() });
+          findings.push({
+            file: relative(process.cwd(), file),
+            line: index + 1,
+            text: text.trim(),
+          });
         }
       });
     }
@@ -35,7 +46,9 @@ for (const finding of findings) {
   console.warn(`${finding.file}:${String(finding.line)}  ${finding.text}`);
 }
 
-console.warn(`${String(findings.length)} lint suppressions found, budget is ${String(MAX_DISABLES)}.`);
+console.warn(
+  `${String(findings.length)} lint suppressions found, budget is ${String(MAX_DISABLES)}.`,
+);
 
 if (findings.length > MAX_DISABLES) {
   console.error(

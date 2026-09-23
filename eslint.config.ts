@@ -160,7 +160,7 @@ export default defineConfig(
   },
 
   {
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', 'tests/src/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
       ...reactHooks.configs.recommended.rules,
@@ -169,8 +169,13 @@ export default defineConfig(
   },
 
   {
-    files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/components/ui/**', 'src/components/admin/**'],
+    files: ['src/**/*.{ts,tsx}', 'tests/src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/components/ui/**',
+      'src/components/admin/**',
+      'tests/src/components/ui/**',
+      'tests/src/components/admin/**',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -202,7 +207,7 @@ export default defineConfig(
   },
 
   {
-    files: ['src/components/ui/**/*.{ts,tsx}'],
+    files: ['src/components/ui/**/*.{ts,tsx}', 'tests/src/components/ui/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -240,7 +245,7 @@ export default defineConfig(
   },
 
   {
-    files: ['src/components/admin/**/*.{ts,tsx}'],
+    files: ['src/components/admin/**/*.{ts,tsx}', 'tests/src/components/admin/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -273,7 +278,10 @@ export default defineConfig(
   },
 
   {
-    files: ['src/components/admin/primitives/**/*.{ts,tsx}'],
+    files: [
+      'src/components/admin/primitives/**/*.{ts,tsx}',
+      'tests/src/components/admin/primitives/**/*.{ts,tsx}',
+    ],
     rules: {
       '@typescript-eslint/naming-convention': 'off',
       'react-refresh/only-export-components': 'off',
@@ -299,7 +307,7 @@ export default defineConfig(
   },
 
   {
-    files: ['scripts/**/*.ts', '*.config.ts'],
+    files: ['scripts/**/*.ts', '*.config.ts', 'tests/scripts/**/*.ts'],
     rules: {
       'no-console': 'off',
       'no-magic-numbers': 'off',

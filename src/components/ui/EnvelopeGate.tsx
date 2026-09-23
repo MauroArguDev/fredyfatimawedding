@@ -10,6 +10,7 @@ const FLAP_BACKGROUND_STYLE: MotionStyle = { backgroundImage: `url(${PAPER_ASSET
 interface EnvelopeGateProps {
   titleLabel: string;
   onOpen: () => void;
+  onTap: () => void;
 }
 
 const EnvelopeAddressee = ({ titleLabel }: { titleLabel: string }): ReactNode => (
@@ -22,13 +23,39 @@ const EnvelopeAddressee = ({ titleLabel }: { titleLabel: string }): ReactNode =>
   </span>
 );
 
-export const EnvelopeGate = ({ titleLabel, onOpen }: EnvelopeGateProps): ReactNode => {
+type EnvelopeAnimation = ReturnType<typeof useEnvelopeOpenAnimation>;
+
+const EnvelopeFlaps = ({ animation }: { animation: EnvelopeAnimation }): ReactNode => (
+  <span aria-hidden="true" className="absolute inset-0 flex [perspective:1400px]">
+    <m.span
+      className="h-full w-1/2 origin-left bg-cover bg-left [backface-visibility:hidden]"
+      style={FLAP_BACKGROUND_STYLE}
+      animate={animation.leftFlapAnimate}
+      transition={animation.flapTransition}
+    />
+    <m.span
+      className="h-full w-1/2 origin-right bg-cover bg-right [backface-visibility:hidden]"
+      style={FLAP_BACKGROUND_STYLE}
+      animate={animation.rightFlapAnimate}
+      transition={animation.flapTransition}
+    />
+  </span>
+);
+
+export const EnvelopeGate = ({ titleLabel, onOpen, onTap }: EnvelopeGateProps): ReactNode => {
   const animation = useEnvelopeOpenAnimation(onOpen);
+
+  const handleClick = (): void => {
+    if (!animation.isOpening) {
+      onTap();
+    }
+    animation.handleClick();
+  };
 
   return (
     <button
       type="button"
-      onClick={animation.handleClick}
+      onClick={handleClick}
       disabled={animation.isOpening}
       aria-busy={animation.isOpening}
       aria-label={envelopeCopy.openButtonLabel(titleLabel)}
@@ -39,20 +66,7 @@ export const EnvelopeGate = ({ titleLabel, onOpen }: EnvelopeGateProps): ReactNo
         animate={animation.envelopeAnimate}
         transition={animation.envelopeTransition}
       >
-        <span aria-hidden="true" className="absolute inset-0 flex [perspective:1400px]">
-          <m.span
-            className="h-full w-1/2 origin-left bg-cover bg-left [backface-visibility:hidden]"
-            style={FLAP_BACKGROUND_STYLE}
-            animate={animation.leftFlapAnimate}
-            transition={animation.flapTransition}
-          />
-          <m.span
-            className="h-full w-1/2 origin-right bg-cover bg-right [backface-visibility:hidden]"
-            style={FLAP_BACKGROUND_STYLE}
-            animate={animation.rightFlapAnimate}
-            transition={animation.flapTransition}
-          />
-        </span>
+        <EnvelopeFlaps animation={animation} />
         <span className="absolute top-1/2 left-1/2 w-2/5 max-w-[220px] -translate-x-1/2 -translate-y-1/2">
           <m.img
             src={SEAL_ASSET}

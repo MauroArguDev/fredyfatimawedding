@@ -15,7 +15,7 @@ interface UseRsvpFormSubmissionParams {
   guestLimit: number;
   onAlreadyConfirmed: () => void;
   onClosed: () => void;
-  onSuccess: (result: { count: number; waLink: string }) => void;
+  onSuccess: (result: { count: number }) => void;
 }
 
 function resolveRsvpErrorCode(error: unknown): RsvpErrorCode | 'NETWORK_ERROR' {
@@ -78,8 +78,8 @@ function useRsvpSubmissionState({
     mutation.mutate(
       { token, count: pendingCount },
       {
-        onSuccess: (response) => {
-          onSuccess({ count: pendingCount, waLink: response.waLink });
+        onSuccess: () => {
+          onSuccess({ count: pendingCount });
         },
         onError: (error) => {
           handleRsvpError(error, {

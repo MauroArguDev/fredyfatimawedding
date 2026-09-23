@@ -19,7 +19,7 @@ interface RsvpFormProps {
   guestLimit: number;
   onAlreadyConfirmed: () => void;
   onClosed: () => void;
-  onSuccess: (result: { count: number; waLink: string }) => void;
+  onSuccess: (result: { count: number }) => void;
 }
 
 function buildCountOptions(guestLimit: number): number[] {
