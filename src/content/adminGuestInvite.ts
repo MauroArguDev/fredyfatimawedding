@@ -25,7 +25,7 @@ export function buildGuestInviteMessage(
   guestLimit: number,
 ): string {
   return `${formatGreetingLine(firstName, lastName)}
-Estamos muy emocionados de celebrar este día tan especial! ✨☺️
+Estamos muy emocionados de celebrar este día tan especial! ✨😊
 Queremos compartirlo contigo y hacer de este momento un recuerdo inolvidable. 🤍
 
  Todos los detalles están en el siguiente enlace:
