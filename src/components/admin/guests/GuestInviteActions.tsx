@@ -2,11 +2,9 @@ import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/admin/primitives/button';
 import { useUpdateGuestMutation } from '@/components/admin/guests/useUpdateGuestMutation';
-import {
-  buildGuestWhatsAppLink,
-  buildInvitationUrl,
-} from '@/components/admin/guests/buildGuestInviteLink';
+import { buildInvitationUrl } from '@/components/admin/guests/buildGuestInviteLink';
 import { adminGuestInviteCopy, buildGuestInviteMessage } from '@/content/adminGuestInvite';
+import { buildWhatsAppDeepLink } from '@/lib/buildWhatsAppDeepLink';
 import type { AdminGuest } from '@/schemas/guest';
 
 interface GuestInviteActionsProps {
@@ -33,7 +31,7 @@ export const GuestInviteActions = ({ guest }: GuestInviteActionsProps): ReactNod
       link,
       guest.guestLimit,
     );
-    window.open(buildGuestWhatsAppLink(guest.phone, message), '_blank', 'noopener,noreferrer');
+    window.open(buildWhatsAppDeepLink(guest.phone, message), '_blank', 'noopener,noreferrer');
     mutation.mutate({ id: guest.id, patch: { invitedAt: new Date() } });
   };
 
