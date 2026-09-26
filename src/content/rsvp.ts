@@ -1,10 +1,9 @@
+import { buildWhatsAppDeepLink } from '@/lib/buildWhatsAppDeepLink';
+
 const BRIDE_WHATSAPP_NUMBER = '50376982534';
-const GROOM_WHATSAPP_NUMBER = '50378260102';
+const GROOM_WHATSAPP_NUMBER = '50375861550';
 const CHANGE_REQUEST_MESSAGE =
   'Hola, ya había confirmado mi asistencia y necesito hacer un cambio.';
-
-export const buildWhatsAppDeepLink = (phone: string, message: string): string =>
-  `https://api.whatsapp.com/send/?phone=${phone}&text=${encodeURIComponent(message)}`;
 
 export const brideWhatsAppLink = buildWhatsAppDeepLink(
   BRIDE_WHATSAPP_NUMBER,
@@ -15,7 +14,7 @@ const GROOM_FULL_NAME = 'Fredy Molina';
 const BRIDE_FULL_NAME = 'Fatima Peña';
 
 const buildConfirmationMessage = (recipientName: string): string =>
-  `Hola ${recipientName}! 👋🏼 Quiero confirmar mi asistencia a su boda ☺️ 🤩 🫶🏻 Sera un gusto celebrar con ustedes! 🥳`;
+  `Hola ${recipientName}! 👋 Quiero confirmar mi asistencia a su boda 😊 🤩 🥰 Sera un gusto celebrar con ustedes! 🥳`;
 
 export const groomConfirmationWhatsAppLink = buildWhatsAppDeepLink(
   GROOM_WHATSAPP_NUMBER,

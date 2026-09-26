@@ -56,4 +56,15 @@ describe('buildGuestInviteMessage', () => {
 
     expect(message).toContain('¡Tenemos 1 lugar reservado especialmente para ti!');
   });
+
+  it('usesOnlyStandaloneEmojiBecauseWhatsAppBreaksSkinTonesVariationSelectorsAndJoiners', () => {
+    const message = buildGuestInviteMessage(
+      'Orlando',
+      null,
+      'https://fredyfatimawedding.vercel.app/i/abc123',
+      3,
+    );
+
+    expect(message).not.toMatch(/️|‍|[\u{1F3FB}-\u{1F3FF}]/u);
+  });
 });
