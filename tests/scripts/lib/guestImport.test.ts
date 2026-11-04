@@ -23,6 +23,7 @@ describe('mapCsvToGuestInputs', () => {
         titleLabel: 'Tío Orlando y Familia.',
         guestLimit: 3,
         phone: '+50370000000',
+        isRsvpEnabled: true,
       },
     ]);
   });
@@ -92,6 +93,7 @@ describe('mapHumanCsvToGuestInputs', () => {
         titleLabel: 'Tío Orlando y Familia.',
         guestLimit: 3,
         phone: '+50370000000',
+        isRsvpEnabled: true,
       },
     ]);
   });
@@ -118,6 +120,7 @@ describe('partitionNewGuests', () => {
     titleLabel: null,
     guestLimit: 3,
     phone: '+50370000000',
+    isRsvpEnabled: true,
   };
   const fatima = { ...orlando, firstName: 'Fátima', phone: '+50370000001' };
 

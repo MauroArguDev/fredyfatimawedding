@@ -35,7 +35,7 @@ function handleRsvpError(error: unknown, deps: HandleRsvpErrorDeps): void {
 
   if (code === 'ALREADY_CONFIRMED') {
     deps.onAlreadyConfirmed();
-  } else if (code === 'RSVP_CLOSED') {
+  } else if (code === 'RSVP_CLOSED' || code === 'RSVP_DISABLED') {
     deps.onClosed();
   } else {
     deps.setSubmitError(rsvpErrorMessages[code]);

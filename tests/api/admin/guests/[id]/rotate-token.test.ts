@@ -26,6 +26,7 @@ const guestRecord: GuestRecord = {
     titleLabel: null,
     guestLimit: 4,
     phone: '+50370000000',
+    isRsvpEnabled: true,
     token: 'new-token-abc',
     confirmed: false,
     confirmedCount: 0,

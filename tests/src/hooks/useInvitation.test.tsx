@@ -35,6 +35,7 @@ describe('useInvitation', () => {
           confirmed: false,
           confirmedCount: 0,
           rsvpOpen: true,
+          isRsvpEnabled: true,
         }),
         { status: 200 },
       ),

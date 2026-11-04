@@ -5,6 +5,7 @@ export const guestFormFieldsCopy = {
   guestLimit: 'Cupo de invitados',
   phone: 'Teléfono',
   confirmedCount: 'Cantidad confirmada',
+  isRsvpEnabled: 'Mostrar sección para confirmar asistencia',
 } as const;
 
 export const createGuestDialogCopy = {

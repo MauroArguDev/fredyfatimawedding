@@ -40,6 +40,7 @@ function toFormValues(guest: AdminGuest): EditGuestFormValues {
     guestLimit: guest.guestLimit,
     phone: guest.phone,
     confirmedCount: guest.confirmedCount,
+    isRsvpEnabled: guest.isRsvpEnabled,
   };
 }
 

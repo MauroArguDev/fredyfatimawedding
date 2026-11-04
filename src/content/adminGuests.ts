@@ -26,6 +26,7 @@ export const adminGuestsTableCopy = {
   firstOpenedAt: 'Abierto',
   statusConfirmed: 'Confirmado',
   statusPending: 'Pendiente',
+  statusRsvpDisabled: 'Sin RSVP',
   never: '—',
   sortByName: 'Ordenar por nombre',
   sortByStatus: 'Ordenar por estado',

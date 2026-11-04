@@ -51,6 +51,11 @@ export default async function handler(
     return;
   }
 
+  if (!guest.data.isRsvpEnabled) {
+    response.status(HTTP_CONFLICT).json({ code: 'RSVP_DISABLED' });
+    return;
+  }
+
   const now = new Date();
 
   if (!isRsvpOpen(now)) {

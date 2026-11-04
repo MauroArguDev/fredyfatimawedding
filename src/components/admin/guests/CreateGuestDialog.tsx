@@ -31,6 +31,7 @@ const EMPTY_VALUES: EditGuestFormValues = {
   guestLimit: 1,
   phone: '',
   confirmedCount: 0,
+  isRsvpEnabled: true,
 };
 
 interface CreateGuestFormProps {

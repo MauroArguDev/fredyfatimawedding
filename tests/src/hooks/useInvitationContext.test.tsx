@@ -11,6 +11,7 @@ const value: InvitationContextValue = {
   confirmed: false,
   confirmedCount: 0,
   rsvpOpen: true,
+  isRsvpEnabled: true,
 };
 
 const Consumer = (): ReactNode => {

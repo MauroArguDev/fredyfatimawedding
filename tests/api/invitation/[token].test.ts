@@ -36,6 +36,7 @@ function buildGuestRecord(overrides: Partial<GuestRecord['data']> = {}): {
         titleLabel: 'Tío Orlando y Familia.',
         guestLimit: 3,
         phone: '+50370000000',
+        isRsvpEnabled: true,
         token: TOKEN,
         confirmed: false,
         confirmedCount: 0,
@@ -71,6 +72,7 @@ describe('GET /api/invitation/[token]', () => {
       confirmed: false,
       confirmedCount: 0,
       rsvpOpen: true,
+      isRsvpEnabled: true,
     });
   });
 

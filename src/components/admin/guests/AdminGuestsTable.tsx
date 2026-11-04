@@ -169,11 +169,16 @@ const AdminGuestRow = ({
     <TableCell>{guest.phone}</TableCell>
     <TableCell>{guest.guestLimit}</TableCell>
     <TableCell>
-      <Badge variant={guest.confirmed ? 'default' : 'outline'}>
-        {guest.confirmed
-          ? adminGuestsTableCopy.statusConfirmed
-          : adminGuestsTableCopy.statusPending}
-      </Badge>
+      <div className="flex flex-wrap gap-1">
+        <Badge variant={guest.confirmed ? 'default' : 'outline'}>
+          {guest.confirmed
+            ? adminGuestsTableCopy.statusConfirmed
+            : adminGuestsTableCopy.statusPending}
+        </Badge>
+        {!guest.isRsvpEnabled && (
+          <Badge variant="secondary">{adminGuestsTableCopy.statusRsvpDisabled}</Badge>
+        )}
+      </div>
     </TableCell>
     <TableCell>{guest.confirmedCount}</TableCell>
     <TableCell>{formatOpenedAt(guest.firstOpenedAt)}</TableCell>

@@ -27,6 +27,7 @@ function buildGuestListItem(overrides: Partial<GuestListItem['data']> = {}): Gue
       titleLabel: 'Tío Orlando y Familia.',
       guestLimit: 3,
       phone: '+50370000000',
+      isRsvpEnabled: true,
       token: 'V1StGXR8_Z5jdHi6B-myT',
       confirmed: false,
       confirmedCount: 0,

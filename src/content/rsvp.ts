@@ -87,6 +87,7 @@ export const rsvpErrorMessages = {
   TOKEN_NOT_FOUND: 'No pudimos encontrar tu invitación. Recarga la página e intenta de nuevo.',
   ALREADY_CONFIRMED: rsvpAlreadyConfirmedCopy.message,
   RSVP_CLOSED: rsvpClosedCopy.message,
+  RSVP_DISABLED: rsvpClosedCopy.message,
   RATE_LIMITED: 'Demasiados intentos. Espera un momento e intenta de nuevo.',
   NETWORK_ERROR: 'No pudimos enviar tu confirmación. Intenta de nuevo.',
 } as const;

@@ -19,6 +19,7 @@ const orlando: AdminGuest = {
   titleLabel: null,
   guestLimit: 3,
   phone: '+50370000000',
+  isRsvpEnabled: true,
   confirmed: false,
   confirmedCount: 0,
   confirmedAt: null,

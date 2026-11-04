@@ -9,6 +9,7 @@ const baseInvitation: PublicInvitation = {
   confirmed: false,
   confirmedCount: 0,
   rsvpOpen: true,
+  isRsvpEnabled: true,
 };
 
 describe('toInvitationContextValue', () => {
@@ -42,6 +43,7 @@ describe('toInvitationContextValue', () => {
       confirmed: true,
       confirmedCount: 2,
       rsvpOpen: false,
+      isRsvpEnabled: true,
     });
   });
 });

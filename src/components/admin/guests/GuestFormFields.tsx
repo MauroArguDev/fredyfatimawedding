@@ -64,6 +64,15 @@ export const GuestFormFields = ({
           )}
         </GuestField>
       ))}
+      <div className="flex items-center gap-2">
+        <input
+          id="guest-rsvp-enabled"
+          type="checkbox"
+          className="size-4 accent-primary"
+          {...register('isRsvpEnabled')}
+        />
+        <FieldLabel htmlFor="guest-rsvp-enabled">{guestFormFieldsCopy.isRsvpEnabled}</FieldLabel>
+      </div>
       {showConfirmedCount && (
         <GuestField
           htmlFor="guest-confirmed-count"

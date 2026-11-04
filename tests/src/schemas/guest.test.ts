@@ -39,6 +39,12 @@ describe('createGuestSchema', () => {
     expect(result.success && result.data.titleLabel).toBeNull();
   });
 
+  it('defaultsIsRsvpEnabledToTrueSoGuestsStoredBeforeTheFieldExistedCanStillConfirm', () => {
+    const result = createGuestSchema.safeParse(validGuest);
+
+    expect(result.success && result.data.isRsvpEnabled).toBe(true);
+  });
+
   it('rejectsGuestLimitBelowOneBecauseAnInvitationWithoutSeatsIsMeaningless', () => {
     expect(createGuestSchema.safeParse({ ...validGuest, guestLimit: 0 }).success).toBe(false);
   });
@@ -80,6 +86,12 @@ describe('createGuestSchema', () => {
 describe('updateGuestSchema', () => {
   it('acceptsAPartialUpdateWithASingleField', () => {
     expect(updateGuestSchema.safeParse({ guestLimit: 4 }).success).toBe(true);
+  });
+
+  it('doesNotResetIsRsvpEnabledWhenAPatchOmitsIt', () => {
+    const result = updateGuestSchema.safeParse({ firstName: 'Orlando' });
+
+    expect(result.success && 'isRsvpEnabled' in result.data).toBe(false);
   });
 
   it('rejectsAnEmptyUpdateBecauseItWouldBeAPointlessWrite', () => {

@@ -274,6 +274,7 @@ describe('createGuest', () => {
     titleLabel: null,
     guestLimit: 2,
     phone: '+50370000000',
+    isRsvpEnabled: true,
   };
 
   it('generatesATokenAndAppliesDefaultsBeforeWriting', async () => {
@@ -324,6 +325,7 @@ describe('importGuests', () => {
     titleLabel: null,
     guestLimit: 2,
     phone: '+50370000000',
+    isRsvpEnabled: true,
   };
   const guestB: CreateGuestInput = {
     firstName: 'Fátima',
@@ -331,6 +333,7 @@ describe('importGuests', () => {
     titleLabel: null,
     guestLimit: 1,
     phone: '+50370000001',
+    isRsvpEnabled: true,
   };
 
   it('createsEveryGuestWhenNonePhoneAlreadyExists', async () => {

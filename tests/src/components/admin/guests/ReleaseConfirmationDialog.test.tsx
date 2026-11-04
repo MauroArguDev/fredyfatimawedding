@@ -23,6 +23,7 @@ const fatima: AdminGuest = {
   titleLabel: null,
   guestLimit: 3,
   phone: '+50370000000',
+  isRsvpEnabled: true,
   confirmed: true,
   confirmedCount: 2,
   confirmedAt: new Date('2026-08-01'),
