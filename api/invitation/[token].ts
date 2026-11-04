@@ -31,6 +31,7 @@ export default async function handler(
       confirmed: guest.data.confirmed,
       confirmedCount: guest.data.confirmedCount,
       rsvpOpen: isRsvpOpen(new Date()),
+      isRsvpEnabled: guest.data.isRsvpEnabled,
     }),
   );
 }

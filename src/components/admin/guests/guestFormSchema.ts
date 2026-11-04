@@ -16,6 +16,7 @@ export const guestFormSchema = z.object({
   titleLabel: z.string().trim().max(MAX_TITLE_LABEL_LENGTH),
   guestLimit: z.coerce.number().int().min(MIN_GUEST_LIMIT).max(MAX_GUEST_LIMIT),
   phone: phoneSchema,
+  isRsvpEnabled: z.boolean(),
 });
 
 export type GuestFormValues = z.infer<typeof guestFormSchema>;
@@ -40,6 +41,7 @@ export function toCreateGuestInput(values: GuestFormValues): CreateGuestInput {
     titleLabel: emptyToNull(values.titleLabel),
     guestLimit: values.guestLimit,
     phone: values.phone,
+    isRsvpEnabled: values.isRsvpEnabled,
   };
 }
 

@@ -27,6 +27,7 @@ const orlando: AdminGuest = {
   titleLabel: null,
   guestLimit: 3,
   phone: '+50370000000',
+  isRsvpEnabled: true,
   confirmed: true,
   confirmedCount: 2,
   confirmedAt: new Date('2026-08-01'),
@@ -93,6 +94,21 @@ describe('EditGuestDialog', () => {
       expect.objectContaining({ method: 'PATCH' }),
     );
     expect(toastSuccessMock).toHaveBeenCalledWith(adminGuestToastCopy.updated);
+  });
+
+  it('sendsIsRsvpEnabledFalseWhenTheAdminUnchecksTheRsvpCheckbox', async () => {
+    fetchAdminApiMock.mockResolvedValue(new Response(JSON.stringify(orlando), { status: 200 }));
+    renderDialog(orlando);
+    await waitFor(() => screen.getByLabelText(guestFormFieldsCopy.firstName));
+
+    await userEvent.click(screen.getByLabelText(guestFormFieldsCopy.isRsvpEnabled));
+    await userEvent.click(screen.getByRole('button', { name: editGuestDialogCopy.submit }));
+
+    await waitFor(() => {
+      expect(fetchAdminApi).toHaveBeenCalled();
+    });
+    const [, init] = fetchAdminApiMock.mock.calls.at(-1) ?? [];
+    expect(JSON.parse(init?.body as string)).toMatchObject({ isRsvpEnabled: false });
   });
 
   it('showsAReadableErrorWhenTheServerRejectsTheUpdate', async () => {

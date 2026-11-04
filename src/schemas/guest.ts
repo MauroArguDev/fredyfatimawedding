@@ -18,6 +18,7 @@ export const createGuestSchema = z.object({
   titleLabel: z.string().trim().max(MAX_TITLE_LABEL_LENGTH).nullable().default(null),
   guestLimit: guestLimitSchema,
   phone: phoneSchema,
+  isRsvpEnabled: z.boolean().default(true),
 });
 
 export const updateGuestSchema = createGuestSchema
@@ -46,6 +47,7 @@ export const RSVP_ERROR_CODES = [
   'TOKEN_NOT_FOUND',
   'ALREADY_CONFIRMED',
   'RSVP_CLOSED',
+  'RSVP_DISABLED',
   'RATE_LIMITED',
 ] as const;
 
@@ -99,6 +101,7 @@ export const publicInvitationSchema = z.object({
   confirmed: z.boolean(),
   confirmedCount: z.number().int().min(0),
   rsvpOpen: z.boolean(),
+  isRsvpEnabled: z.boolean(),
 });
 
 export type CreateGuestInput = z.infer<typeof createGuestSchema>;

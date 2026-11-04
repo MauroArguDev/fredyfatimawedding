@@ -41,6 +41,7 @@ function buildGuestRecord(overrides: Partial<GuestRecord['data']> = {}): GuestRe
       titleLabel: 'Tío Orlando y Familia.',
       guestLimit: 3,
       phone: '+50370000000',
+      isRsvpEnabled: true,
       token: TOKEN,
       confirmed: false,
       confirmedCount: 0,
@@ -164,6 +165,17 @@ describe('POST /api/rsvp', () => {
 
     expect(response.status).toHaveBeenCalledWith(409);
     expect(response.json).toHaveBeenCalledWith({ code: 'RSVP_CLOSED' });
+    expect(confirmGuest).not.toHaveBeenCalled();
+  });
+
+  it('rejectsWithRsvpDisabledWhenTheAdminHidTheRsvpForThatGuest', async () => {
+    vi.mocked(findGuestByToken).mockResolvedValue(buildGuestRecord({ isRsvpEnabled: false }));
+    const response = buildResponse();
+
+    await handler(buildRequest({ token: TOKEN, count: 1 }), response);
+
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.json).toHaveBeenCalledWith({ code: 'RSVP_DISABLED' });
     expect(confirmGuest).not.toHaveBeenCalled();
   });
 

@@ -15,6 +15,7 @@ const DEFAULT_CONTEXT: InvitationContextValue = {
   confirmed: false,
   confirmedCount: 0,
   rsvpOpen: true,
+  isRsvpEnabled: true,
 };
 
 const getParagraphByPrefix = (
@@ -93,6 +94,16 @@ describe('RsvpSection', () => {
 
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.getByText(rsvpAlreadyConfirmedCopy.heading)).toBeInTheDocument();
+  });
+
+  it('hidesTheFormAndDeadlineTextsButKeepsTheRemindersWhenRsvpIsDisabled', () => {
+    renderRsvpSection({ isRsvpEnabled: false, rsvpOpen: false });
+
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByText(rsvpClosedCopy.heading)).not.toBeInTheDocument();
+    expect(screen.queryByText(rsvpDeadlineCopy.confirmReminder)).not.toBeInTheDocument();
+    expect(screen.queryByText(rsvpDeadlineCopy.silenceMeansAbsence)).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: remindersCopy.titleAlt })).toBeInTheDocument();
   });
 
   it('rendersTheClosedStateInsteadOfTheFormWhenRsvpOpenIsFalse', () => {

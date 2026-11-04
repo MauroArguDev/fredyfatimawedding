@@ -12,6 +12,7 @@ const validValues = {
   titleLabel: '',
   guestLimit: 3,
   phone: '+50370000000',
+  isRsvpEnabled: true,
 };
 
 describe('guestFormSchema', () => {
@@ -66,6 +67,7 @@ describe('toCreateGuestInput', () => {
       titleLabel: null,
       guestLimit: 3,
       phone: '+50370000000',
+      isRsvpEnabled: true,
     });
   });
 

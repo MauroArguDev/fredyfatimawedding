@@ -105,6 +105,7 @@ Dominio propio · notificación automatizada vía WhatsApp Business API · dise�
 | `guestLimit`     | number            | sí          | —       | Entero, 1–20                                                                     |
 | `phone`          | string            | sí          | —       | E.164, ej. `+50370000000`                                                        |
 | `confirmed`      | boolean           | sí          | `false` | Una vez `true`, el invitado no puede volver a enviar (R2)                        |
+| `isRsvpEnabled`  | boolean           | sí          | `true`  | `false` oculta formulario y textos de fecha límite; ver nota abajo               |
 | `confirmedCount` | number            | sí          | `0`     | Entero, 0 ≤ n ≤ `guestLimit`                                                     |
 | `confirmedAt`    | Timestamp \| null | no          | `null`  |                                                                                  |
 | `firstOpenedAt`  | Timestamp \| null | no          | `null`  | Se llena en el primer `GET` del enlace                                           |
@@ -112,7 +113,7 @@ Dominio propio · notificación automatizada vía WhatsApp Business API · dise�
 | `createdAt`      | Timestamp         | sí          | —       |                                                                                  |
 | `updatedAt`      | Timestamp         | sí          | —       |                                                                                  |
 
-`titleLabel` existe aparte de `firstName`/`lastName` porque el sobre muestra tratamientos ("Tío Orlando y Familia.") que no se derivan de esos campos, que siguen siendo indispensables para el mensaje de WhatsApp y para buscar/ordenar en la consola. `confirmed` es booleano porque bajo R1 no hace falta distinguir "declinó" de "no respondió". No existe campo `notes` (se eliminó del modelo — usar `titleLabel` para marcar invitados de prueba, ver ADR-011).
+`titleLabel` existe aparte de `firstName`/`lastName` porque el sobre muestra tratamientos ("Tío Orlando y Familia.") que no se derivan de esos campos, que siguen siendo indispensables para el mensaje de WhatsApp y para buscar/ordenar en la consola. `confirmed` es booleano porque bajo R1 no hace falta distinguir "declinó" de "no respondió". `isRsvpEnabled` (2026-11-03, a pedido del usuario) permite que la consola le quite a un invitado puntual la opción de confirmar: su invitación omite el formulario/estado de RSVP y los dos textos de fecha límite de `#rsvp` (los recordatorios de solo adultos y regalo de sobre se mantienen), y `POST /api/rsvp` responde `409 RSVP_DISABLED`. Los documentos guardados antes de que existiera el campo se leen como `true` (default de Zod). No existe campo `notes` (se eliminó del modelo — usar `titleLabel` para marcar invitados de prueba, ver ADR-011).
 
 ### Security Rules
 
@@ -157,6 +158,7 @@ service cloud.firestore {
   "confirmed": false,
   "confirmedCount": 0,
   "rsvpOpen": true,
+  "isRsvpEnabled": true,
 }
 // 404 { "code": "TOKEN_NOT_FOUND" }
 ```
@@ -176,10 +178,11 @@ Nunca devuelve `phone` ni `token`. Escribe `firstOpenedAt` solo si estaba en `nu
 // 404 { "code": "TOKEN_NOT_FOUND" }
 // 409 { "code": "ALREADY_CONFIRMED" }
 // 409 { "code": "RSVP_CLOSED" }
+// 409 { "code": "RSVP_DISABLED" }
 // 429 { "code": "RATE_LIMITED" }
 ```
 
-Validaciones en servidor: `count` entero, `1 <= count <= guestLimit`; `Date.now() <= RSVP_DEADLINE`; `confirmed === false` (R2). Anti-bot: 429 si `firstOpenedAt` es `null` o pasaron menos de 3s desde esa apertura. Rate limit: >5 envíos por IP/minuto → 429. **Ya no devuelve `waLink` (retirado 2026-09-22, ver WED-70/71 en Cerrados):** el enlace de aviso a los novios se arma enteramente en el cliente, en `src/content/rsvp.ts`, porque el mensaje dejó de depender de datos del invitado.
+Validaciones en servidor: `isRsvpEnabled === true`; `count` entero, `1 <= count <= guestLimit`; `Date.now() <= RSVP_DEADLINE`; `confirmed === false` (R2). Anti-bot: 429 si `firstOpenedAt` es `null` o pasaron menos de 3s desde esa apertura. Rate limit: >5 envíos por IP/minuto → 429. **Ya no devuelve `waLink` (retirado 2026-09-22, ver WED-70/71 en Cerrados):** el enlace de aviso a los novios se arma enteramente en el cliente, en `src/content/rsvp.ts`, porque el mensaje dejó de depender de datos del invitado.
 
 ### Administración
 
@@ -195,7 +198,7 @@ Requieren `Authorization: Bearer <firebase-id-token>` (`admin.auth().verifyIdTok
 | `GET`    | `/api/admin/export`                   | CSV completo                                          |
 | `POST`   | `/api/admin/guests/import`            | Importa invitados desde CSV                           |
 
-`PATCH` edita `firstName`, `lastName`, `titleLabel`, `guestLimit`, `phone`, `confirmed`, `confirmedCount`; `token`/`createdAt` se descartan silenciosamente (Zod `strip`). Reducir `guestLimit` por debajo de `confirmedCount` → 400 `GUEST_LIMIT_BELOW_CONFIRMED_COUNT`. Rotar token invalida el enlace anterior (pasa a 404). Export CSV: encabezados en español, BOM UTF-8, `Content-Disposition: attachment; filename="invitados.csv"`.
+`POST` y `PATCH` aceptan además `isRsvpEnabled` (en `POST` es opcional, default `true`). `PATCH` edita `firstName`, `lastName`, `titleLabel`, `guestLimit`, `phone`, `isRsvpEnabled`, `confirmed`, `confirmedCount`; `token`/`createdAt` se descartan silenciosamente (Zod `strip`). Reducir `guestLimit` por debajo de `confirmedCount` → 400 `GUEST_LIMIT_BELOW_CONFIRMED_COUNT`. Rotar token invalida el enlace anterior (pasa a 404). Export CSV: encabezados en español, BOM UTF-8, `Content-Disposition: attachment; filename="invitados.csv"`.
 
 **`POST /api/admin/guests/import`.** Encabezado **humano** (`HUMAN_SHEET_HEADER` de `scripts/lib/humanGuestSheet.ts`): `Nombre,Apellido,Texto en sobre,Cupo de invitados,Teléfono` — no el header en inglés que exige el script de CLI. `parseCsv` detecta automáticamente `,` vs `;` (Excel en español exporta con `;`). Todo-o-nada. Duplicados por `phone` se omiten, no se sobreescriben.
 
